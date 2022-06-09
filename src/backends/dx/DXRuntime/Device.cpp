@@ -6,17 +6,18 @@
 #include <Shader/BuiltinKernel.h>
 #include <dxgi1_3.h>
 #include <Shader/ShaderCompiler.h>
+#include <Shader/ComputeShader.h>
 namespace toolhub::directx {
 static std::mutex gDxcMutex;
 static vstd::optional<DXShaderCompiler> gDxcCompiler;
 static int32 gDxcRefCount = 0;
+Device::LazyLoadShader::~LazyLoadShader() {}
+
+Device::LazyLoadShader::LazyLoadShader(LoadFunc loadFunc) : loadFunc(loadFunc) {}
 Device::~Device() {
-    if (defaultAllocator) delete defaultAllocator;
-    {
-        std::lock_guard lck(gDxcMutex);
-        if (--gDxcRefCount == 0) {
-            gDxcCompiler.Delete();
-        }
+    std::lock_guard lck(gDxcMutex);
+    if (--gDxcRefCount == 0) {
+        gDxcCompiler.Delete();
     }
 }
 
@@ -31,23 +32,25 @@ void Device::WaitFence(ID3D12Fence *fence, uint64 fenceIndex) {
         WaitForSingleObject(eventHandle, INFINITE);
     }
 }
-void Device::WaitFence_Async(ID3D12Fence *fence, uint64 fenceIndex) {
-    if (fenceIndex <= 0) return;
-    HANDLE eventHandle = CreateEventEx(nullptr, (LPCWSTR)nullptr, false, EVENT_ALL_ACCESS);
-    auto d = vstd::create_disposer([&] {
-        CloseHandle(eventHandle);
-    });
-    while (fence->GetCompletedValue() < fenceIndex) {
-        ThrowIfFailed(fence->SetEventOnCompletion(fenceIndex, eventHandle));
-        WaitForSingleObject(eventHandle, 1);
+ComputeShader *Device::LazyLoadShader::Get(Device *self) {
+    if (!shader) {
+        shader = vstd::create_unique(loadFunc(self, self->ctx));
     }
+    return shader.get();
 }
-
 DXShaderCompiler *Device::Compiler() {
     return gDxcCompiler;
 }
-
-Device::Device(uint index) {
+Device::Device(Context const &ctx, uint index)
+    : ctx(ctx),
+      bc6TryModeG10(BuiltinKernel::LoadBC6TryModeG10CSKernel),
+      bc6TryModeLE10(BuiltinKernel::LoadBC6TryModeLE10CSKernel),
+      bc6EncodeBlock(BuiltinKernel::LoadBC6EncodeBlockCSKernel),
+      bc7TryMode456(BuiltinKernel::LoadBC7TryMode456CSKernel),
+      bc7TryMode137(BuiltinKernel::LoadBC7TryMode137CSKernel),
+      bc7TryMode02(BuiltinKernel::LoadBC7TryMode02CSKernel),
+      bc7EncodeBlock(BuiltinKernel::LoadBC7EncodeBlockCSKernel),
+      setAccelKernel(BuiltinKernel::LoadAccelSetKernel) {
     using Microsoft::WRL::ComPtr;
     uint32_t dxgiFactoryFlags = 0;
 
@@ -84,9 +87,9 @@ Device::Device(uint index) {
         }
     }
     if (adapter == nullptr) { LUISA_ERROR_WITH_LOCATION("Failed to create DirectX device at index {}.", index); }
-    defaultAllocator = IGpuAllocator::CreateAllocator(
+    defaultAllocator = vstd::create_unique(IGpuAllocator::CreateAllocator(
         this,
-        IGpuAllocator::Tag::DefaultAllocator);
+        IGpuAllocator::Tag::DefaultAllocator));
     globalHeap = vstd::create_unique(
         new DescriptorHeap(
             this,
@@ -109,6 +112,5 @@ Device::Device(uint index) {
         gDxcRefCount++;
         gDxcCompiler.New();
     }
-    setAccelKernel = BuiltinKernel::LoadAccelSetKernel(this);
 }
 }// namespace toolhub::directx

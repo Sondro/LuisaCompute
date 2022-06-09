@@ -29,7 +29,13 @@ enum struct PixelStorage : uint32_t {
 
     FLOAT1,
     FLOAT2,
-    FLOAT4
+    FLOAT4,
+
+    BC4,
+    BC5,
+    BC6,
+    BC7,
+    //TODO: ASTC
 };
 
 enum struct PixelFormat : uint32_t {
@@ -73,11 +79,18 @@ enum struct PixelFormat : uint32_t {
 
     R32F,
     RG32F,
-    RGBA32F
+    RGBA32F,
+
+    BC4UNorm,
+    BC5UNorm,
+    BC6HUF16,
+    BC7UNorm,
+
+    //TODO: ASTC
 };
 
-constexpr auto pixel_storage_count = to_underlying(PixelStorage::FLOAT4) + 1u;
-constexpr auto pixel_format_count = to_underlying(PixelFormat::RGBA32F) + 1u;
+constexpr auto pixel_storage_count = to_underlying(PixelStorage::BC7) + 1u;
+constexpr auto pixel_format_count = to_underlying(PixelFormat::BC7UNorm) + 1u;
 
 [[nodiscard]] constexpr auto pixel_format_to_storage(PixelFormat format) noexcept {
     switch (format) {
@@ -126,6 +139,14 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::RGBA32F) + 1u;
             return PixelStorage::FLOAT2;
         case PixelFormat::RGBA32F:
             return PixelStorage::FLOAT4;
+        case PixelFormat::BC6HUF16:
+            return PixelStorage::BC6;
+        case PixelFormat::BC7UNorm:
+            return PixelStorage::BC7;
+        case PixelFormat::BC5UNorm:
+            return PixelStorage::BC5;
+        case PixelFormat::BC4UNorm:
+            return PixelStorage::BC4;
         default:
             break;
     }
@@ -149,6 +170,12 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::RGBA32F) + 1u;
         case PixelStorage::FLOAT1: return sizeof(float) * 1u;
         case PixelStorage::FLOAT2: return sizeof(float) * 2u;
         case PixelStorage::FLOAT4: return sizeof(float) * 4u;
+        case PixelStorage::BC4:
+            return size_t(8u);
+        case PixelStorage::BC5:
+        case PixelStorage::BC6:
+        case PixelStorage::BC7:
+            return size_t(16u);
         default: break;
     }
     return static_cast<size_t>(0u);
@@ -171,6 +198,14 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::RGBA32F) + 1u;
         case PixelStorage::FLOAT1: return 1u;
         case PixelStorage::FLOAT2: return 2u;
         case PixelStorage::FLOAT4: return 4u;
+        case PixelStorage::BC4:
+            return 1u;
+        case PixelStorage::BC5:
+            return 2u;
+        case PixelStorage::BC6:
+            return 3u;
+        case PixelStorage::BC7:
+            return 4u;
         default: break;
     }
     return 0u;
@@ -192,6 +227,10 @@ template<typename T>
             case PixelStorage::FLOAT1: return PixelFormat::R32F;
             case PixelStorage::FLOAT2: return PixelFormat::RG32F;
             case PixelStorage::FLOAT4: return PixelFormat::RGBA32F;
+            case PixelStorage::BC4: return PixelFormat ::BC4UNorm;
+            case PixelStorage::BC5: return PixelFormat ::BC5UNorm;
+            case PixelStorage::BC6: return PixelFormat ::BC6HUF16;
+            case PixelStorage::BC7: return PixelFormat ::BC7UNorm;
             default: LUISA_ERROR_WITH_LOCATION("Invalid pixel storage for float format.");
         }
     } else if constexpr (std::is_same_v<T, int>) {

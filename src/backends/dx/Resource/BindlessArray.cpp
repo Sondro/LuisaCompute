@@ -12,7 +12,7 @@ namespace toolhub::directx {
 BindlessArray::BindlessArray(
     Device *device, uint arraySize)
     : Resource(device),
-      buffer(device, arraySize * sizeof(BindlessStruct), device->defaultAllocator, VEngineShaderResourceState) {
+      buffer(device, arraySize * sizeof(BindlessStruct), device->defaultAllocator.get(), VEngineShaderResourceState) {
     binded.resize(arraySize);
 }
 uint BindlessArray::GetNewIndex() {
@@ -95,7 +95,7 @@ void BindlessArray::Bind(Property const &prop, uint index) {
             auto smpIdx = GlobalSamplers::GetIndex(v.second);
             if (isTex2D) {
                 indices.tex2D = AddIndex(reinterpret_cast<size_t>(v.first));
-                
+
                 bindGrp.tex2D = texIdx;
                 bindGrp.tex2DX = v.first->Width();
                 bindGrp.tex2DY = v.first->Height();
@@ -127,10 +127,7 @@ void BindlessArray::UnBind(BindTag tag, uint index) {
             break;
     }
 }
-bool BindlessArray::IsPtrInBindless(size_t ptr) const {
 
-    return ptrMap.Find(ptr);
-}
 void BindlessArray::PreProcessStates(
     CommandBufferBuilder &builder,
     ResourceStateTracker &tracker) const {
@@ -144,33 +141,33 @@ void BindlessArray::PreProcessStates(
 void BindlessArray::UpdateStates(
     CommandBufferBuilder &builder,
     ResourceStateTracker &tracker) const {
-    {
 
-        if (updateMap.size() > 0) {
-            for (auto &&kv : updateMap) {
-                auto &&sb = kv.second;
-                builder.Upload(
-                    BufferView(
-                        &buffer,
-                        sizeof(BindlessStruct) * kv.first,
-                        sizeof(BindlessStruct)),
-                    &kv.second);
-            }
-            updateMap.Clear();
-            tracker.RecordState(
-                &buffer);
+    if (updateMap.size() > 0) {
+        for (auto &&kv : updateMap) {
+            auto &&sb = kv.second;
+            builder.Upload(
+                BufferView(
+                    &buffer,
+                    sizeof(BindlessStruct) * kv.first,
+                    sizeof(BindlessStruct)),
+                &kv.second);
         }
+        updateMap.Clear();
+        tracker.RecordState(
+            &buffer);
     }
     vstd::vector<uint> needReturnIdx;
     while (auto i = freeQueue.Pop()) {
         needReturnIdx.push_back(i);
     }
-    builder.GetCB()->GetAlloc()->ExecuteAfterComplete(
-        [vec = std::move(needReturnIdx),
-         device = device] {
-            for (auto &&i : vec) {
-                device->globalHeap->ReturnIndex(i);
-            }
-        });
+    if (!needReturnIdx.empty()) {
+        builder.GetCB()->GetAlloc()->ExecuteAfterComplete(
+            [vec = std::move(needReturnIdx),
+             device = device] {
+                for (auto &&i : vec) {
+                    device->globalHeap->ReturnIndex(i);
+                }
+            });
+    }
 }
 }// namespace toolhub::directx

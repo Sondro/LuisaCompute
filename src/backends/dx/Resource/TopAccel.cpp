@@ -5,7 +5,6 @@
 #include <DXRuntime/ResourceStateTracker.h>
 #include <DXRuntime/CommandBuffer.h>
 #include <Resource/BottomAccel.h>
-#include <Resource/Mesh.h>
 namespace toolhub::directx {
 vstd::HashMap<TopAccel *> *TopAccel::TopAccels() {
     static vstd::HashMap<TopAccel *> topAccel;
@@ -136,7 +135,7 @@ size_t TopAccel::PreProcess(
             oldBuffer = vstd::create_unique(new DefaultBuffer(
                 device,
                 newSize,
-                device->defaultAllocator,
+                device->defaultAllocator.get(),
                 state));
             return true;
         } else {
@@ -145,7 +144,7 @@ size_t TopAccel::PreProcess(
             auto newBuffer = new DefaultBuffer(
                 device,
                 newSize,
-                device->defaultAllocator,
+                device->defaultAllocator.get(),
                 state);
             if (needCopy) {
                 tracker.RecordState(
@@ -204,7 +203,7 @@ void TopAccel::Build(
             instBuffer.get(),
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         tracker.UpdateState(builder);
-        auto cs = device->setAccelKernel;
+        auto cs = device->setAccelKernel.Get(device);
         auto setBuffer = alloc->GetTempUploadBuffer(setDesc.byte_size());
         auto cbuffer = alloc->GetTempUploadBuffer(8, 256);
         struct CBuffer {
@@ -282,7 +281,7 @@ bool TopAccel::CheckAccel(
     auto newAccelBuffer = vstd::create_unique(new DefaultBuffer(
         device,
         CalcAlign(compactSize, 65536),
-        device->defaultAllocator,
+        device->defaultAllocator.get(),
         D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE));
 
     builder.CmdList()->CopyRaytracingAccelerationStructure(

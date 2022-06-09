@@ -1,11 +1,10 @@
 #pragma once
 #include <DXRuntime/Device.h>
 #include <Resource/DefaultBuffer.h>
-#include <Resource/Mesh.h>
 #include <runtime/command.h>
-
 namespace toolhub::directx {
-
+class CommandBufferBuilder;
+class ResourceStateTracker;
 class TopAccel;
 struct BottomAccelData {
     D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc;
@@ -24,21 +23,18 @@ class BottomAccel : public vstd::IOperatorNewBase {
     vstd::unique_ptr<DefaultBuffer> accelBuffer;
     uint64 compactSize;
     Device *device;
-    Mesh mesh;
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS hint;
     bool update = false;
     void SyncTopAccel() const;
 
 public:
     bool RequireCompact() const;
-    Mesh const *GetMesh() const { return &mesh; }
     Buffer const *GetAccelBuffer() const {
         return accelBuffer.get();
     }
     BottomAccel(
         Device *device,
-        Buffer const *vHandle, size_t vOffset, size_t vStride, size_t vCount,
-        Buffer const *iHandle, size_t iOffset, size_t iCount,
+
         luisa::compute::AccelUsageHint hint,
         bool allow_compact, bool allow_update);
     size_t PreProcessStates(
@@ -46,7 +42,9 @@ public:
         ResourceStateTracker &tracker,
         bool update,
         Buffer const *vHandle,
-        Buffer const *iHandle, 
+        size_t vertStride, size_t vertOffset, size_t vertCount,
+        Buffer const *iHandle,
+        size_t idxOffset, size_t idxSize,
         BottomAccelData &bottomData);
     void UpdateStates(
         CommandBufferBuilder &builder,

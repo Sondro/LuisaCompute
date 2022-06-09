@@ -460,6 +460,7 @@ private:
     uint64_t _handle;
     AccelBuildRequest _request;
     uint64_t _vertex_buffer;
+    size_t _vertex_stride;
     size_t _vertex_buffer_offset;
     size_t _vertex_buffer_size;
     uint64_t _triangle_buffer;
@@ -468,12 +469,13 @@ private:
 
 public:
     MeshBuildCommand(uint64_t handle, AccelBuildRequest request,
-                     uint64_t vertex_buffer, size_t vertex_buffer_offset, size_t vertex_buffer_size,
+                     uint64_t vertex_buffer, size_t vertex_buffer_offset, size_t vertex_buffer_size, size_t vertex_stride,
                      uint64_t triangle_buffer, size_t triangle_buffer_offset, size_t triangle_buffer_size) noexcept
         : Command{Command::Tag::EMeshBuildCommand}, _handle{handle}, _request{request},
           _vertex_buffer{vertex_buffer}, _vertex_buffer_offset{vertex_buffer_offset}, _vertex_buffer_size{vertex_buffer_size},
-          _triangle_buffer{triangle_buffer}, _triangle_buffer_offset{triangle_buffer_offset}, _triangle_buffer_size{triangle_buffer_size} {}
+          _triangle_buffer{triangle_buffer}, _triangle_buffer_offset{triangle_buffer_offset}, _triangle_buffer_size{triangle_buffer_size}, _vertex_stride(vertex_stride) {}
     [[nodiscard]] auto handle() const noexcept { return _handle; }
+    [[nodiscard]] auto vertex_stride() const noexcept { return _vertex_stride; }
     [[nodiscard]] auto request() const noexcept { return _request; }
     [[nodiscard]] auto vertex_buffer() const noexcept { return _vertex_buffer; }
     [[nodiscard]] auto triangle_buffer() const noexcept { return _triangle_buffer; }

@@ -2,9 +2,7 @@
 #include <Api/LCDevice.h>
 #include <DXRuntime/Device.h>
 #include <Resource/DefaultBuffer.h>
-#include <Codegen/DxCodegen.h>
 #include <Shader/ShaderCompiler.h>
-#include <Codegen/ShaderHeader.h>
 #include <Resource/RenderTexture.h>
 #include <Resource/BindlessArray.h>
 #include <Shader/ComputeShader.h>
@@ -17,12 +15,15 @@
 #include <Resource/TopAccel.h>
 #include <vstl/BinaryReader.h>
 #include <Api/LCSwapChain.h>
+#include <Api/LCUtil.h>
+#include <compile/hlsl/dx_codegen.h>
 using namespace toolhub::directx;
 namespace toolhub::directx {
-
-LCDevice::LCDevice(const Context &ctx, uint index) noexcept
-    : LCDeviceInterface{ctx}, nativeDevice{index} {}
-
+LCDevice::LCDevice(const Context &ctx)
+    : LCDeviceInterface(ctx), nativeDevice(ctx) {
+}
+LCDevice::~LCDevice() {
+}
 void *LCDevice::native_handle() const noexcept {
     return nativeDevice.device.Get();
 }
@@ -32,7 +33,7 @@ uint64_t LCDevice::create_buffer(size_t size_bytes) noexcept {
             new DefaultBuffer(
                 &nativeDevice,
                 size_bytes,
-                nativeDevice.defaultAllocator)));
+                nativeDevice.defaultAllocator.get())));
 }
 void LCDevice::destroy_buffer(uint64_t handle) noexcept {
     delete reinterpret_cast<Buffer *>(handle);
@@ -47,6 +48,15 @@ uint64_t LCDevice::create_texture(
     uint height,
     uint depth,
     uint mipmap_levels) noexcept {
+    bool allowUAV = true;
+    switch (format) {
+        case PixelFormat::BC4UNorm:
+        case PixelFormat::BC5UNorm:
+        case PixelFormat::BC6HUF16:
+        case PixelFormat::BC7UNorm:
+            allowUAV = false;
+            break;
+    }
     return reinterpret_cast<uint64>(
         new RenderTexture(
             &nativeDevice,
@@ -56,8 +66,8 @@ uint64_t LCDevice::create_texture(
             (TextureDimension)dimension,
             depth,
             mipmap_levels,
-            true,
-            nativeDevice.defaultAllocator));
+            allowUAV,
+            nativeDevice.defaultAllocator.get()));
 }
 void LCDevice::destroy_texture(uint64_t handle) noexcept {
     delete reinterpret_cast<RenderTexture *>(handle);
@@ -85,10 +95,10 @@ void LCDevice::emplace_tex2d_in_bindless_array(uint64_t array, size_t index, uin
 void LCDevice::emplace_tex3d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept {
     emplace_tex2d_in_bindless_array(array, index, handle, sampler);
 }
+/*
 bool LCDevice::is_resource_in_bindless_array(uint64_t array, uint64_t handle) const noexcept {
-    return reinterpret_cast<BindlessArray *>(array)
-        ->IsPtrInBindless(handle);
-}
+
+}*/
 void LCDevice::remove_buffer_in_bindless_array(uint64_t array, size_t index) noexcept {
     reinterpret_cast<BindlessArray *>(array)
         ->UnBind(BindlessArray::BindTag::Buffer, index);
@@ -105,7 +115,7 @@ uint64_t LCDevice::create_stream(bool allowPresent) noexcept {
     return reinterpret_cast<uint64>(
         new LCCmdBuffer(
             &nativeDevice,
-            nativeDevice.defaultAllocator,
+            nativeDevice.defaultAllocator.get(),
             allowPresent ? D3D12_COMMAND_LIST_TYPE_DIRECT : D3D12_COMMAND_LIST_TYPE_COMPUTE));
 }
 
@@ -115,14 +125,9 @@ void LCDevice::destroy_stream(uint64_t handle) noexcept {
 void LCDevice::synchronize_stream(uint64_t stream_handle) noexcept {
     reinterpret_cast<LCCmdBuffer *>(stream_handle)->Sync();
 }
-void LCDevice::dispatch(uint64_t stream_handle, CommandList const &v) noexcept {
+void LCDevice::dispatch(uint64_t stream_handle, CommandList &&list) noexcept {
     reinterpret_cast<LCCmdBuffer *>(stream_handle)
-        ->Execute({&v, 1}, maxAllocatorCount);
-}
-
-void LCDevice::dispatch(uint64_t stream_handle, vstd::span<const CommandList> lists) noexcept {
-    reinterpret_cast<LCCmdBuffer *>(stream_handle)
-        ->Execute(lists, maxAllocatorCount);
+        ->Execute(std::move(list), maxAllocatorCount);
 }
 void LCDevice::dispatch(uint64_t stream_handle, luisa::move_only_function<void()> &&func) noexcept {
     reinterpret_cast<LCCmdBuffer *>(stream_handle)->queue.Callback(std::move(func));
@@ -134,19 +139,15 @@ void *LCDevice::stream_native_handle(uint64_t handle) const noexcept {
 }
 uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options) noexcept {
 
-    auto str = CodegenUtility::Codegen(kernel);
+    auto str = CodegenUtility::Codegen(kernel, nativeDevice.ctx.data_directory());
     if (str) {
-        {
-            auto file_name = luisa::format("dx_{:016x}.hlsl", kernel.hash());
-            std::ofstream file{context().cache_directory() / file_name};
-            file << str->result.c_str();
-        }
         return reinterpret_cast<uint64_t>(
             ComputeShader::CompileCompute(
                 &nativeDevice,
                 *str,
                 kernel.block_size(),
                 kernel.raytracing() ? 65u : 60u,
+                context().cache_directory(),
                 {}));
     }
     return 0;
@@ -177,39 +178,25 @@ void LCDevice::synchronize_event(uint64_t handle) noexcept {
 }
 
 uint64_t LCDevice::create_mesh(
-    uint64_t v_buffer,
-    size_t v_offset,
-    size_t v_stride,
-    size_t v_count,
-    uint64_t t_buffer,
-    size_t t_offset,
-    size_t t_count,
-    AccelUsageHint hint) noexcept {
+    AccelUsageHint hint,
+    bool allow_compact, bool allow_update) noexcept {
     return reinterpret_cast<uint64>(
         (
             new BottomAccel(
                 &nativeDevice,
-                reinterpret_cast<Buffer *>(v_buffer),
-                v_offset * v_stride,
-                v_stride,
-                v_count,
-                reinterpret_cast<Buffer *>(t_buffer),
-                t_offset * 3 * sizeof(uint),
-                t_count * 3,
                 hint,
-                hint != AccelUsageHint::FAST_BUILD,
-                hint != AccelUsageHint::FAST_TRACE)));
+                allow_compact,
+                allow_update)));
 }
 void LCDevice::destroy_mesh(uint64_t handle) noexcept {
     delete reinterpret_cast<BottomAccel *>(handle);
 }
-uint64_t LCDevice::create_accel(AccelUsageHint hint
-                                ) noexcept {
+uint64_t LCDevice::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
     return reinterpret_cast<uint64>(new TopAccel(
         &nativeDevice,
         hint,
-        hint != AccelUsageHint::FAST_BUILD,
-        hint != AccelUsageHint::FAST_TRACE));
+        allow_compact,
+        allow_update));
 }
 void LCDevice::destroy_accel(uint64_t handle) noexcept {
     delete reinterpret_cast<TopAccel *>(handle);
@@ -225,7 +212,7 @@ uint64_t LCDevice::create_swap_chain(
         new LCSwapChain(
             &nativeDevice,
             &reinterpret_cast<LCCmdBuffer *>(stream_handle)->queue,
-            nativeDevice.defaultAllocator,
+            nativeDevice.defaultAllocator.get(),
             reinterpret_cast<HWND>(window_handle),
             width,
             height,
@@ -244,12 +231,10 @@ void LCDevice::present_display_in_stream(uint64_t stream_handle, uint64_t swapch
             reinterpret_cast<LCSwapChain *>(swapchain_handle),
             reinterpret_cast<RenderTexture *>(image_handle));
 }
-VSTL_EXPORT_C LCDeviceInterface *create(Context const &c, std::string_view options) {
-    auto opt = nlohmann::json::parse(options);
-    auto index = opt.value("index", 0);
-    return new_with_allocator<LCDevice>(c, index);
+VSTL_EXPORT_C LCDeviceInterface *create(Context const &c, std::string_view) {
+    return new LCDevice(c);
 }
 VSTL_EXPORT_C void destroy(LCDeviceInterface *device) {
-   delete_with_allocator(device);
+    delete static_cast<LCDevice *>(device);
 }
 }// namespace toolhub::directx

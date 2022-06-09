@@ -146,22 +146,78 @@ struct ShaderInvoke<3> : public ShaderInvokeBase {
 };
 
 }// namespace detail
-
-template<size_t dimension, typename... Args>
-class Shader final : public Resource {
-
+template<size_t dimension>
+class ShaderBase : public Resource {
+protected:
     static_assert(dimension == 1u || dimension == 2u || dimension == 3u);
-
-private:
     luisa::shared_ptr<const detail::FunctionBuilder> _kernel;
+    ShaderBase(Device::Interface *device,
+               luisa::shared_ptr<const detail::FunctionBuilder> kernel,
+               std::string_view meta_options) noexcept
+        : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), meta_options)},
+          _kernel{std::move(kernel)} {}
+    ShaderBase(ShaderBase &&) = default;
+    ShaderBase(ShaderBase const &) = delete;
+    virtual ~ShaderBase() = default;
+};
+
+template<size_t dimension>
+class TypelessShader final : public ShaderBase<dimension> {
+public:
+    using DispatchFunc = detail::ShaderInvoke<dimension> (*)(uint64_t, luisa::shared_ptr<const detail::FunctionBuilder> const &, void **);//   luisa::move_only_function<detail::ShaderInvoke<dimension>(void **)>;
 
 private:
+#ifdef _DEBUG
+    luisa::vector<std::type_info const *> arg_types;
+#endif
+    DispatchFunc dispatch_func;
+
+public:
+#ifdef _DEBUG
+    template<typename Func>
+    TypelessShader(ShaderBase<dimension> &&v, luisa::span<std::type_info const *> types, Func &&func)
+        : ShaderBase<dimension>(std::move(v)), dispatch_func(std::forward<Func>(func)), arg_types(types.size()) {
+        memcpy(arg_types.data(), types.data(), types.size_bytes());
+    }
+#else
+    template<typename Func>
+    TypelessShader(ShaderBase<dimension> &&v, Func &&func)
+        : ShaderBase<dimension>(std::move(v)), dispatch_func(std::forward<Func>(func)) {
+    }
+#endif
+
+    template<typename... Args>
+    auto operator()(Args &&...args) const {
+        void *ptrs[sizeof...(args)];
+        size_t index = 0;
+#ifdef _DEBUG
+        assert(sizeof...(Args) == arg_types.size());
+        bool type_match = true;
+#endif
+        auto check_func = [&](auto &&value) {
+#ifdef _DEBUG
+            if (typeid(detail::prototype_to_shader_invocation_t<std::remove_cvref_t<decltype(value)>>) != *arg_types[index]) {
+                type_match = false;
+            }
+#endif
+
+            ptrs[index] = &value;
+            index++;
+        };
+        auto call_check_func = {(check_func(args), 0)...};
+#ifdef _DEBUG
+        assert(type_match);
+#endif
+        return dispatch_func(handle(), _kernel, ptrs);
+    }
+};
+template<size_t dimension, typename... Args>
+class Shader final : public ShaderBase<dimension> {
     friend class Device;
     Shader(Device::Interface *device,
            luisa::shared_ptr<const detail::FunctionBuilder> kernel,
            std::string_view meta_options) noexcept
-        : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), meta_options)},
-          _kernel{std::move(kernel)} {}
+        : ShaderBase<dimension>(device, std::move(kernel), meta_options) {}
 
 public:
     Shader() noexcept = default;
@@ -171,7 +227,40 @@ public:
         invoke_type invoke{handle(), _kernel->function()};
         return static_cast<invoke_type &&>((invoke << ... << args));
     }
+    [[nodiscard]] TypelessShader<dimension> to_typeless() &&noexcept {
+        using invoke_type = detail::ShaderInvoke<dimension>;
+        auto func = [](uint64_t handle, luisa::shared_ptr<const detail::FunctionBuilder> const &kernel, void **ptrs) -> invoke_type {
+            invoke_type invoke{handle, kernel->function()};
+            if constexpr (sizeof...(Args) > 0) {
+                size_t index = 0;
+                auto set_invoke = [&]<typename T> {
+                    invoke << *reinterpret_cast<std::remove_cvref_t<T> *>(ptrs[index]);
+                    index++;
+                };
+                auto call_set_invoke = {(set_invoke.template operator()<Args>(), 0)...};
+            }
+            return std::move(invoke);
+        };
+#ifdef _DEBUG
+        std::type_info const *types[sizeof...(Args)];
+        size_t index = 0;
+        auto set_types = [&](std::type_info const &t) {
+            types[index] = &t;
+            index++;
+        };
+        auto call_set_types = {(set_types(typeid(std::remove_cvref_t<detail::prototype_to_shader_invocation_t<Args>>)), 0)...};
+        return TypelessShader<dimension>(
+            std::move(*this),
+            types,
+            func);
+#else
+        return TypelessShader<dimension>(
+            std::move(*this),
+            func);
+#endif
+    }
 };
+
 
 template<typename... Args>
 using Shader1D = Shader<1, Args...>;

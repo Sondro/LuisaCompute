@@ -15,7 +15,7 @@ struct Header {
 }// namespace shader_ser
 vstd::vector<vbyte>
 ShaderSerializer::Serialize(
-    vstd::span<std::pair<vstd::string, Shader::Property> const> properties,
+    vstd::span<std::pair<vstd::string, Property> const> properties,
     vstd::span<vbyte> binByte,
     vstd::MD5 md5,
     uint3 blockSize) {
@@ -33,7 +33,7 @@ ShaderSerializer::Serialize(
     return result;
 }
 ComputeShader *ShaderSerializer::DeSerialize(
-    vstd::span<std::pair<vstd::string, Shader::Property> const> properties,
+    vstd::span<std::pair<vstd::string, Property> const> properties,
     Device *device,
     vstd::MD5 md5,
     Visitor &visitor) {
@@ -83,7 +83,7 @@ ComputeShader *ShaderSerializer::DeSerialize(
     return cs;
 }
 ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
-    vstd::span<std::pair<vstd::string, Shader::Property> const> properties) {
+    vstd::span<std::pair<vstd::string, Property> const> properties) {
     vstd::vector<CD3DX12_ROOT_PARAMETER, VEngine_AllocType::VEngine, 32> allParameter;
     vstd::vector<CD3DX12_DESCRIPTOR_RANGE, VEngine_AllocType::VEngine, 32> allRange;
     for (auto &&i : properties) {
@@ -151,7 +151,7 @@ ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
     return serializedRootSig;
 }
 size_t ShaderSerializer::SerializeRootSig(
-    vstd::span<std::pair<vstd::string, Shader::Property> const> properties,
+    vstd::span<std::pair<vstd::string, Property> const> properties,
     vstd::vector<vbyte> &result) {
     auto lastSize = result.size();
     auto blob = SerializeRootSig(properties);

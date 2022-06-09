@@ -64,6 +64,15 @@ GFXFormat TextureBase::ToGFXFormat(PixelFormat format) {
             return GFXFormat_R32G32_Float;
         case PixelFormat::RGBA32F:
             return GFXFormat_R32G32B32A32_Float;
+        case PixelFormat::BC6HUF16:
+            return GFXFormat_BC6H_UF16;
+        case PixelFormat::BC7UNorm:
+            return GFXFormat_BC7_UNorm;
+        case PixelFormat::BC5UNorm:
+            return GFXFormat_BC5_UNorm;
+        case PixelFormat::BC4UNorm:
+            return GFXFormat_BC4_UNorm;
+
     }
 }
 

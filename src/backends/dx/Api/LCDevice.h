@@ -1,16 +1,19 @@
 #pragma once
 #include <vstl/Common.h>
-#include <DXRuntime/Device.h>
 #include <runtime/device.h>
+#include <DXRuntime/Device.h>
 using namespace luisa::compute;
 namespace toolhub::directx {
+class LCUtil;
 using LCDeviceInterface = luisa::compute::Device::Interface;
-class LCDevice : public LCDeviceInterface {
+class LCDevice : public LCDeviceInterface, public vstd::IOperatorNewBase {
 public:
     Device nativeDevice;
+    vstd::unique_ptr<LCUtil> util;
     static constexpr size_t maxAllocatorCount = 2;
     //std::numeric_limits<size_t>::max();
-    LCDevice(const Context &ctx, uint index) noexcept;
+    LCDevice(const Context &ctx);
+    ~LCDevice();
     void *native_handle() const noexcept override;
 
     // buffer
@@ -32,18 +35,16 @@ public:
     void emplace_buffer_in_bindless_array(uint64_t array, size_t index, uint64_t handle, size_t offset_bytes) noexcept override;
     void emplace_tex2d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept override;
     void emplace_tex3d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept override;
-    bool is_resource_in_bindless_array(uint64_t array, uint64_t handle) const noexcept override;
     void remove_buffer_in_bindless_array(uint64_t array, size_t index) noexcept override;
     void remove_tex2d_in_bindless_array(uint64_t array, size_t index) noexcept override;
     void remove_tex3d_in_bindless_array(uint64_t array, size_t index) noexcept override;
-
+    IUtil *get_util() noexcept override;
     // stream
     uint64_t create_stream(bool allowPresent) noexcept override;
 
     void destroy_stream(uint64_t handle) noexcept override;
     void synchronize_stream(uint64_t stream_handle) noexcept override;
-    void dispatch(uint64_t stream_handle, CommandList const &) noexcept override;
-    void dispatch(uint64_t stream_handle, vstd::span<const CommandList> lists) noexcept override;
+    void dispatch(uint64_t stream_handle, CommandList &&list) noexcept override;
     void dispatch(uint64_t stream_handle, luisa::move_only_function<void()> &&func) noexcept override;
     void *stream_native_handle(uint64_t handle) const noexcept override;
 
@@ -59,11 +60,11 @@ public:
     void synchronize_event(uint64_t handle) noexcept override;
     // accel
     uint64_t create_mesh(
-        uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count,
-        uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept override;
+        AccelUsageHint hint,
+        bool allow_compact, bool allow_update) noexcept override;
     void destroy_mesh(uint64_t handle) noexcept override;
 
-    uint64_t create_accel(AccelUsageHint hint) noexcept override;
+    uint64_t create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept override;
 
     void destroy_accel(uint64_t handle) noexcept override;
     // swap chain

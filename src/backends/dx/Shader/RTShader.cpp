@@ -146,7 +146,7 @@ RTShader::RTShader(
       identityBuffer(
           device,
           D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT * 3,
-          device->defaultAllocator) {
+          device->defaultAllocator.get()) {
     Init(closestHit, anyHit, intersectHit, binData, device);
 }
 RTShader::RTShader(
@@ -160,7 +160,7 @@ RTShader::RTShader(
       identityBuffer(
           device,
           D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT * 3,
-          device->defaultAllocator) {
+          device->defaultAllocator.get()) {
     Init(closestHit, anyHit, intersectHit, binData, device);
 }
 RTShader::~RTShader() {}

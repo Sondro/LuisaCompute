@@ -17,14 +17,12 @@ ShaderInvokeBase &ShaderInvokeBase::operator<<(const Accel &accel) noexcept {
 
 }// namespace detail
 
-Accel Device::create_accel(AccelUsageHint hint) noexcept { return _create<Accel>(hint); }
+Accel Device::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept { return _create<Accel>(hint, allow_compact, allow_update); }
 
-Accel::Accel(Device::Interface *device, AccelUsageHint hint) noexcept
-    : Resource{device, Resource::Tag::ACCEL, device->create_accel(hint)},
-      _mutex{luisa::make_unique<std::mutex>()} {}
+Accel::Accel(Device::Interface *device, AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept
+    : Resource{device, Resource::Tag::ACCEL, device->create_accel(hint, allow_compact, allow_update)} {}
 
 Command *Accel::build(Accel::BuildRequest request) noexcept {
-    std::scoped_lock lock{*_mutex};
     if (_mesh_handles.empty()) { LUISA_ERROR_WITH_LOCATION(
         "Building acceleration structure without instances."); }
     // collect modifications
@@ -71,22 +69,16 @@ void Accel::set_instance_visibility(Expr<uint> instance_id, Expr<bool> vis) cons
 }
 
 void Accel::emplace_back(const Mesh &mesh, float4x4 transform, bool visible) noexcept {
-    _emplace_back(mesh.handle(), transform, visible);
-}
-
-void Accel::_emplace_back(uint64_t mesh_handle, float4x4 transform, bool visible) noexcept {
-    std::scoped_lock lock{*_mutex};
     auto index = static_cast<uint>(_mesh_handles.size());
     Modification modification{index};
-    modification.set_mesh(mesh_handle);
+    modification.set_mesh(mesh.handle());
     modification.set_transform(transform);
     modification.set_visibility(visible);
-    _modifications.insert_or_assign(index, modification);
-    _mesh_handles.emplace_back(mesh_handle);
+    _modifications[index] = modification;
+    _mesh_handles.emplace_back(mesh.handle());
 }
 
 void Accel::pop_back() noexcept {
-    std::scoped_lock lock{*_mutex};
     if (auto n = _mesh_handles.size()) {
         _mesh_handles.pop_back();
         _modifications.erase(n - 1u);
@@ -97,11 +89,6 @@ void Accel::pop_back() noexcept {
 }
 
 void Accel::set(size_t index, const Mesh &mesh, float4x4 transform, bool visible) noexcept {
-    _set(index, mesh.handle(), transform, visible);
-}
-
-void Accel::_set(size_t index, uint64_t mesh_handle, float4x4 transform, bool visible) noexcept {
-    std::scoped_lock lock{*_mutex};
     if (index >= size()) [[unlikely]] {
         LUISA_WARNING_WITH_LOCATION(
             "Invalid index {} in accel #{}.",
@@ -110,16 +97,15 @@ void Accel::_set(size_t index, uint64_t mesh_handle, float4x4 transform, bool vi
         Modification modification{static_cast<uint>(index)};
         modification.set_transform(transform);
         modification.set_visibility(visible);
-        if (mesh_handle != _mesh_handles[index]) [[likely]] {
-            modification.set_mesh(mesh_handle);
-            _mesh_handles[index] = mesh_handle;
+        if (mesh.handle() != _mesh_handles[index]) [[likely]] {
+            modification.set_mesh(mesh.handle());
+            _mesh_handles[index] = mesh.handle();
         }
-        _modifications.insert_or_assign(index, modification);
+        _modifications[index] = modification;
     }
 }
 
 void Accel::set_transform_on_update(size_t index, float4x4 transform) noexcept {
-    std::scoped_lock lock{*_mutex};
     if (index >= size()) [[unlikely]] {
         LUISA_WARNING_WITH_LOCATION(
             "Invalid index {} in accel #{}.",
@@ -132,7 +118,6 @@ void Accel::set_transform_on_update(size_t index, float4x4 transform) noexcept {
 }
 
 void Accel::set_visibility_on_update(size_t index, bool visible) noexcept {
-    std::scoped_lock lock{*_mutex};
     if (index >= size()) [[unlikely]] {
         LUISA_WARNING_WITH_LOCATION(
             "Invalid index {} in accel #{}.",

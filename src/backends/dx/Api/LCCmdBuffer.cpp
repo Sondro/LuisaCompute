@@ -3,7 +3,7 @@
 #include <Api/LCDevice.h>
 #include <runtime/command.h>
 #include <runtime/command_buffer.h>
-#include <Codegen/DxCodegen.h>
+#include <compile/hlsl/dx_codegen.h>
 #include <Shader/ComputeShader.h>
 #include <Shader/RTShader.h>
 #include <Resource/RenderTexture.h>
@@ -98,18 +98,19 @@ public:
             self->backState.clear();
             ++arg;
         }
-        void operator()(ShaderDispatchCommand::UniformArgument const &bf) {
-            if (bf.size < 4) {
-                bool v = (bool)bf.data[0];
+        void operator()(ShaderDispatchCommand::UniformArgument const& a) {
+            vstd::span<std::byte const> bf(a.data, a.size);
+            if (bf.size() < 4) {
+                bool v = (bool)bf[0];
                 uint value = v ? std::numeric_limits<uint>::max() : 0;
                 self->EmplaceData(value);
 
             } else {
                 auto type = arg->type();
                 if (type->is_vector() && type->dimension() == 3)
-                    self->EmplaceData(bf.data, 12);
+                    self->EmplaceData(bf.data(), 12);
                 else
-                    self->EmplaceData(bf.data, bf.size);
+                    self->EmplaceData(bf.data(), bf.size());
             }
             ++arg;
         }
@@ -218,7 +219,10 @@ public:
                 *stateTracker,
                 cmd->request() == AccelBuildRequest::PREFER_UPDATE,
                 reinterpret_cast<Buffer const *>(cmd->vertex_buffer()),
+                cmd->vertex_stride(), cmd->vertex_buffer_offset(), cmd->vertex_buffer_size(),
                 reinterpret_cast<Buffer const *>(cmd->triangle_buffer()),
+                cmd->triangle_buffer_offset(),
+                cmd->triangle_buffer_size(),
                 bottomAccelDatas.emplace_back()));
     }
     void visit(const BindlessArrayUpdateCommand *cmd) noexcept override {
@@ -357,7 +361,7 @@ public:
                 BufferView(accel->GetInstBuffer()));
             ++arg;
         }
-        void operator()(ShaderDispatchCommand::UniformArgument const &bf) {
+        void operator()(ShaderDispatchCommand::UniformArgument const&) {
             ++arg;
         }
     };
@@ -398,7 +402,7 @@ public:
         auto copyInfo = CommandBufferBuilder::GetCopyTextureBufferSize(
             rt,
             cmd->level());
-        auto bfView = bd->GetCB()->GetAlloc()->GetTempUploadBuffer(copyInfo.alignedBufferSize, 512);
+        auto bfView = bd->GetCB()->GetAlloc()->GetTempUploadBuffer(copyInfo.alignedBufferSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         auto uploadBuffer = static_cast<UploadBuffer const *>(bfView.buffer);
         if (copyInfo.bufferSize == copyInfo.alignedBufferSize) {
             uploadBuffer->CopyData(
@@ -540,13 +544,17 @@ LCCmdBuffer::LCCmdBuffer(
           device,
           resourceAllocator,
           type),
-      device(device) {
+      device(device),
+      reorder([](uint64_t arr, uint64_t handle) {
+          return reinterpret_cast<BindlessArray *>(arr)
+              ->IsPtrInBindless(handle);
+      }) {
 }
 void LCCmdBuffer::Execute(
-    vstd::span<CommandList const> const &c,
+    CommandList &&cmdList,
     size_t maxAlloc) {
     auto allocator = queue.CreateAllocator(maxAlloc);
-    bool cmdListIsEmpty = false;
+    bool cmdListIsEmpty = true;
     {
         LCPreProcessVisitor ppVisitor;
         ppVisitor.stateTracker = &tracker;
@@ -560,8 +568,21 @@ void LCCmdBuffer::Execute(
         ID3D12DescriptorHeap *h[2] = {
             device->globalHeap->GetHeap(),
             device->samplerHeap->GetHeap()};
-        cmdBuilder.CmdList()->SetDescriptorHeaps(vstd::array_count(h), h);
-        for (auto &&lst : c) {
+        auto commands = cmdList.steal_commands();
+        for (auto command : commands) {
+            command->accept(reorder);
+        }
+        auto cmdLists = reorder.command_lists();
+     
+        auto clearReorder = vstd::create_disposer([&] {
+            for (auto command : commands) {
+                command->recycle();
+            }
+            reorder.clear();
+        });
+        for (auto &&lst : cmdLists) {
+            if (cmdListIsEmpty)
+                cmdBuilder.CmdList()->SetDescriptorHeaps(vstd::array_count(h), h);
             cmdListIsEmpty = cmdListIsEmpty && lst.empty();
             // Clear caches
             ppVisitor.argVecs.clear();
@@ -623,7 +644,6 @@ void LCCmdBuffer::Execute(
                 queue.ForceSync(
                     allocator,
                     *cmdBuffer);
-                cmdBuilder.CmdList()->SetDescriptorHeaps(vstd::array_count(h), h);
                 for (auto &&i : visitor.updateAccel) {
                     i.accel.visit([&](auto &&p) {
                         p->CheckAccel(cmdBuilder);
@@ -676,5 +696,186 @@ void LCCmdBuffer::Present(
         tracker.RestoreState(bd);
     }
     lastFence = queue.ExecuteAndPresent(std::move(alloc), swapchain->swapChain.Get());
+}
+void LCCmdBuffer::CompressBC(
+    RenderTexture *rt,
+    luisa::vector<std::byte> &result,
+    bool isHDR,
+    float alphaImportance,
+    IGpuAllocator *allocator,
+    size_t maxAlloc) {
+    alphaImportance = clamp<float>(alphaImportance, 0, 1);
+    struct BCCBuffer {
+        uint g_tex_width;
+        uint g_num_block_x;
+        uint g_format;
+        uint g_mode_id;
+        uint g_start_block_id;
+        uint g_num_total_blocks;
+        float g_alpha_weight;
+    };
+    uint width = rt->Width();
+    uint height = rt->Height();
+    uint xBlocks = std::max<uint>(1, (width + 3) >> 2);
+    uint yBlocks = std::max<uint>(1, (height + 3) >> 2);
+    uint numBlocks = xBlocks * yBlocks;
+    uint numTotalBlocks = numBlocks;
+    static constexpr size_t BLOCK_SIZE = 16;
+    DefaultBuffer err1Buffer(
+        device,
+        BLOCK_SIZE * numBlocks,
+        allocator,
+        D3D12_RESOURCE_STATE_COMMON);
+    DefaultBuffer err2Buffer(
+        device,
+        BLOCK_SIZE * numBlocks,
+        allocator,
+        D3D12_RESOURCE_STATE_COMMON);
+    ReadbackBuffer readbackBuffer(
+        device,
+        BLOCK_SIZE * numBlocks,
+        allocator);
+    auto alloc = queue.CreateAllocator(maxAlloc);
+    {
+        auto cmdBuffer = alloc->GetBuffer();
+        auto cmdBuilder = cmdBuffer->Build();
+        ID3D12DescriptorHeap *h[2] = {
+            device->globalHeap->GetHeap(),
+            device->samplerHeap->GetHeap()};
+        cmdBuilder.CmdList()->SetDescriptorHeaps(vstd::array_count(h), h);
+
+        BCCBuffer cbData;
+        tracker.RecordState(rt, VEngineShaderResourceRTState);
+        auto RunComputeShader = [&](ComputeShader const *cs, uint dispatchCount, DefaultBuffer const &inBuffer, DefaultBuffer const &outBuffer) {
+            auto cbuffer = alloc->GetTempUploadBuffer(sizeof(BCCBuffer), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+            static_cast<UploadBuffer const *>(cbuffer.buffer)->CopyData(cbuffer.offset, {reinterpret_cast<vbyte const *>(&cbData), sizeof(BCCBuffer)});
+            tracker.RecordState(
+                &inBuffer,
+                VEngineShaderResourceState);
+            tracker.RecordState(
+                &outBuffer,
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            tracker.UpdateState(cmdBuilder);
+            BindProperty prop[4];
+            prop[0].name = "_Global"sv;
+            prop[0].prop = cbuffer;
+            prop[1].name = "g_Input"sv;
+            prop[1].prop = DescriptorHeapView(device->globalHeap.get(), rt->GetGlobalSRVIndex());
+            prop[2].name = "g_InBuff"sv;
+            prop[2].prop = BufferView(&inBuffer, 0);
+            prop[3].name = "g_OutBuff"sv;
+            prop[3].prop = BufferView(&outBuffer, 0);
+            cmdBuilder.DispatchCompute(
+                cs,
+                uint3(dispatchCount, 1, 1),
+                {prop, 4});
+        };
+        constexpr int MAX_BLOCK_BATCH = 64;
+        DefaultBuffer const *outputBuffer = nullptr;
+        uint startBlockID = 0;
+        if (isHDR)//bc6
+        {
+            outputBuffer = &err2Buffer;
+            auto bc6TryModeG10 = device->bc6TryModeG10.Get(device);
+            auto bc6TryModeLE10 = device->bc6TryModeLE10.Get(device);
+            auto bc6Encode = device->bc6EncodeBlock.Get(device);
+            while (numBlocks > 0) {
+                uint n = std::min<uint>(numBlocks, MAX_BLOCK_BATCH);
+                uint uThreadGroupCount = n;
+                cbData.g_tex_width = width;
+                cbData.g_num_block_x = xBlocks;
+                cbData.g_format = isHDR ? DXGI_FORMAT_BC6H_UF16 : DXGI_FORMAT_BC7_UNORM;
+                cbData.g_start_block_id = startBlockID;
+                cbData.g_alpha_weight = alphaImportance;
+                cbData.g_num_total_blocks = numTotalBlocks;
+                RunComputeShader(
+                    bc6TryModeG10,
+                    std::max<uint>((uThreadGroupCount + 3) / 4, 1),
+                    err2Buffer,
+                    err1Buffer);
+                for (auto i : vstd::range(10)) {
+                    cbData.g_mode_id = i;
+                    RunComputeShader(
+                        bc6TryModeLE10,
+                        std::max<uint>((uThreadGroupCount + 1) / 2, 1),
+                        ((i & 1) != 0) ? err2Buffer : err1Buffer,
+                        ((i & 1) != 0) ? err1Buffer : err2Buffer);
+                }
+                RunComputeShader(
+                    bc6Encode,
+                    std::max<uint>((uThreadGroupCount + 1) / 2, 1),
+                    err1Buffer,
+                    err2Buffer);
+                startBlockID += n;
+                numBlocks -= n;
+            }
+
+        } else {
+            outputBuffer = &err1Buffer;
+            auto bc7Try137Mode = device->bc7TryMode137.Get(device);
+            auto bc7Try02Mode = device->bc7TryMode02.Get(device);
+            auto bc7Try456Mode = device->bc7TryMode456.Get(device);
+            auto bc7Encode = device->bc7EncodeBlock.Get(device);
+            while (numBlocks > 0) {
+                uint n = std::min<uint>(numBlocks, MAX_BLOCK_BATCH);
+                uint uThreadGroupCount = n;
+                cbData.g_tex_width = width;
+                cbData.g_num_block_x = xBlocks;
+                cbData.g_format = isHDR ? DXGI_FORMAT_BC6H_UF16 : DXGI_FORMAT_BC7_UNORM;
+                cbData.g_start_block_id = startBlockID;
+                cbData.g_alpha_weight = alphaImportance;
+                cbData.g_num_total_blocks = numTotalBlocks;
+                RunComputeShader(bc7Try456Mode, std::max<uint>((uThreadGroupCount + 3) / 4, 1), err2Buffer, err1Buffer);
+                //137
+                {
+                    uint modes[] = {1, 3, 7};
+                    for (auto i : vstd::range(vstd::array_count(modes))) {
+                        cbData.g_mode_id = modes[i];
+                        RunComputeShader(
+                            bc7Try137Mode,
+                            uThreadGroupCount,
+                            ((i & 1) != 0) ? err2Buffer : err1Buffer,
+                            ((i & 1) != 0) ? err1Buffer : err2Buffer);
+                    }
+                }
+                //02
+                {
+                    uint modes[] = {0, 2};
+                    for (auto i : vstd::range(vstd::array_count(modes))) {
+                        cbData.g_mode_id = modes[i];
+                        RunComputeShader(
+                            bc7Try02Mode,
+                            uThreadGroupCount,
+                            ((i & 1) != 0) ? err1Buffer : err2Buffer,
+                            ((i & 1) != 0) ? err2Buffer : err1Buffer);
+                    }
+                }
+                RunComputeShader(
+                    bc7Encode,
+                    std::max<uint>((uThreadGroupCount + 3) / 4, 1),
+                    err2Buffer,
+                    err1Buffer);
+                //TODO
+                startBlockID += n;
+                numBlocks -= n;
+            }
+        }
+        tracker.RecordState(outputBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        tracker.UpdateState(cmdBuilder);
+        cmdBuilder.CopyBuffer(
+            outputBuffer,
+            &readbackBuffer,
+            0, 0, outputBuffer->GetByteSize());
+        tracker.RestoreState(cmdBuilder);
+    }
+    lastFence = queue.Execute(
+        std::move(alloc),
+        [&, err1Buffer = std::move(err1Buffer),
+         err2Buffer = std::move(err2Buffer),
+         readbackBuffer = std::move(readbackBuffer)] {
+            result.clear();
+            result.resize(readbackBuffer.GetByteSize());
+            readbackBuffer.CopyData(0, {reinterpret_cast<vbyte *>(result.data()), result.size()});
+        });
 }
 }// namespace toolhub::directx

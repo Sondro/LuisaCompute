@@ -3,7 +3,7 @@
 #include <EASTL/shared_ptr.h>
 #include <runtime/command.h>
 #include <runtime/device.h>
-
+using namespace luisa::compute;
 namespace toolhub::directx {
 class DefaultBuffer;
 class BottomAccel;
@@ -12,8 +12,6 @@ class CommandBufferBuilder;
 class ResourceStateTracker;
 class Mesh;
 class BottomAccel;
-
-using luisa::compute::AccelBuildCommand;
 
 class TopAccel : public vstd::IOperatorNewBase {
 

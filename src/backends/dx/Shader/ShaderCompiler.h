@@ -22,7 +22,7 @@ using CompileResult = vstd::variant<
 class DXShaderCompiler final : public vstd::IOperatorNewBase {
 private:
     ComPtr<IDxcCompiler3> comp;
-    luisa::optional<luisa::DynamicModule> dxcCompiler;
+    std::optional<luisa::DynamicModule> dxcCompiler;
     CompileResult Compile(
         vstd::string_view code,
         vstd::span<LPCWSTR> args);
@@ -34,9 +34,10 @@ public:
         vstd::string_view code,
         bool optimize,
         uint shaderModel = 63);
-    CompileResult CompileRayTracing(
+
+    /*CompileResult CompileRayTracing(
         vstd::string_view code,
         bool optimize,
-        uint shaderModel = 63);
+        uint shaderModel = 63);*/
 };
 }// namespace toolhub::directx

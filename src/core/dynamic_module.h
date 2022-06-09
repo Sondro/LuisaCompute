@@ -19,11 +19,13 @@ private:
     void *_handle{nullptr};
 
 private:
-    explicit DynamicModule(void *handle) noexcept : _handle{handle} {}
     [[nodiscard]] static std::mutex &_search_path_mutex() noexcept;
     [[nodiscard]] static luisa::vector<std::pair<std::filesystem::path, size_t>> &_search_paths() noexcept;
+    DynamicModule(void *handle) : _handle(handle) {}
 
 public:
+    static std::optional<DynamicModule> load(const std::filesystem::path &folder, std::string_view name);
+    static std::optional<DynamicModule> load(std::string_view name);
     /**
      * @brief Construct a new Dynamic Module object
      * 
@@ -60,7 +62,7 @@ public:
      * @param name
      * @return void* 
      */
-    [[nodiscard]] void *address(std::string_view name) const noexcept {
+    void *address(std::string_view name) const noexcept {
         return dynamic_module_find_symbol(_handle, name);
     }
 
@@ -105,23 +107,6 @@ public:
      * @param path 
      */
     static void remove_search_path(const std::filesystem::path &path) noexcept;
-
-    /**
-     * @brief Load module with the specified name in search paths and the working directory
-     * @param name Name of the module
-     * @return The module if successfully loaded, otherwise a nullopt
-     */
-    [[nodiscard]] static luisa::optional<DynamicModule> load(
-        std::string_view name) noexcept;
-
-    /**
-     * @brief Load module with the specified name in a folder
-     * @param folder The folder when the module is expected to exist
-     * @param name Name of the module
-     * @return The module if successfully loaded, otherwise a nullopt
-     */
-    [[nodiscard]] static luisa::optional<DynamicModule> load(
-        const std::filesystem::path &folder, std::string_view name) noexcept;
 };
 
 }// namespace luisa

@@ -23,12 +23,11 @@ public:
 private:
     luisa::unordered_map<size_t, Modification> _modifications;
     luisa::vector<uint64_t> _mesh_handles;
-    luisa::unique_ptr<std::mutex> _mutex;
 
 private:
     friend class Device;
     friend class Mesh;
-    explicit Accel(Device::Interface *device, UsageHint hint = UsageHint::FAST_TRACE) noexcept;
+    explicit Accel(Device::Interface *device, UsageHint hint = UsageHint::FAST_TRACE, bool allow_compact = false, bool allow_update = true) noexcept;
 
 public:
     Accel() noexcept = default;
@@ -36,9 +35,7 @@ public:
     [[nodiscard]] auto size() const noexcept { return _mesh_handles.size(); }
 
     // host interfaces
-    void _emplace_back(uint64_t mesh_handle, float4x4 transform = make_float4x4(1.f), bool visible = true) noexcept;
     void emplace_back(Mesh const &mesh, float4x4 transform = make_float4x4(1.f), bool visible = true) noexcept;
-    void _set(size_t index, uint64_t mesh_handle, float4x4 transform = make_float4x4(1.f), bool visible = true) noexcept;
     void set(size_t index, const Mesh &mesh, float4x4 transform = make_float4x4(1.f), bool visible = true) noexcept;
     void pop_back() noexcept;
     void set_transform_on_update(size_t index, float4x4 transform) noexcept;

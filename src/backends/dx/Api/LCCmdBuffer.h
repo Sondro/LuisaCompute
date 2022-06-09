@@ -7,6 +7,7 @@
 #include <DXRuntime/CommandBuffer.h>
 #include <runtime/command_list.h>
 #include <DXRuntime/ResourceStateTracker.h>
+#include <runtime/command_reorder_visitor.h>
 using namespace luisa::compute;
 namespace toolhub::directx {
 class RenderTexture;
@@ -22,6 +23,7 @@ protected:
     Device *device;
     ResourceStateTracker tracker;
     uint64 lastFence = 0;
+    CommandReorderVisitor reorder;
 
 public:
     CommandQueue queue;
@@ -30,12 +32,19 @@ public:
         IGpuAllocator *resourceAllocator,
         D3D12_COMMAND_LIST_TYPE type);
     void Execute(
-        vstd::span<CommandList const> const &c,
+        CommandList &&cmdList,
         size_t maxAlloc = std::numeric_limits<size_t>::max());
     void Sync();
     void Present(
         LCSwapChain *swapchain,
         RenderTexture *rt,
+        size_t maxAlloc = std::numeric_limits<size_t>::max());
+    void CompressBC(
+        RenderTexture *rt,
+        luisa::vector<std::byte> &result,
+        bool isHDR,
+        float alphaImportance,
+        IGpuAllocator* allocator,
         size_t maxAlloc = std::numeric_limits<size_t>::max());
 };
 

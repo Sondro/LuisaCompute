@@ -1,4 +1,6 @@
 #pragma once
+#define FMT_CONSTEVAL constexpr
+
 #include <core/platform.h>
 #include <core/logging.h>
 #define VSTL_ABORT() LUISA_ERROR_WITH_LOCATION("vstl::abort()")

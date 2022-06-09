@@ -29,6 +29,7 @@ public:
         CodegenResult const &code,
         uint3 blockSize,
         uint shaderModel,
+        std::filesystem::path const& cacheFolder,
         vstd::optional<vstd::string> &&cachePath);
     ComputeShader(
         uint3 blockSize,

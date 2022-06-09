@@ -1,12 +1,10 @@
 #pragma once
 
-#include <cstdint>
-
-#include <core/hash.h>
-#include <core/stl.h>
-#include <runtime/command.h>
 #include <runtime/device.h>
-
+#include <core/hash.h>
+#include <stdint.h>
+#include <vstl/Common.h>
+#include <runtime/command.h>
 namespace luisa::compute {
 
 class CommandReorderVisitor : public CommandVisitor {
@@ -40,7 +38,7 @@ public:
         bool operator!=(Range const &r) const { return !operator==(r); }
     };
     struct RangeHash {
-        uint64_t operator()(Range const &r) const {
+        size_t operator()(Range const &r) const {
             return absl::container_internal::hash_default_hash<int64_t>()(r.min ^ r.max);
         }
     };
@@ -63,9 +61,12 @@ public:
     };
 
 private:
-    Pool<RangeHandle, false> rangePool;
-    Pool<NoRangeHandle, false> noRangePool;
-    Pool<BindlessHandle, false> bindlessHandlePool;
+    template<typename Func>
+        requires(std::is_invocable_v<Func, ResourceView const &>)
+    void IterateMap(Func &&func, RangeHandle &handle, Range const &range);
+    vstd::Pool<RangeHandle, true> rangePool;
+    vstd::Pool<NoRangeHandle, true> noRangePool;
+    vstd::Pool<BindlessHandle, true> bindlessHandlePool;
     luisa::unordered_map<uint64_t, RangeHandle *> resMap;
     luisa::unordered_map<uint64_t, NoRangeHandle *> noRangeResMap;
     luisa::unordered_map<uint64_t, BindlessHandle *> bindlessMap;
@@ -73,7 +74,7 @@ private:
     int64_t maxMeshLevel = -1;
     int64_t maxAccelReadLevel = -1;
     int64_t maxAccelWriteLevel = -1;
-    luisa::vector<CommandList> commandLists;
+    luisa::vector<luisa::vector<Command const*>> commandLists;
     size_t layerCount = 0;
     bool useBindlessInPass;
     bool useAccelInPass;
@@ -133,10 +134,11 @@ private:
         ResourceType type,
         Range range,
         bool isWrite);
-    Device::Interface *device = nullptr;
+    using IsResInBindless = vstd::funcPtr_t<bool(uint64_t, uint64_t)>;
+    IsResInBindless isResInBindless;
 
 public:
-    explicit CommandReorderVisitor(Device::Interface *device) noexcept;
+    explicit CommandReorderVisitor(IsResInBindless isResInBindless) noexcept;
     ~CommandReorderVisitor() noexcept = default;
     void clear() noexcept;
     [[nodiscard]] auto command_lists() const noexcept {
@@ -170,7 +172,7 @@ public:
     void operator()(ShaderDispatchCommand::BufferArgument const &bf);
     void operator()(ShaderDispatchCommand::TextureArgument const &bf);
     void operator()(ShaderDispatchCommand::BindlessArrayArgument const &bf);
-    void operator()(ShaderDispatchCommand::UniformArgument const &bf);
+    void operator()(ShaderDispatchCommand::UniformArgument const&);
     void operator()(ShaderDispatchCommand::AccelArgument const &bf);
 };
 

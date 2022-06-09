@@ -1,7 +1,6 @@
 
 #include <Shader/ShaderCompiler.h>
 #include <core/dynamic_module.h>
-#include <Codegen/ShaderHeader.h>
 namespace toolhub::directx {
 DXByteBlob::DXByteBlob(
     ComPtr<IDxcBlob> &&b,
@@ -70,6 +69,7 @@ CompileResult DXShaderCompiler::Compile(
         return vstd::string(errStr);
     }
 }
+
 CompileResult DXShaderCompiler::CompileCompute(
     vstd::string_view code,
     bool optimize,
@@ -83,16 +83,20 @@ CompileResult DXShaderCompiler::CompileCompute(
     args.push_back(L"/T");
     args.push_back(smStr.c_str());
     args.push_back_all(
-        {L"-Qstrip_debug",
-         L"-Qstrip_reflect",
-         L"-all-resources-bound",
-         L"-Gfa",
+        {L"/Qstrip_debug",
+         L"/Qstrip_reflect",
+         L"/Qstrip_priv",
+         L"/enable_unbounded_descriptor_tables",
+         L"/Qstrip_rootsignature",
+         L"/Gfa",
+         L"/all-resources-bound",
          L"-HV 2021"});
     if (optimize) {
         args.push_back(L"/O3");
     }
     return Compile(code, args);
 }
+/*
 CompileResult DXShaderCompiler::CompileRayTracing(
     vstd::string_view code,
     bool optimize,
@@ -108,16 +112,12 @@ CompileResult DXShaderCompiler::CompileRayTracing(
     args.push_back_all(
         {L"-Qstrip_debug",
          L"-Qstrip_reflect",
-         L"-all-resources-bound",
-         L"-Gfa",
          L"/enable_unbounded_descriptor_tables",
-         L"-all-resources-bound",
-         L"-Gfa",
          L"-HV 2021"});
     if (optimize) {
         args.push_back(L"/O3");
     }
     return Compile(code, args);
-}
+}*/
 
 }// namespace toolhub::directx

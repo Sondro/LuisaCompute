@@ -2,8 +2,7 @@
 #include <Shader/ComputeShader.h>
 #include <Shader/ShaderSerializer.h>
 #include <vstl/BinaryReader.h>
-#include <Codegen/ShaderHeader.h>
-#include <Codegen/DxCodegen.h>
+#include <compile/hlsl/dx_codegen.h>
 #include <Shader/ShaderCompiler.h>
 #include <vstl/MD5.h>
 namespace toolhub::directx {
@@ -12,6 +11,7 @@ ComputeShader *ComputeShader::CompileCompute(
     CodegenResult const &str,
     uint3 blockSize,
     uint shaderModel,
+    std::filesystem::path const &cacheFolder,
     vstd::optional<vstd::string> &&cachePath) {
     struct SerializeVisitor : ShaderSerializer::Visitor {
         BinaryReader csoReader;
@@ -70,14 +70,14 @@ ComputeShader *ComputeShader::CompileCompute(
         }
     };
     if (cachePath) {
-        path = std::move(*cachePath);
+        path << (cacheFolder / std::string_view(cachePath->data(), cachePath->size())).string().c_str();
     } else {
-        path.reserve(64);
-        path << ".cache/" << str.md5.ToString();
+        auto md5Str = str.md5.ToString();
+        path << (cacheFolder / std::string_view(md5Str.data(), md5Str.size())).string().c_str();
     }
     psoPath = path;
     psoPath << ".pso";
-    static constexpr bool USE_CACHE = false;
+    static constexpr bool USE_CACHE = true;
     if constexpr (USE_CACHE) {
         SerializeVisitor visitor(
             path,
@@ -102,8 +102,10 @@ ComputeShader *ComputeShader::CompileCompute(
 
     auto compResult = [&] {
         if constexpr (!USE_CACHE) {
-            LUISA_VERBOSE_WITH_LOCATION(
-                "Compiling shader:\n{}", str.result);
+            std::cout
+                << "\n===============================\n"
+                << str.result
+                << "\n===============================\n";
         }
         return Device::Compiler()->CompileCompute(
             str.result,
@@ -113,8 +115,9 @@ ComputeShader *ComputeShader::CompileCompute(
     return compResult.multi_visit_or(
         (ComputeShader *)nullptr,
         [&](vstd::unique_ptr<DXByteBlob> const &buffer) {
-            if constexpr (USE_CACHE) {
-                if (auto f = fopen(path.c_str(), "wb")) {
+            auto f = fopen(path.c_str(), "wb");
+            if (f) {
+                if constexpr (USE_CACHE) {
                     auto disp = vstd::create_disposer([&] { fclose(f); });
                     auto serData = ShaderSerializer::Serialize(
                         str.properties,

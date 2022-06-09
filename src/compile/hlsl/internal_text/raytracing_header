@@ -1,0 +1,40 @@
+#define CLOSEST_HIT_RAY_FLAG (RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES)
+#define ANY_HIT_RAY_FLAG (RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES)
+RayPayload TraceClosest(RaytracingAccelerationStructure accel, LCRayDesc rayDesc) {
+RayDesc ray;
+ray.Origin = float3(rayDesc.v0.v[0], rayDesc.v0.v[1], rayDesc.v0.v[2]);
+ray.Direction = float3(rayDesc.v2.v[0], rayDesc.v2.v[1], rayDesc.v2.v[2]);
+ray.TMin = rayDesc.v1;
+ray.TMax = rayDesc.v3;
+RayQuery<CLOSEST_HIT_RAY_FLAG> q;
+q.TraceRayInline(
+accel,
+CLOSEST_HIT_RAY_FLAG,
+~0,
+ray);
+RayPayload payload;
+q.Proceed();
+if (q.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
+payload.v0 = q.CommittedInstanceIndex();
+payload.v1 = q.CommittedPrimitiveIndex();
+payload.v2 = q.CommittedTriangleBarycentrics();
+} else {
+payload.v0 = 4294967295u;
+}
+return payload;
+}
+bool TraceAny(RaytracingAccelerationStructure accel, LCRayDesc rayDesc) {
+RayDesc ray;
+ray.Origin = float3(rayDesc.v0.v[0], rayDesc.v0.v[1], rayDesc.v0.v[2]);
+ray.Direction = float3(rayDesc.v2.v[0], rayDesc.v2.v[1], rayDesc.v2.v[2]);
+ray.TMin = rayDesc.v1;
+ray.TMax = rayDesc.v3;
+RayQuery<ANY_HIT_RAY_FLAG> q;
+q.TraceRayInline(
+accel,
+ANY_HIT_RAY_FLAG,
+~0,
+ray);
+q.Proceed();
+return q.CommittedStatus() != COMMITTED_NOTHING;
+}

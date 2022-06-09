@@ -98,6 +98,10 @@ CommandBufferBuilder::CopyInfo CommandBufferBuilder::GetCopyTextureBufferSize(
     uint width = texture->Width();
     uint height = texture->Height();
     uint depth = texture->Depth();
+    if (Resource::IsBCtex(texture->Format())) {
+        width /= 4;
+        height /= 4;
+    }
     auto GetValue = [&](uint &v) {
         v = std::max<uint>(1, v >> targetMip);
     };
@@ -120,6 +124,7 @@ void CommandBufferBuilder::CopyBufferTexture(
     uint width = texture->Width();
     uint height = texture->Height();
     uint depth = texture->Depth();
+
     auto GetValue = [&](uint &v) {
         v = std::max<uint>(1, v >> targetMip);
     };
@@ -139,7 +144,7 @@ void CommandBufferBuilder::CopyBufferTexture(
             depth,                         //uint Depth;
             static_cast<uint>(
                 CalcConstantBufferByteSize(
-                    width * Resource::GetTexturePixelSize(texture->Format())))//uint RowPitch;
+                    width / (Resource::IsBCtex(texture->Format()) ? 4 : 1) * Resource::GetTexturePixelSize(texture->Format())))//uint RowPitch;
         };
     D3D12_TEXTURE_COPY_LOCATION destLocation;
     destLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;

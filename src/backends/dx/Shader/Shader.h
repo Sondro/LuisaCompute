@@ -10,12 +10,7 @@ class TopAccel;
 class CommandBufferBuilder;
 class Shader : public vstd::IOperatorNewBase {
 public:
-    struct Property {
-        ShaderVariableType type;
-        uint spaceIndex;
-        uint registerIndex;
-        uint arrSize;
-    };
+
     enum class Tag : vbyte {
         ComputeShader,
         RayTracingShader

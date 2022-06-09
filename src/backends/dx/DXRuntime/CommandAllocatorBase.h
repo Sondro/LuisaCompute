@@ -34,6 +34,5 @@ public:
     void Execute(CommandQueue *queue, ID3D12Fence *fence, uint64 fenceIndex);
     void ExecuteAndPresent(CommandQueue *queue, ID3D12Fence *fence, uint64 fenceIndex, IDXGISwapChain3 *swapchain);
     void Complete(CommandQueue *queue, ID3D12Fence *fence, uint64 fenceIndex);
-    void Complete_Async(CommandQueue *queue, ID3D12Fence *fence, uint64 fenceIndex);
 };
 }// namespace toolhub::directx

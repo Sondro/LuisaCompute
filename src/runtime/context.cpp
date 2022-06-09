@@ -17,6 +17,7 @@ namespace luisa::compute {
 struct Context::Impl {
     std::filesystem::path runtime_directory;
     std::filesystem::path cache_directory;
+    std::filesystem::path data_directory;
     luisa::vector<DynamicModule> loaded_modules;
     luisa::vector<luisa::string> device_identifiers;
     luisa::vector<Device::Creator *> device_creators;
@@ -41,7 +42,9 @@ Context::Context(const std::filesystem::path &program) noexcept
     LUISA_INFO("Created context for program '{}'.", program.filename().string<char>());
     LUISA_INFO("Runtime directory: {}.", _impl->runtime_directory.string<char>());
     _impl->cache_directory = _impl->runtime_directory / ".cache";
+    _impl->data_directory = _impl->runtime_directory / ".data";
     LUISA_INFO("Cache directory: {}.", _impl->cache_directory.string<char>());
+    LUISA_INFO("Data directory: {}.", _impl->data_directory.string<char>());
     if (!std::filesystem::exists(_impl->cache_directory)) {
         LUISA_INFO("Created cache directory.");
         std::filesystem::create_directories(_impl->cache_directory);
@@ -81,6 +84,9 @@ const std::filesystem::path &Context::runtime_directory() const noexcept {
 
 const std::filesystem::path &Context::cache_directory() const noexcept {
     return _impl->cache_directory;
+}
+const std::filesystem::path &Context::data_directory() const noexcept {
+    return _impl->data_directory;
 }
 
 Device Context::create_device(std::string_view backend_name_in, luisa::string_view property_json) noexcept {

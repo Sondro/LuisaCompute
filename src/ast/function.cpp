@@ -61,6 +61,6 @@ luisa::shared_ptr<const detail::FunctionBuilder> Function::shared_builder() cons
 }
 
 // TODO: track atomic float usage...
-bool Function::is_atomic_float_used() const noexcept { return true; }
+bool Function::is_atomic_float_used() const noexcept { return false; }
 
 }// namespace luisa::compute

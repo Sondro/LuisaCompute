@@ -1,11 +1,11 @@
-#include "runtime/command.h"
+#include <core/mathematics.h>
 #include <runtime/command_reorder_visitor.h>
-#include <runtime/stream.h>
+#include <runtime/command_list.h>
 
 namespace luisa::compute {
 template<typename Func>
     requires(std::is_invocable_v<Func, CommandReorderVisitor::ResourceView const &>)
-void IterateMap(Func &&func, CommandReorderVisitor::RangeHandle &handle, CommandReorderVisitor::Range const &range) {
+void CommandReorderVisitor::IterateMap(Func &&func, RangeHandle &handle, Range const &range) {
     for (auto &&r : handle.views) {
         if (r.first.collide(range)) {
             func(r.second);
@@ -22,10 +22,11 @@ CommandReorderVisitor::ResourceHandle *CommandReorderVisitor::GetHandle(
     uint64_t tarGetHandle,
     ResourceType target_type) {
     auto func = [&](auto &&map, auto &&pool) {
-        auto tryResult = map.try_emplace(tarGetHandle, nullptr);
+        auto tryResult = map.try_emplace(
+            tarGetHandle);
         auto &&value = tryResult.first->second;
         if (tryResult.second) {
-            value = pool.create();
+            value = pool.New();
             value->handle = tarGetHandle;
             value->type = target_type;
         }
@@ -51,7 +52,7 @@ size_t CommandReorderVisitor::GetLastLayerWrite(RangeHandle *handle, Range range
         range);
     if (bindlessMaxLayer >= layer) {
         for (auto &&i : bindlessMap) {
-            if (device->is_resource_in_bindless_array(i.first, handle->handle)) {
+            if (isResInBindless(i.first, handle->handle)) {
                 layer = std::max<int64_t>(layer, i.second->view.readLayer + 1);
             }
         }
@@ -71,7 +72,6 @@ size_t CommandReorderVisitor::GetLastLayerWrite(NoRangeHandle *handle) {
             layer = std::max<int64_t>(layer, maxAccelLevel + 1);
             layer = std::max<int64_t>(layer, maxMeshLevel + 1);
         } break;
-        default: break;
     }
     return layer;
 }
@@ -98,8 +98,8 @@ size_t CommandReorderVisitor::GetLastLayerRead(NoRangeHandle *handle) {
 size_t CommandReorderVisitor::GetLastLayerRead(BindlessHandle *handle) {
     return handle->view.writeLayer + 1;
 }
-CommandReorderVisitor::CommandReorderVisitor(Device::Interface *device) noexcept
-    : device{device} {
+CommandReorderVisitor::CommandReorderVisitor(IsResInBindless isResInBindless) noexcept
+    : isResInBindless(isResInBindless), rangePool(256, true), bindlessHandlePool(32, true), noRangePool(256, true) {
     resMap.reserve(256);
     bindlessMap.reserve(256);
 }
@@ -405,18 +405,27 @@ size_t CommandReorderVisitor::SetMesh(
 
 // Mesh : conclude vertex and triangle buffers
 void CommandReorderVisitor::visit(const MeshBuildCommand *command) noexcept {
-    AddCommand(command, SetMesh(command->handle(), command->vertex_buffer(), Range(), command->triangle_buffer(), Range()));
+    AddCommand(
+        command,
+        SetMesh(
+            command->handle(),
+            command->vertex_buffer(),
+            Range(command->vertex_buffer_offset(),
+                  command->vertex_buffer_size()),
+            command->triangle_buffer(),
+            Range(command->triangle_buffer_offset(),
+                  command->triangle_buffer_size())));
 }
 
 void CommandReorderVisitor::clear() noexcept {
     for (auto &&i : resMap) {
-        rangePool.recycle(i.second);
+        rangePool.Delete(i.second);
     }
     for (auto &&i : noRangeResMap) {
-        noRangePool.recycle(i.second);
+        noRangePool.Delete(i.second);
     }
     for (auto &&i : bindlessMap) {
-        bindlessHandlePool.recycle(i.second);
+        bindlessHandlePool.Delete(i.second);
     }
 
     resMap.clear();
@@ -426,7 +435,7 @@ void CommandReorderVisitor::clear() noexcept {
     maxAccelReadLevel = -1;
     maxAccelWriteLevel = -1;
     maxMeshLevel = -1;
-    luisa::span<CommandList> sp(commandLists.data(), layerCount);
+    luisa::span<luisa::vector<Command const *>> sp(commandLists.data(), layerCount);
     for (auto &&i : sp) {
         i.clear();
     }
@@ -438,7 +447,7 @@ void CommandReorderVisitor::AddCommand(Command const *cmd, size_t layer) {
         commandLists.resize(layer + 1);
     }
     layerCount = std::max<int64_t>(layerCount, layer + 1);
-    commandLists[layer].append(const_cast<Command *>(cmd));
+    commandLists[layer].push_back(cmd);
 }
 
 void CommandReorderVisitor::AddDispatchHandle(
@@ -500,7 +509,7 @@ void CommandReorderVisitor::operator()(ShaderDispatchCommand::BufferArgument con
         ((uint)f.variable_usage(arg->uid()) & (uint)Usage::WRITE) != 0);
     arg++;
 }
-void CommandReorderVisitor::operator()(ShaderDispatchCommand::UniformArgument const &bf) {
+void CommandReorderVisitor::operator()(ShaderDispatchCommand::UniformArgument const &) {
     arg++;
 }
 void CommandReorderVisitor::operator()(ShaderDispatchCommand::BindlessArrayArgument const &bf) {

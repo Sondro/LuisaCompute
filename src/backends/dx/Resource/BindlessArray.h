@@ -47,12 +47,14 @@ private:
     mutable vstd::LockFreeArrayQueue<uint> freeQueue;
 
 public:
+    bool IsPtrInBindless(size_t ptr) const {
+        return ptrMap.Find(ptr);
+    }
     using Property = vstd::variant<
         BufferView,
         std::pair<TextureBase const *, Sampler>>;
     void Bind(Property const &prop, uint index);
     void UnBind(BindTag type, uint index);
-    bool IsPtrInBindless(size_t ptr) const;
     DefaultBuffer const *Buffer() const { return &buffer; }
     void PreProcessStates(
         CommandBufferBuilder &builder,

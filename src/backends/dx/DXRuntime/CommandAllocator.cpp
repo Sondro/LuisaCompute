@@ -31,16 +31,6 @@ void CommandAllocatorBase::Complete(
         (*evt)();
     }
 }
-void CommandAllocatorBase::Complete_Async(
-    CommandQueue *queue,
-    ID3D12Fence *fence,
-    uint64 fenceIndex) {
-    uint64 completeValue;
-    device->WaitFence_Async(fence, fenceIndex);
-    while (auto evt = executeAfterComplete.Pop()) {
-        (*evt)();
-    }
-}
 
 
 CommandBuffer *CommandAllocatorBase::GetBuffer() const {
@@ -95,12 +85,12 @@ DefaultBuffer const *CommandAllocator::AllocateScratchBuffer(size_t targetSize) 
             }
             executeAfterComplete.Push([s = std::move(scratchBuffer)]() {});
             allocSize = CalcAlign(allocSize, 65536);
-            scratchBuffer = vstd::create_unique(new DefaultBuffer(device, allocSize, device->defaultAllocator, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+            scratchBuffer = vstd::create_unique(new DefaultBuffer(device, allocSize, device->defaultAllocator.get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
         }
         return scratchBuffer.get();
     } else {
         targetSize = CalcAlign(targetSize, 65536);
-        scratchBuffer = vstd::create_unique(new DefaultBuffer(device, targetSize, device->defaultAllocator, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+        scratchBuffer = vstd::create_unique(new DefaultBuffer(device, targetSize, device->defaultAllocator.get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
         return scratchBuffer.get();
     }
 }

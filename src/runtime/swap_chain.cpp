@@ -1,6 +1,7 @@
 #include <runtime/swap_chain.h>
 #include <runtime/device.h>
 #include <runtime/stream.h>
+#include <runtime/command_buffer.h>
 namespace luisa::compute {
 
 SwapChain Device::create_swapchain(
@@ -9,8 +10,7 @@ SwapChain Device::create_swapchain(
     uint2 resolution,
     bool allow_hdr,
     uint back_buffer_size) noexcept {
-    return SwapChain(impl(), window_handle, stream.handle(),
-                     resolution.x, resolution.y, allow_hdr, back_buffer_size);
+    return SwapChain(impl(), window_handle, stream.handle(), resolution.x, resolution.y, allow_hdr, back_buffer_size);
 }
 
 SwapChain::SwapChain(Device::Interface *device, uint64_t window_handle, uint64_t stream_handle,

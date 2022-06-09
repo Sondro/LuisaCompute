@@ -1,0 +1,45 @@
+struct MeshInst{
+float4 p0;
+float4 p1;
+float4 p2;
+uint InstanceID : 24;
+uint InstanceMask : 8;
+uint InstanceContributionToHitGroupIndex : 24;
+uint Flags : 8;
+uint2 accelStructPtr;
+};
+struct InputInst{
+uint index;
+uint flags;
+uint2 mesh;
+float4 p0;
+float4 p1;
+float4 p2;
+};
+RWStructuredBuffer<MeshInst> _InstBuffer : register(u0);
+StructuredBuffer<InputInst> _SetBuffer : register(t0);
+cbuffer _Global : register(b0){
+uint dsp;
+uint count;
+}
+static const uint flag_visibility_on = 1u << 2u;
+[numthreads(64,1,1)]
+void main(uint id : SV_DISPATCHTHREADID){
+if(id >= dsp) return;
+InputInst v = _SetBuffer[id];
+if(v.index >= count) return;
+MeshInst r;
+r.p0 = v.p0;
+r.p1 = v.p1;
+r.p2 = v.p2;
+r.InstanceID = v.index;
+if((v.flags & flag_visibility_on) != 0)
+r.InstanceMask = 255;
+else
+r.InstanceMask = 0;
+
+r.InstanceContributionToHitGroupIndex = 0;
+r.Flags = 0;
+r.accelStructPtr = v.mesh;
+_InstBuffer[v.index] = r;
+}

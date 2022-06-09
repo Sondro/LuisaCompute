@@ -35,10 +35,27 @@ uint64 Resource::GetTextureSize(
 	texDesc.SampleDesc.Count = 1;
 	texDesc.SampleDesc.Quality = 0;
 	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	auto allocateInfo = device->device->GetResourceAllocationInfo(
 		0, 1, &texDesc);
 	return allocateInfo.SizeInBytes;
+}
+bool Resource::IsBCtex(GFXFormat format) {
+    switch (format) {
+        case GFXFormat_BC6H_UF16:
+        case GFXFormat_BC6H_SF16:
+        case GFXFormat_BC7_Typeless:
+        case GFXFormat_BC7_UNorm:
+        case GFXFormat_BC7_UNorm_SRGB:
+        case GFXFormat_BC5_Typeless:
+        case GFXFormat_BC5_UNorm:
+        case GFXFormat_BC5_SNorm:
+        case GFXFormat_BC4_Typeless:
+        case GFXFormat_BC4_UNorm:
+        case GFXFormat_BC4_SNorm:
+            return true;
+    }
+    return false;
 }
 uint64 Resource::GetTexturePixelSize(GFXFormat format) {
 	switch (format) {
@@ -110,11 +127,11 @@ uint64 Resource::GetTexturePixelSize(GFXFormat format) {
 		case GFXFormat_BC5_Typeless:
 		case GFXFormat_BC5_UNorm:
 		case GFXFormat_BC5_SNorm:
-			return 4;
+			return 16;
 		case GFXFormat_BC4_Typeless:
 		case GFXFormat_BC4_UNorm:
 		case GFXFormat_BC4_SNorm:
-			return 2;
+			return 8;
 		default: return 0;
 	}
 }

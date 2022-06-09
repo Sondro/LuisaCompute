@@ -29,6 +29,7 @@ public:
 		uint mipCount);
 	static uint64 GetTexturePixelSize(
 		GFXFormat format);
+    static bool IsBCtex(GFXFormat format);
 	Device* GetDevice() const { return device; }
 	Resource(Device* device)
 		: device(device) {}

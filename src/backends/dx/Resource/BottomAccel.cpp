@@ -2,22 +2,35 @@
 #include <Resource/BottomAccel.h>
 #include <DXRuntime/CommandAllocator.h>
 #include <DXRuntime/CommandBuffer.h>
-#include <Resource/Mesh.h>
 #include <DXRuntime/ResourceStateTracker.h>
 #include <Resource/TopAccel.h>
 namespace toolhub::directx {
 namespace detail {
-void GetStaticTriangleGeometryDesc(D3D12_RAYTRACING_GEOMETRY_DESC &geometryDesc, Mesh const *mesh) {
+void MeshPreprocess(
+    Buffer const *vHandle,
+    Buffer const *iHandle,
+    ResourceStateTracker &tracker) {
+    tracker.RecordState(
+        vHandle,
+        VEngineShaderResourceState);
+    tracker.RecordState(
+        iHandle,
+        VEngineShaderResourceState);
+}
+void GetStaticTriangleGeometryDesc(
+    D3D12_RAYTRACING_GEOMETRY_DESC &geometryDesc,
+    Buffer const *vHandle, size_t vOffset, size_t vStride, size_t vSize,
+    Buffer const *iHandle, size_t iOffset, size_t iSize) {
     geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
     geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
     geometryDesc.Triangles.IndexFormat = (DXGI_FORMAT)GFXFormat_R32_UInt;
     geometryDesc.Triangles.Transform3x4 = 0;
     geometryDesc.Triangles.VertexFormat = (DXGI_FORMAT)GFXFormat_R32G32B32_Float;
-    geometryDesc.Triangles.VertexBuffer.StrideInBytes = mesh->vStride;
-    geometryDesc.Triangles.IndexBuffer = mesh->iHandle->GetAddress() + mesh->iOffset;
-    geometryDesc.Triangles.IndexCount = mesh->iCount;
-    geometryDesc.Triangles.VertexBuffer.StartAddress = mesh->vHandle->GetAddress() + mesh->vOffset;
-    geometryDesc.Triangles.VertexCount = mesh->vCount;
+    geometryDesc.Triangles.VertexBuffer.StrideInBytes = vStride;
+    geometryDesc.Triangles.IndexBuffer = iHandle->GetAddress() + iOffset;
+    geometryDesc.Triangles.IndexCount = iSize / sizeof(uint);
+    geometryDesc.Triangles.VertexBuffer.StartAddress = vHandle->GetAddress() + vOffset;
+    geometryDesc.Triangles.VertexCount = vSize / vStride;
 }
 }// namespace detail
 bool BottomAccel::RequireCompact() const {
@@ -25,15 +38,9 @@ bool BottomAccel::RequireCompact() const {
 }
 BottomAccel::BottomAccel(
     Device *device,
-    Buffer const *vHandle, size_t vOffset, size_t vStride, size_t vCount,
-    Buffer const *iHandle, size_t iOffset, size_t iCount,
     luisa::compute::AccelUsageHint hint,
     bool allow_compact, bool allow_update)
-    : device(device),
-      mesh(
-          device,
-          vHandle, vOffset, vStride, vCount,
-          iHandle, iOffset, iCount) {
+    : device(device) {
     auto GetPreset = [&] {
         switch (hint) {
             case AccelUsageHint::FAST_TRACE:
@@ -63,18 +70,14 @@ size_t BottomAccel::PreProcessStates(
     ResourceStateTracker &tracker,
     bool update,
     Buffer const *vHandle,
+    size_t vertStride, size_t vertOffset, size_t vertCount,
     Buffer const *iHandle,
+    size_t idxOffset, size_t idxSize,
     BottomAccelData &bottomData) {
     auto refreshUpdate = vstd::create_disposer([&] { this->update = update; });
     if ((uint)(hint & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE) == 0)
         update = false;
-
-    if (mesh.vHandle != vHandle || mesh.iHandle != iHandle) {
-        update = false;
-        mesh.vHandle = vHandle;
-        mesh.iHandle = iHandle;
-    }
-    mesh.Build(tracker);
+    detail::MeshPreprocess(vHandle, iHandle, tracker);
     auto &&bottomStruct = bottomData.bottomStruct;
     auto &&geometryDesc = bottomData.geometryDesc;
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS &bottomInput = bottomStruct.Inputs;
@@ -85,7 +88,7 @@ size_t BottomAccel::PreProcessStates(
     bottomInput.pGeometryDescs = &geometryDesc;
     detail::GetStaticTriangleGeometryDesc(
         geometryDesc,
-        &mesh);
+        vHandle, vertOffset, vertStride, vertCount, iHandle, idxOffset, idxSize);
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO bottomLevelPrebuildInfo = {};
     device->device->GetRaytracingAccelerationStructurePrebuildInfo(
         &bottomInput,
@@ -94,7 +97,7 @@ size_t BottomAccel::PreProcessStates(
         accelBuffer = vstd::create_unique(new DefaultBuffer(
             device,
             CalcAlign(bottomLevelPrebuildInfo.ResultDataMaxSizeInBytes, 65536),
-            device->defaultAllocator,
+            device->defaultAllocator.get(),
             D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE));
     };
     if (!accelBuffer) {
@@ -128,7 +131,7 @@ bool BottomAccel::CheckAccel(
     auto newAccelBuffer = vstd::create_unique(new DefaultBuffer(
         device,
         CalcAlign(compactSize, 65536),
-        device->defaultAllocator,
+        device->defaultAllocator.get(),
         D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE));
     builder.CmdList()->CopyRaytracingAccelerationStructure(
         newAccelBuffer->GetAddress(),

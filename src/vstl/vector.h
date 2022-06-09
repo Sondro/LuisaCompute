@@ -370,11 +370,11 @@ public:
     T *rend() noexcept {
         return {begin() - 1};
     }
-    T const *rcbegin() const noexcept {
-        return {begin() - 1};
-    }
-    T const *rcend() const noexcept {
+    T const *rbegin() const noexcept {
         return {end() - 1};
+    }
+    T const *rend() const noexcept {
+        return {begin() - 1};
     }
 
     void erase(T *ite) noexcept {

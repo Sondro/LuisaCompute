@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <vstl/Common.h>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -29,6 +30,7 @@ class Mesh;
 class Accel;
 class SwapChain;
 class BindlessArray;
+class IUtil;
 
 template<typename T>
 class Buffer;
@@ -111,7 +113,6 @@ public:
         virtual void emplace_buffer_in_bindless_array(uint64_t array, size_t index, uint64_t handle, size_t offset_bytes) noexcept = 0;
         virtual void emplace_tex2d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept = 0;
         virtual void emplace_tex3d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept = 0;
-        virtual bool is_resource_in_bindless_array(uint64_t array, uint64_t handle) const noexcept = 0;
         virtual void remove_buffer_in_bindless_array(uint64_t array, size_t index) noexcept = 0;
         virtual void remove_tex2d_in_bindless_array(uint64_t array, size_t index) noexcept = 0;
         virtual void remove_tex3d_in_bindless_array(uint64_t array, size_t index) noexcept = 0;
@@ -120,10 +121,11 @@ public:
         [[nodiscard]] virtual uint64_t create_stream(bool for_present) noexcept = 0;
         virtual void destroy_stream(uint64_t handle) noexcept = 0;
         virtual void synchronize_stream(uint64_t stream_handle) noexcept = 0;
-        virtual void dispatch(uint64_t stream_handle, const CommandList &list) noexcept = 0;
-        virtual void dispatch(uint64_t stream_handle, luisa::span<const CommandList> lists) noexcept {
+        virtual void dispatch(uint64_t stream_handle, CommandList &&list) noexcept = 0;
+        //TODO: need re-design
+        /*virtual void dispatch(uint64_t stream_handle, luisa::span<const CommandList> lists) noexcept {
             for (auto &&list : lists) { dispatch(stream_handle, list); }
-        }
+        }*/
         virtual void dispatch(uint64_t stream_handle, luisa::move_only_function<void()> &&func) noexcept = 0;
         [[nodiscard]] virtual void *stream_native_handle(uint64_t handle) const noexcept = 0;
         // swap chain
@@ -146,15 +148,16 @@ public:
 
         // accel
         [[nodiscard]] virtual uint64_t create_mesh(
-            uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count,
-            uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept = 0;
+            AccelUsageHint hint,
+            bool allow_compact, bool allow_update) noexcept = 0;
         virtual void destroy_mesh(uint64_t handle) noexcept = 0;
-        [[nodiscard]] virtual uint64_t create_accel(AccelUsageHint hint) noexcept = 0;
+        [[nodiscard]] virtual uint64_t create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept = 0;
         virtual void destroy_accel(uint64_t handle) noexcept = 0;
 
         // query
         [[nodiscard]] virtual luisa::string query(std::string_view meta_expr) noexcept { return {}; }
         [[nodiscard]] virtual bool requires_command_reordering() const noexcept { return true; }
+        [[nodiscard]] virtual IUtil *get_util() { return nullptr; }
     };
 
     using Deleter = void(Interface *);
@@ -174,6 +177,7 @@ public:
 
     [[nodiscard]] decltype(auto) context() const noexcept { return _impl->context(); }
     [[nodiscard]] auto impl() const noexcept { return _impl.get(); }
+    [[nodiscard]] IUtil *get_util() const noexcept { return _impl->get_util(); }
 
     [[nodiscard]] Stream create_stream(bool for_present = false) noexcept;// see definition in runtime/stream.cpp
     [[nodiscard]] Event create_event() noexcept;                          // see definition in runtime/event.cpp
@@ -185,9 +189,10 @@ public:
     template<typename VBuffer, typename TBuffer>
     [[nodiscard]] Mesh create_mesh(
         VBuffer &&vertices, TBuffer &&triangles,
-        AccelUsageHint hint = AccelUsageHint::FAST_TRACE) noexcept;                             // see definition in rtx/mesh.h
-                                                                                                // see definition in rtx/mesh.h
-    [[nodiscard]] Accel create_accel(AccelUsageHint hint = AccelUsageHint::FAST_TRACE) noexcept;// see definition in rtx/accel.cpp
+        AccelUsageHint hint = AccelUsageHint::FAST_TRACE,
+        bool allow_compact = false, bool allow_update = false) noexcept;// see definition in rtx/mesh.h
+                                                                           
+    [[nodiscard]] Accel create_accel(AccelUsageHint hint = AccelUsageHint::FAST_TRACE, bool allow_compact = false, bool allow_update = true) noexcept;// see definition in rtx/accel.cpp
     [[nodiscard]] BindlessArray create_bindless_array(size_t slots = 65536u) noexcept;          // see definition in runtime/bindless_array.cpp
 
     template<typename T>
