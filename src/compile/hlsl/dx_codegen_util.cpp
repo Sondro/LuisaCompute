@@ -10,6 +10,14 @@ namespace detail {
 static inline uint64 CalcAlign(uint64 value, uint64 align) {
     return (value + (align - 1)) & ~(align - 1);
 }
+static vstd::string const &HLSLHeader(std::filesystem::path const &internalDataPath) {
+    static vstd::string header = ReadInternalHLSLFile("hlsl_header", internalDataPath);
+    return header;
+}
+static vstd::string const &RayTracingHeader(std::filesystem::path const &internalDataPath) {
+    static vstd::string rtHeader = ReadInternalHLSLFile("raytracing_header", internalDataPath);
+    return rtHeader;
+}
 }// namespace detail
 static thread_local vstd::unique_ptr<CodegenStackData> opt;
 uint CodegenUtility::IsBool(Type const &type) {
@@ -955,79 +963,91 @@ void CodegenUtility::GetBasicTypeName(uint64 typeIndex, vstd::string &str) {
         typeIndex);
 }
 void CodegenUtility::CodegenFunction(Function func, vstd::string &result) {
-
-    if (func.tag() == Function::Tag::KERNEL) {
-        result << "[numthreads("
-               << vstd::to_string(func.block_size().x)
-               << ','
-               << vstd::to_string(func.block_size().y)
-               << ','
-               << vstd::to_string(func.block_size().z)
-               << R"()]
+    auto codegenOneFunc = [&](Function func) {
+        if (func.tag() == Function::Tag::KERNEL) {
+            result << "[numthreads("
+                   << vstd::to_string(func.block_size().x)
+                   << ','
+                   << vstd::to_string(func.block_size().y)
+                   << ','
+                   << vstd::to_string(func.block_size().z)
+                   << R"()]
 void main(uint3 thdId : SV_GroupThreadId, uint3 dspId : SV_DispatchThreadID, uint3 grpId : SV_GroupId){
 Args a = _Global[0];
 if(any(dspId >= a.dsp_c)) return;
 )"sv;
 
-    } else {
-        GetFunctionDecl(func, result);
-        result << "{\n"sv;
-    }
-    auto constants = func.constants();
-    for (auto &&i : constants) {
-        if (!opt->generatedConstants.TryEmplace(i.hash()).second) {
-            continue;
+        } else {
+            GetFunctionDecl(func, result);
+            result << "{\n"sv;
         }
-        GetTypeName(*i.type, result, Usage::READ);
-        result << ' ';
-        vstd::string constName;
-        GetConstName(
-            i.data,
-            constName);
+        auto constants = func.constants();
+        for (auto &&i : constants) {
+            if (!opt->generatedConstants.TryEmplace(i.hash()).second) {
+                continue;
+            }
+            GetTypeName(*i.type, result, Usage::READ);
+            result << ' ';
+            vstd::string constName;
+            GetConstName(
+                i.data,
+                constName);
 
-        result << constName << ";\nconst "sv;
-        vstd::string constValueName(constName + "_v");
-        GetTypeName(*i.type->element(), result, Usage::READ);
-        result << ' ' << constValueName << '[';
-        vstd::to_string(i.type->dimension(), result);
-        result << "]={"sv;
-        auto &&dataView = i.data.view();
-        eastl::visit(
-            [&]<typename T>(eastl::span<T> const &sp) {
-                for (auto i : vstd::range(sp.size())) {
-                    auto &&value = sp[i];
-                    PrintValue<std::remove_cvref_t<T>>()(value, result);
-                    if (i != (sp.size() - 1)) {
-                        result << ',';
+            result << constName << ";\nconst "sv;
+            vstd::string constValueName(constName + "_v");
+            GetTypeName(*i.type->element(), result, Usage::READ);
+            result << ' ' << constValueName << '[';
+            vstd::to_string(i.type->dimension(), result);
+            result << "]={"sv;
+            auto &&dataView = i.data.view();
+            eastl::visit(
+                [&]<typename T>(eastl::span<T> const &sp) {
+                    for (auto i : vstd::range(sp.size())) {
+                        auto &&value = sp[i];
+                        PrintValue<std::remove_cvref_t<T>>()(value, result);
+                        if (i != (sp.size() - 1)) {
+                            result << ',';
+                        }
                     }
-                }
-            },
-            dataView);
-        //TODO: constants
-        result << "};\n"sv
-               << constName
-               << ".v="sv
-               << constValueName
-               << ";\n"sv;
-    }
-    if (func.tag() == Function::Tag::KERNEL) {
-        opt->isKernel = true;
-        opt->arguments.Clear();
-        opt->arguments.reserve(func.arguments().size());
-        for (auto &&i : func.arguments()) {
-            opt->arguments.Emplace(i.uid());
+                },
+                dataView);
+            //TODO: constants
+            result << "};\n"sv
+                   << constName
+                   << ".v="sv
+                   << constValueName
+                   << ";\n"sv;
         }
-    } else {
-        opt->isKernel = false;
-    }
-    //opt->analyzer.reset();
-    //opt->analyzer.analyze(func);
-    // opt->allVariables.clear();
-    StringStateVisitor vis(func, result);
-    vis.sharedVariables = &opt->sharedVariable;
-    // vis.variableSet = &opt->allVariables;
-    func.body()->accept(vis);
-    result << "}\n"sv;
+        if (func.tag() == Function::Tag::KERNEL) {
+            opt->isKernel = true;
+            opt->arguments.Clear();
+            opt->arguments.reserve(func.arguments().size());
+            for (auto &&i : func.arguments()) {
+                opt->arguments.Emplace(i.uid());
+            }
+        } else {
+            opt->isKernel = false;
+        }
+        //opt->analyzer.reset();
+        //opt->analyzer.analyze(func);
+        // opt->allVariables.clear();
+        StringStateVisitor vis(func, result);
+        vis.sharedVariables = &opt->sharedVariable;
+        // vis.variableSet = &opt->allVariables;
+        func.body()->accept(vis);
+        result << "}\n"sv;
+    };
+    vstd::HashMap<void const *> callableMap;
+    auto callable = [&](auto &&callable, Function func) -> void {
+        for (auto &&i : func.custom_callables()) {
+            if (callableMap.TryEmplace(i.get()).second) {
+                Function f(i.get());
+                callable(callable, f);
+            }
+        }
+        codegenOneFunc(func);
+    };
+    callable(callable, func);
 }
 void CodegenUtility::GenerateCBuffer(
     Function f,
@@ -1062,6 +1082,33 @@ uint3 dsp_c;
 StructuredBuffer<Args> _Global:register(t0);
 )"sv;
 }
+void CodegenUtility::GenerateBindless(
+    CodegenResult::Properties& properties,
+    vstd::string& str) {
+    for (auto &&i : opt->bindlessBufferTypes) {
+        str << "StructuredBuffer<"sv;
+        if (i.first->is_matrix()) {
+            auto n = i.first->dimension();
+            str << luisa::format("WrappedFloat{}x{}", n, n);
+        } else if (i.first->is_vector() && i.first->dimension() == 3) {
+            str << "float4"sv;
+        } else {
+            GetTypeName(*i.first, str, Usage::READ);
+        }
+        vstd::string instName("bdls"sv);
+        vstd::to_string(i.second, instName);
+        str << "> " << instName << "[]:register(t0,space"sv;
+        vstd::to_string(i.second + 3, str);
+        str << ");\n"sv;
+
+        properties.emplace_back(
+            std::move(instName),
+            Property{
+                ShaderVariableType::SRVDescriptorHeap,
+                static_cast<uint>(i.second + 3u),
+                0u, 0u});
+    }
+}
 vstd::optional<CodegenResult> CodegenUtility::Codegen(
     Function kernel, std::filesystem::path const &internalDataPath) {
     if (kernel.tag() != Function::Tag::KERNEL) return {};
@@ -1072,28 +1119,13 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
     });
     vstd::string codegenData;
     vstd::string varData;
-    // Custom callable
-    {
-        vstd::HashMap<void const *> callableMap;
-        auto callable = [&](auto &&callable, Function func) -> void {
-            for (auto &&i : func.custom_callables()) {
-                if (callableMap.TryEmplace(i.get()).second) {
-                    Function f(i.get());
-                    callable(callable, f);
-                }
-            }
-            CodegenFunction(func, codegenData);
-        };
-        callable(callable, kernel);
-    }
+    CodegenFunction(kernel, codegenData);
     vstd::string finalResult;
     finalResult.reserve(65500);
-    //TODO: include
-    static vstd::string header = ReadInternalHLSLFile("hlsl_header", internalDataPath);
-    static vstd::string rtHeader = ReadInternalHLSLFile("raytracing_header", internalDataPath);
-    finalResult << header;
+
+    finalResult << detail::HLSLHeader(internalDataPath);
     if (kernel.raytracing()) {
-        finalResult << rtHeader;
+        finalResult << detail::RayTracingHeader(internalDataPath);
     }
     size_t unChangedOffset = finalResult.size();
 
@@ -1102,29 +1134,8 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
     CodegenResult::Properties properties;
     properties.reserve(kernel.arguments().size() + opt->bindlessBufferCount + 4);
     // Bindless Buffers;
-    for (auto &&i : opt->bindlessBufferTypes) {
-        varData << "StructuredBuffer<"sv;
-        if (i.first->is_matrix()) {
-            auto n = i.first->dimension();
-            varData << luisa::format("WrappedFloat{}x{}", n, n);
-        } else if (i.first->is_vector() && i.first->dimension() == 3) {
-            varData << "float4"sv;
-        } else {
-            GetTypeName(*i.first, varData, Usage::READ);
-        }
-        vstd::string instName("bdls"sv);
-        vstd::to_string(i.second, instName);
-        varData << "> " << instName << "[]:register(t0,space"sv;
-        vstd::to_string(i.second + 3, varData);
-        varData << ");\n"sv;
-
-        properties.emplace_back(
-            std::move(instName),
-            Property{
-                ShaderVariableType::SRVDescriptorHeap,
-                static_cast<uint>(i.second + 3u),
-                0u, 0u});
-    }
+    GenerateBindless(properties, varData);
+    
     properties.emplace_back(
         "_Global"sv,
         Property{
