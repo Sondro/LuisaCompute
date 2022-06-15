@@ -489,7 +489,7 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             str << "popcount"sv;
             break;
         case CallOp::REVERSE:
-            str << "reverse"sv;
+            str << "reversebits"sv;
             break;
         case CallOp::ISINF:
             str << "_isinf"sv;

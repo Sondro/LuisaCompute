@@ -38,7 +38,6 @@ void BindlessArray::TryReturnIndex(MapIndex &index, uint &originValue) {
     if (originValue != BindlessStruct::n_pos) {
         freeQueue.Push(originValue);
         originValue = BindlessStruct::n_pos;
-        index = {};
         // device->globalHeap->ReturnIndex(originValue);
         auto &&v = index.Value();
         v--;
@@ -46,6 +45,7 @@ void BindlessArray::TryReturnIndex(MapIndex &index, uint &originValue) {
             ptrMap.Remove(index);
         }
     }
+    index = {};
 }
 BindlessArray::MapIndex BindlessArray::AddIndex(size_t ptr) {
     auto ite = ptrMap.Emplace(ptr, 0);

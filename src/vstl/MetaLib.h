@@ -490,7 +490,7 @@ class SBO {
 
 public:
     template<typename Func>
-    static consteval bool CtorFunc() {
+    static constexpr bool CtorFunc() {
         if constexpr (!std::is_invocable_v<Func, void *>) {
             return false;
         } else {
@@ -741,7 +741,7 @@ namespace detail {
 template<VE_SUB_TEMPLATE map, bool reverse, typename... Tar>
 struct AnyMap {
     template<typename T, typename... Args>
-    static consteval bool Run() {
+    static constexpr bool Run() {
         if constexpr ((map<T, Tar...>::value) ^ reverse) {
             return true;
         } else if constexpr (sizeof...(Args) == 0) {
@@ -752,7 +752,7 @@ struct AnyMap {
     }
 };
 template<size_t... size>
-consteval size_t max_size() {
+constexpr size_t max_size() {
     auto sizes = {size...};
     size_t v = 0;
     for (auto i : sizes) {
@@ -790,7 +790,7 @@ constexpr static Ret FuncTable(GetVoidType_t<PtrType> *ptr, GetVoidType_t<Func> 
 template<typename... Args>
 struct VariantConstructible {
     template<size_t i, typename T, typename... Ts>
-    static consteval size_t Run() {
+    static constexpr size_t Run() {
         if constexpr (std::is_constructible_v<T, Args...>) {
             return i;
         } else {
@@ -818,7 +818,7 @@ static Ret Visitor(
     return table.begin()[id](ptr, &func);
 }
 template<size_t idx, VE_SUB_TEMPLATE Judger, typename Tar, typename T, typename... Args>
-static consteval size_t IndexOfFunc() {
+static constexpr size_t IndexOfFunc() {
     if constexpr (Judger<T, Tar>::value) {
         return idx;
     } else {
@@ -830,7 +830,7 @@ static consteval size_t IndexOfFunc() {
     }
 }
 template<size_t i, typename T, typename... Args>
-static consteval decltype(auto) TypeOfFunc() {
+static constexpr decltype(auto) TypeOfFunc() {
     if constexpr (i == 0) {
         return TypeOf<T>{};
     } else if constexpr (sizeof...(Args) == 0) {

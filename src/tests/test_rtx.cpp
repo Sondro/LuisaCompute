@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-#include <stb/stb_image_write.h>
+//#include <stb/stb_image_write.h>
 
 #include <runtime/context.h>
 #include <runtime/device.h>
@@ -18,15 +18,13 @@ using namespace luisa;
 using namespace luisa::compute;
 
 int main(int argc, char *argv[]) {
-
+    return 0;
     log_level_info();
 
     Context context{argv[0]};
-    if(argc <= 1){
-        LUISA_INFO("Usage: {} <backend>. <backend>: cuda, dx, ispc, metal", argv[0]);
-        exit(1);
-    }
-    auto device = context.create_device(argv[1]);
+
+    auto device = context.create_device("dx");
+
 
     std::array vertices{
         float3(-0.5f, -0.5f, 0.0f),
@@ -103,16 +101,15 @@ int main(int argc, char *argv[]) {
            << triangle_buffer.copy_from(indices.data());
 
     auto accel = device.create_accel();
-    auto mesh = device.create_mesh(vertex_buffer, triangle_buffer,
-                                   AccelUsageHint::FAST_UPDATE);
+    auto mesh = device.create_mesh(vertex_buffer, triangle_buffer);
     accel.emplace_back(mesh, scaling(1.5f));
-    accel.emplace_back(mesh, translation(float3(-0.25f, 0.0f, 0.1f)) *
-                                 rotation(float3(0.0f, 0.0f, 1.0f), 0.5f));
+    accel.emplace_back(mesh, translation(float3(-0.25f, 0.0f, 0.1f)) * rotation(float3(0.0f, 0.0f, 1.0f), 0.5f));
+
     stream << mesh.build()
            << accel.build();
 
-    auto colorspace_shader = device.compile(colorspace_kernel);
     auto raytracing_shader = device.compile(raytracing_kernel);
+    auto colorspace_shader = device.compile(colorspace_kernel);
 
     static constexpr auto width = 512u;
     static constexpr auto height = 512u;
@@ -126,18 +123,22 @@ int main(int argc, char *argv[]) {
     for (auto i = 0u; i < spp; i++) {
         auto t = static_cast<float>(i) * (1.0f / spp);
         vertices[2].y = 0.5f - 0.2f * t;
-        auto m = translation(float3(-0.25f + t * 0.15f, 0.0f, 0.1f)) *
-                 rotation(float3(0.0f, 0.0f, 1.0f), 0.5f + t * 0.5f);
-        accel.set_transform_on_update(1u, m);
-        stream << vertex_buffer.copy_from(vertices.data())
-               << mesh.build()
-               << accel.build()
-               << raytracing_shader(hdr_image, accel, i).dispatch(width, height);
+        accel.set(
+            1u,
+            mesh,
+            translation(float3(-0.25f + t * 0.15f, 0.0f, 0.1f)) *
+                rotation(float3(0.0f, 0.0f, 1.0f), 0.5f + t * 0.5f),
+            true);
+        stream << vertex_buffer.copy_from(vertices.data());
+        stream << mesh.build();
+        stream << accel.build();
+        stream << raytracing_shader(hdr_image, accel, i).dispatch(width, height);
         if (i == 511u) {
-            auto mm = translation(make_float3(0.0f, 0.0f, 0.3f)) *
-                      rotation(make_float3(0.0f, 0.0f, 1.0f), radians(180.0f));
-            accel.emplace_back(mesh, mm, true);
-            stream << accel.build();
+            accel.emplace_back(
+                mesh,
+                translation(make_float3(0.0f, 0.0f, 0.3f)) *
+                    rotation(make_float3(0.0f, 0.0f, 1.0f), radians(180.0f)),
+                true);
         }
     }
     stream << colorspace_shader(hdr_image, ldr_image).dispatch(width, height)
@@ -145,5 +146,5 @@ int main(int argc, char *argv[]) {
            << synchronize();
     auto time = clock.toc();
     LUISA_INFO("Time: {} ms", time);
-    stbi_write_png("test_rtx.png", width, height, 4, pixels.data(), 0);
+    //stbi_write_png("test_rtx.png", width, height, 4, pixels.data(), 0);
 }

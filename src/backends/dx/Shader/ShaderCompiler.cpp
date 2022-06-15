@@ -90,6 +90,9 @@ CompileResult DXShaderCompiler::CompileCompute(
          L"/Qstrip_rootsignature",
          L"/Gfa",
          L"/all-resources-bound",
+         L"/quiet",
+         L"/q",
+         L"/debug_level=none",
          L"-HV 2021"});
     if (optimize) {
         args.push_back(L"/O3");

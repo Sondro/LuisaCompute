@@ -19,10 +19,8 @@ void BinaryReader::Read(void *ptr, uint64 len) {
         targetEnd = length;
         len = targetEnd - currentPos;
     }
-    uint64 lastPos = currentPos;
     currentPos = targetEnd;
     if (len == 0) return;
-    fseek(ifs, lastPos, SEEK_SET);
     fread(ptr, len, 1, ifs);
 }
 eastl::vector<uint8_t> BinaryReader::Read(bool addNullEnd) {
@@ -41,9 +39,7 @@ eastl::vector<uint8_t> BinaryReader::Read(bool addNullEnd) {
     }
     eastl::vector<uint8_t> result;
     result.resize(addNullEnd ? (len + 1) : len);
-    uint64 lastPos = currentPos;
     currentPos = targetEnd;
-    fseek(ifs, lastPos, SEEK_SET);
     fread(result.data(), len, 1, ifs);
     return result;
 }
@@ -52,6 +48,7 @@ void BinaryReader::SetPos(uint64 pos) {
     if (!isAvaliable) return;
     if (pos > length) pos = length;
     currentPos = pos;
+    fseek(ifs, currentPos, SEEK_SET);
 }
 BinaryReader::~BinaryReader() {
     if (!isAvaliable) return;
