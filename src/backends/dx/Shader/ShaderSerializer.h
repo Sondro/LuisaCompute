@@ -11,7 +11,7 @@ struct ShaderBuildData {
 };
 class ShaderSerializer {
     static size_t SerializeRootSig(
-        vstd::span<std::pair<vstd::string, Property> const> properties,
+        vstd::span<Property const> properties,
         vstd::vector<vbyte> &result);
     static ComPtr<ID3D12RootSignature> DeSerializeRootSig(
         ID3D12Device *device,
@@ -19,7 +19,7 @@ class ShaderSerializer {
 
 public:
     static ComPtr<ID3DBlob> SerializeRootSig(
-        vstd::span<std::pair<vstd::string, Property> const> properties);
+        vstd::span<Property const> properties);
     struct ReadResult {
         vbyte const *fileData;
         size_t fileSize;
@@ -38,12 +38,12 @@ public:
     };
     static vstd::vector<vbyte>
     Serialize(
-        vstd::span<std::pair<vstd::string, Property> const> properties,
+        vstd::span<Property const> properties,
         vstd::span<vbyte> binByte,
         vstd::MD5 md5,
         uint3 blockSize);
     static ComputeShader *DeSerialize(
-        vstd::span<std::pair<vstd::string, Property> const> properties,
+        vstd::span<Property const> properties,
         Device *device,
         vstd::MD5 md5,
         Visitor &streamFunc);

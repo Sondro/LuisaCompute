@@ -98,7 +98,7 @@ public:
             self->backState.clear();
             ++arg;
         }
-        void operator()(ShaderDispatchCommand::UniformArgument const& a) {
+        void operator()(ShaderDispatchCommand::UniformArgument const &a) {
             vstd::span<std::byte const> bf(a.data, a.size);
             if (bf.size() < 4) {
                 bool v = (bool)bf[0];
@@ -295,27 +295,17 @@ public:
         Variable const *arg;
 
         void operator()(ShaderDispatchCommand::BufferArgument const &bf) {
-            vstd::string name;
-            CodegenUtility::GetVariableName(
-                *arg,
-                name);
             auto res = reinterpret_cast<Buffer const *>(bf.handle);
 
             self->bindProps.emplace_back(
-                std::move(name),
                 BufferView(res, bf.offset));
             ++arg;
         }
         void operator()(ShaderDispatchCommand::TextureArgument const &bf) {
-            vstd::string name;
-            CodegenUtility::GetVariableName(
-                *arg,
-                name);
             RenderTexture *rt = reinterpret_cast<RenderTexture *>(bf.handle);
             //UAV
             if (((uint)f.variable_usage(arg->uid()) & (uint)Usage::WRITE) != 0) {
                 self->bindProps.emplace_back(
-                    std::move(name),
                     DescriptorHeapView(
                         self->device->globalHeap.get(),
                         rt->GetGlobalUAVIndex(bf.level)));
@@ -323,7 +313,6 @@ public:
             // SRV
             else {
                 self->bindProps.emplace_back(
-                    std::move(name),
                     DescriptorHeapView(
                         self->device->globalHeap.get(),
                         rt->GetGlobalSRVIndex(bf.level)));
@@ -333,53 +322,41 @@ public:
         void operator()(ShaderDispatchCommand::BindlessArrayArgument const &bf) {
             auto arr = reinterpret_cast<BindlessArray *>(bf.handle);
             auto res = arr->Buffer();
-
-            vstd::string name;
-            CodegenUtility::GetVariableName(
-                *arg,
-                name);
             self->bindProps.emplace_back(
-                std::move(name),
                 BufferView(res, 0));
             ++arg;
         }
         void operator()(ShaderDispatchCommand::AccelArgument const &bf) {
             auto accel = reinterpret_cast<TopAccel *>(bf.handle);
-            vstd::string name;
-            vstd::string instName;
-            CodegenUtility::GetVariableName(
-                *arg,
-                name);
-            instName << name << "Inst"sv;
             if ((static_cast<uint>(f.variable_usage(arg->uid())) & static_cast<uint>(Usage::WRITE)) == 0) {
                 self->bindProps.emplace_back(
-                    std::move(name),
                     accel);
             }
             self->bindProps.emplace_back(
-                std::move(instName),
                 BufferView(accel->GetInstBuffer()));
             ++arg;
         }
-        void operator()(ShaderDispatchCommand::UniformArgument const&) {
+        void operator()(ShaderDispatchCommand::UniformArgument const &) {
             ++arg;
         }
     };
     void visit(const ShaderDispatchCommand *cmd) noexcept override {
         bindProps.clear();
         auto shader = reinterpret_cast<Shader const *>(cmd->handle());
-        cmd->decode(Visitor{this, cmd->kernel(), cmd->kernel().arguments().data()});
         auto &&tempBuffer = *bufferVec;
         bufferVec++;
-        bindProps.emplace_back("_Global"sv, BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
+        bindProps.emplace_back(DescriptorHeapView(device->samplerHeap.get()));
+        bindProps.emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
         DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
-        bindProps.emplace_back("_BindlessTex"sv, globalHeapView);
-        bindProps.emplace_back("_BindlessTex3D"sv, globalHeapView);
-        for (auto i : vstd::range(shader->BindlessCount())) {
-            bindProps.emplace_back(std::move(vstd::string("bdls") + vstd::to_string(i)), globalHeapView);
-        }
-        bindProps.emplace_back("samplers"sv, DescriptorHeapView(device->samplerHeap.get()));
-        switch (shader->GetTag()) {
+        bindProps.push_back_func([&] { return globalHeapView; }, shader->BindlessCount() + 2);
+        cmd->decode(Visitor{this, cmd->kernel(), cmd->kernel().arguments().data()});
+
+        auto cs = static_cast<ComputeShader const *>(shader);
+        bd->DispatchCompute(
+            cs,
+            cmd->dispatch_size(),
+            bindProps);
+        /*switch (shader->GetTag()) {
             case Shader::Tag::ComputeShader: {
                 auto cs = static_cast<ComputeShader const *>(shader);
                 bd->DispatchCompute(
@@ -394,7 +371,7 @@ public:
                     cmd->dispatch_size(),
                     bindProps);
             } break;
-        }
+        }*/
     }
     void visit(const TextureUploadCommand *cmd) noexcept override {
 
@@ -573,7 +550,7 @@ void LCCmdBuffer::Execute(
             command->accept(reorder);
         }
         auto cmdLists = reorder.command_lists();
-     
+
         auto clearReorder = vstd::create_disposer([&] {
             for (auto command : commands) {
                 command->recycle();
@@ -757,14 +734,10 @@ void LCCmdBuffer::CompressBC(
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             tracker.UpdateState(cmdBuilder);
             BindProperty prop[4];
-            prop[0].name = "_Global"sv;
-            prop[0].prop = cbuffer;
-            prop[1].name = "g_Input"sv;
-            prop[1].prop = DescriptorHeapView(device->globalHeap.get(), rt->GetGlobalSRVIndex());
-            prop[2].name = "g_InBuff"sv;
-            prop[2].prop = BufferView(&inBuffer, 0);
-            prop[3].name = "g_OutBuff"sv;
-            prop[3].prop = BufferView(&outBuffer, 0);
+            prop[0] = cbuffer;
+            prop[1] = DescriptorHeapView(device->globalHeap.get(), rt->GetGlobalSRVIndex());
+            prop[2] = BufferView(&inBuffer, 0);
+            prop[3] = BufferView(&outBuffer, 0);
             cmdBuilder.DispatchCompute(
                 cs,
                 uint3(dispatchCount, 1, 1),

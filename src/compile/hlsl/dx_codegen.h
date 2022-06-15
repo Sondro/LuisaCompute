@@ -15,7 +15,7 @@ class StringStateVisitor;
 class StructVariableTracker;
 class StructGenerator;
 struct CodegenResult {
-    using Properties = vstd::vector<std::pair<vstd::string, Property>>;
+    using Properties = vstd::vector<Property>;
     vstd::string result;
     Properties properties;
     uint64 bdlsBufferCount;

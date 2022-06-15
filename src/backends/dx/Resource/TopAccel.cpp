@@ -220,12 +220,9 @@ void TopAccel::Build(
             ->CopyData(setBuffer.offset,
                        {reinterpret_cast<vbyte const *>(setDesc.data()), setDesc.byte_size()});
         BindProperty properties[3];
-        properties[0].name = "_Global"sv;
-        properties[0].prop = cbuffer;
-        properties[1].name = "_SetBuffer"sv;
-        properties[1].prop = setBuffer;
-        properties[2].name = "_InstBuffer"sv;
-        properties[2].prop = BufferView(instBuffer.get());
+        properties[0] = cbuffer;
+        properties[1] = setBuffer;
+        properties[2] = BufferView(instBuffer.get());
         //TODO
         builder.DispatchCompute(
             cs,

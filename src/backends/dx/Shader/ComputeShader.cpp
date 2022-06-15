@@ -148,7 +148,7 @@ ComputeShader *ComputeShader::CompileCompute(
 }
 ComputeShader::ComputeShader(
     uint3 blockSize,
-    vstd::span<std::pair<vstd::string, Property> const> properties,
+    vstd::span<Property const> properties,
     vstd::span<vbyte const> binData,
     Device *device,
     vstd::Guid guid)
@@ -166,7 +166,7 @@ ComputeShader::ComputeShader(
 ComputeShader::ComputeShader(
     uint3 blockSize,
     Device *device,
-    vstd::span<std::pair<vstd::string, Property> const> prop,
+    vstd::span<Property const> prop,
     vstd::Guid guid,
     ComPtr<ID3D12RootSignature> &&rootSig,
     ComPtr<ID3D12PipelineState> &&pso)

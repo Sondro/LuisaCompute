@@ -9,24 +9,21 @@ ComputeShader *BuiltinKernel::LoadAccelSetKernel(Device *device, Context const &
     code.result = vstd::string(ReadInternalHLSLFile("accel_process", ctx.data_directory()));
     code.properties.resize(3);
     code.md5 = vstd::MD5(code.result);
-    auto &InstBuffer = code.properties[0];
-    InstBuffer.first = "_InstBuffer"sv;
-    InstBuffer.second.arrSize = 0;
-    InstBuffer.second.registerIndex = 0;
-    InstBuffer.second.spaceIndex = 0;
-    InstBuffer.second.type = ShaderVariableType::RWStructuredBuffer;
-    auto &Global = code.properties[1];
-    Global.first = "_Global"sv;
-    Global.second.arrSize = 0;
-    Global.second.registerIndex = 0;
-    Global.second.spaceIndex = 0;
-    Global.second.type = ShaderVariableType::ConstantBuffer;
-    auto &SetBuffer = code.properties[2];
-    SetBuffer.first = "_SetBuffer"sv;
-    SetBuffer.second.arrSize = 0;
-    SetBuffer.second.registerIndex = 0;
-    SetBuffer.second.spaceIndex = 0;
-    SetBuffer.second.type = ShaderVariableType::StructuredBuffer;
+    auto &Global = code.properties[0];
+    Global.arrSize = 0;
+    Global.registerIndex = 0;
+    Global.spaceIndex = 0;
+    Global.type = ShaderVariableType::ConstantBuffer;
+    auto &SetBuffer = code.properties[1];
+    SetBuffer.arrSize = 0;
+    SetBuffer.registerIndex = 0;
+    SetBuffer.spaceIndex = 0;
+    SetBuffer.type = ShaderVariableType::StructuredBuffer;
+    auto &InstBuffer = code.properties[2];
+    InstBuffer.arrSize = 0;
+    InstBuffer.registerIndex = 0;
+    InstBuffer.spaceIndex = 0;
+    InstBuffer.type = ShaderVariableType::RWStructuredBuffer;
     return ComputeShader::CompileCompute(
         device,
         code,
@@ -51,32 +48,28 @@ static ComputeShader *LoadBCKernel(
     code.properties.resize(4);
     code.md5 = vstd::MD5(code.result);
     auto &globalBuffer = code.properties[0];
-    globalBuffer.first = "_Global"sv;
-    globalBuffer.second.arrSize = 0;
-    globalBuffer.second.registerIndex = 0;
-    globalBuffer.second.spaceIndex = 0;
-    globalBuffer.second.type = ShaderVariableType::ConstantBuffer;
+    globalBuffer.arrSize = 0;
+    globalBuffer.registerIndex = 0;
+    globalBuffer.spaceIndex = 0;
+    globalBuffer.type = ShaderVariableType::ConstantBuffer;
 
     auto &gInput = code.properties[1];
-    gInput.first = "g_Input"sv;
-    gInput.second.arrSize = 0;
-    gInput.second.registerIndex = 0;
-    gInput.second.spaceIndex = 0;
-    gInput.second.type = ShaderVariableType::SRVDescriptorHeap;
+    gInput.arrSize = 0;
+    gInput.registerIndex = 0;
+    gInput.spaceIndex = 0;
+    gInput.type = ShaderVariableType::SRVDescriptorHeap;
 
     auto &gInBuff = code.properties[2];
-    gInBuff.first = "g_InBuff"sv;
-    gInBuff.second.arrSize = 0;
-    gInBuff.second.registerIndex = 1;
-    gInBuff.second.spaceIndex = 0;
-    gInBuff.second.type = ShaderVariableType::StructuredBuffer;
+    gInBuff.arrSize = 0;
+    gInBuff.registerIndex = 1;
+    gInBuff.spaceIndex = 0;
+    gInBuff.type = ShaderVariableType::StructuredBuffer;
 
     auto &gOutBuff = code.properties[3];
-    gOutBuff.first = "g_OutBuff"sv;
-    gOutBuff.second.arrSize = 0;
-    gOutBuff.second.registerIndex = 0;
-    gOutBuff.second.spaceIndex = 0;
-    gOutBuff.second.type = ShaderVariableType::RWStructuredBuffer;
+    gOutBuff.arrSize = 0;
+    gOutBuff.registerIndex = 0;
+    gOutBuff.spaceIndex = 0;
+    gOutBuff.type = ShaderVariableType::RWStructuredBuffer;
     return ComputeShader::CompileCompute(
         device,
         code,

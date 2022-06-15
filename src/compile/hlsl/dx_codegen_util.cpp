@@ -1083,8 +1083,8 @@ StructuredBuffer<Args> _Global:register(t0);
 )"sv;
 }
 void CodegenUtility::GenerateBindless(
-    CodegenResult::Properties& properties,
-    vstd::string& str) {
+    CodegenResult::Properties &properties,
+    vstd::string &str) {
     for (auto &&i : opt->bindlessBufferTypes) {
         str << "StructuredBuffer<"sv;
         if (i.first->is_matrix()) {
@@ -1102,7 +1102,6 @@ void CodegenUtility::GenerateBindless(
         str << ");\n"sv;
 
         properties.emplace_back(
-            std::move(instName),
             Property{
                 ShaderVariableType::SRVDescriptorHeap,
                 static_cast<uint>(i.second + 3u),
@@ -1134,36 +1133,34 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
     CodegenResult::Properties properties;
     properties.reserve(kernel.arguments().size() + opt->bindlessBufferCount + 4);
     // Bindless Buffers;
-    GenerateBindless(properties, varData);
-    
     properties.emplace_back(
-        "_Global"sv,
+        Property{
+            ShaderVariableType::SampDescriptorHeap,
+            1u,
+            0u,
+            16u});
+
+    properties.emplace_back(
         Property{
             ShaderVariableType::StructuredBuffer,
             0,
             0,
             0});
     properties.emplace_back(
-        "_BindlessTex"sv,
         Property{
             ShaderVariableType::SRVDescriptorHeap,
             1,
             0,
             0});
     properties.emplace_back(
-        "_BindlessTex3D"sv,
         Property{
             ShaderVariableType::SRVDescriptorHeap,
             2,
             0,
             0});
-    properties.emplace_back(
-        "samplers"sv,
-        Property{
-            ShaderVariableType::SampDescriptorHeap,
-            1u,
-            0u,
-            16u});
+
+    GenerateBindless(properties, varData);
+
     enum class RegisterType : vbyte {
         CBV,
         UAV,
@@ -1180,7 +1177,6 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
             vstd::string varName;
             GetVariableName(i, varName);
             varData << varName;
-            return varName;
         };
         auto printInstBuffer = [&]<bool writable>() {
             if constexpr (writable)
@@ -1191,7 +1187,6 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
             GetVariableName(i, varName);
             varName << "Inst"sv;
             varData << varName;
-            return varName;
         };
         auto genArg = [&]<bool rtBuffer = false, bool writable = false>(RegisterType regisT, ShaderVariableType sT, char v) {
             auto &&r = registerCount[(vbyte)regisT];
@@ -1201,10 +1196,12 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
                 .registerIndex = r,
                 .arrSize = 0};
             if constexpr (rtBuffer) {
-                properties.emplace_back(printInstBuffer.operator()<writable>(), prop);
+                printInstBuffer.operator()<writable>();
+                properties.emplace_back(prop);
 
             } else {
-                properties.emplace_back(print(), prop);
+                print();
+                properties.emplace_back(prop);
             }
             varData << ":register("sv << v;
             vstd::to_string(r, varData);

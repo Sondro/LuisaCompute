@@ -41,7 +41,7 @@ public:
             dispatchId,
             vstd::span<const BindProperty>{resources.begin(), resources.size()});
     }
-    void DispatchRT(
+    /*void DispatchRT(
         RTShader const *rt,
         uint3 dispatchId,
         vstd::span<const BindProperty> resources);
@@ -53,7 +53,7 @@ public:
             rt,
             dispatchId,
             vstd::span<const BindProperty>{resources.begin(), resources.size()});
-    }
+    }*/
     void CopyBuffer(
         Buffer const *src,
         Buffer const *dst,

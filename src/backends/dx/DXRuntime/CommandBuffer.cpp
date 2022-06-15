@@ -30,21 +30,14 @@ CommandBuffer::CommandBuffer(
 void CommandBufferBuilder::SetResources(
     Shader const *s,
     vstd::span<const BindProperty> resources) {
-    for (auto &&r : resources) {
-        auto result = r.prop.visit_or(
-            false,
+    for (auto i : vstd::range(resources.size())) {
+        resources[i].visit(
             [&](auto &&b) {
-                return s->SetComputeResource(
-                    r.name,
+                s->SetComputeResource(
+                    i,
                     this,
                     b);
             });
-#ifdef _DEBUG
-        if (!result) {
-            VEngine_Log("Illegal resource setted"sv);
-            VSTL_ABORT();
-        }
-#endif
     }
 }
 void CommandBufferBuilder::DispatchCompute(
@@ -65,7 +58,7 @@ void CommandBufferBuilder::DispatchCompute(
     c->SetPipelineState(cs->Pso());
     c->Dispatch(dispId.x, dispId.y, dispId.z);
 }
-void CommandBufferBuilder::DispatchRT(
+/*void CommandBufferBuilder::DispatchRT(
     RTShader const *rt,
     uint3 dispatchId,
     vstd::span<const BindProperty> resources) {
@@ -77,7 +70,7 @@ void CommandBufferBuilder::DispatchRT(
         dispatchId.x,
         dispatchId.y,
         dispatchId.z);
-}
+}*/
 void CommandBufferBuilder::CopyBuffer(
     Buffer const *src,
     Buffer const *dst,

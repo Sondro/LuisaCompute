@@ -10,7 +10,6 @@ class TopAccel;
 class CommandBufferBuilder;
 class Shader : public vstd::IOperatorNewBase {
 public:
-
     enum class Tag : vbyte {
         ComputeShader,
         RayTracingShader
@@ -18,37 +17,31 @@ public:
     virtual Tag GetTag() const = 0;
 
 protected:
-    struct InsideProperty : public Property {
-        uint rootSigPos;
-        InsideProperty(Property const &p)
-            : Property(p) {}
-    };
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
-    vstd::HashMap<vstd::string, InsideProperty> properties;
-    vstd::optional<InsideProperty> GetProperty(vstd::string_view str) const;
+    vstd::vector<Property> properties;
     uint bindlessCount;
 
 public:
     uint BindlessCount() const { return bindlessCount; }
 
     Shader(
-        vstd::span<std::pair<vstd::string, Property> const> properties,
+        vstd::span<Property const> properties,
         ID3D12Device *device);
     Shader(
-        vstd::span<std::pair<vstd::string, Property> const> properties,
+        vstd::span<Property const> properties,
         ComPtr<ID3D12RootSignature> &&rootSig);
     ID3D12RootSignature *RootSig() const { return rootSig.Get(); }
 
-    bool SetComputeResource(
-        vstd::string_view propertyName,
+    void SetComputeResource(
+        uint propertyName,
         CommandBufferBuilder *cmdList,
         BufferView buffer) const;
-    bool SetComputeResource(
-        vstd::string_view propertyName,
+    void SetComputeResource(
+        uint propertyName,
         CommandBufferBuilder *cmdList,
         DescriptorHeapView view) const;
-    bool SetComputeResource(
-        vstd::string_view propertyName,
+    void SetComputeResource(
+        uint propertyName,
         CommandBufferBuilder *cmdList,
         TopAccel const *bAccel) const;
 

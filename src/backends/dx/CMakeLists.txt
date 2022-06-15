@@ -30,7 +30,7 @@ Resource/UploadBuffer.cpp
 Shader/BuiltinKernel.cpp
 Shader/ComputeShader.cpp
 Shader/PipelineLibrary.cpp
-Shader/RTShader.cpp
+#Shader/RTShader.cpp
 Shader/Shader.cpp
 Shader/ShaderCompiler.cpp
 Shader/ShaderSerializer.cpp
@@ -66,7 +66,7 @@ Resource/UploadBuffer.h
 Shader/BuiltinKernel.h
 Shader/ComputeShader.h
 Shader/PipelineLibrary.h
-Shader/RTShader.h
+#Shader/RTShader.h
 Shader/Shader.h
 Shader/ShaderCompiler.h
 Shader/ShaderSerializer.h
