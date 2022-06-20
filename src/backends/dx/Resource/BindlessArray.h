@@ -53,7 +53,7 @@ public:
     using Property = vstd::variant<
         BufferView,
         std::pair<TextureBase const *, Sampler>>;
-    void Bind(Property const &prop, uint index);
+    void Bind(size_t handle, Property const &prop, uint index);
     void UnBind(BindTag type, uint index);
     DefaultBuffer const *Buffer() const { return &buffer; }
     void PreProcessStates(

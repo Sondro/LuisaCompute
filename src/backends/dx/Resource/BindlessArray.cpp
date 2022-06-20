@@ -53,7 +53,7 @@ BindlessArray::MapIndex BindlessArray::AddIndex(size_t ptr) {
     return ite;
 }
 
-void BindlessArray::Bind(Property const &prop, uint index) {
+void BindlessArray::Bind(size_t handle, Property const &prop, uint index) {
     auto &bindGrp = binded[index].first;
     auto &indices = binded[index].second;
     auto dsp = vstd::create_disposer([&] {
@@ -79,7 +79,7 @@ void BindlessArray::Bind(Property const &prop, uint index) {
                 *desc,
                 newIdx);
             bindGrp.buffer = newIdx;
-            indices.buffer = AddIndex(reinterpret_cast<size_t>(v.buffer));
+            indices.buffer = AddIndex(handle);
         },
         [&](std::pair<TextureBase const *, Sampler> const &v) {
             bool isTex2D = (v.first->Dimension() == TextureDimension::Tex2D);
@@ -94,14 +94,14 @@ void BindlessArray::Bind(Property const &prop, uint index) {
                 texIdx);
             auto smpIdx = GlobalSamplers::GetIndex(v.second);
             if (isTex2D) {
-                indices.tex2D = AddIndex(reinterpret_cast<size_t>(v.first));
+                indices.tex2D = AddIndex(handle);
 
                 bindGrp.tex2D = texIdx;
                 bindGrp.tex2DX = v.first->Width();
                 bindGrp.tex2DY = v.first->Height();
                 bindGrp.samp2D = smpIdx;
             } else {
-                indices.tex3D = AddIndex(reinterpret_cast<size_t>(v.first));
+                indices.tex3D = AddIndex(handle);
                 bindGrp.tex3D = texIdx;
                 bindGrp.tex3DX = v.first->Width();
                 bindGrp.tex3DY = v.first->Height();

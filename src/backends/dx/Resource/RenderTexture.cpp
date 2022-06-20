@@ -72,7 +72,6 @@ GFXFormat TextureBase::ToGFXFormat(PixelFormat format) {
             return GFXFormat_BC5_UNorm;
         case PixelFormat::BC4UNorm:
             return GFXFormat_BC4_UNorm;
-
     }
 }
 
@@ -164,30 +163,31 @@ D3D12_SHADER_RESOURCE_VIEW_DESC RenderTexture::GetColorSrvDesc(uint mipOffset) c
         default:
             srvDesc.Format = format.Format;
     }
+    auto mipSize = std::max<int>(0, (int32)format.MipLevels - (int32)mipOffset);
     switch (dimension) {
         case TextureDimension::Cubemap:
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
             srvDesc.TextureCube.MostDetailedMip = mipOffset;
-            srvDesc.TextureCube.MipLevels = format.MipLevels;
+            srvDesc.TextureCube.MipLevels = mipSize;
             srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
             break;
         case TextureDimension::Tex2D:
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Texture2D.MostDetailedMip = mipOffset;
-            srvDesc.Texture2D.MipLevels = format.MipLevels;
+            srvDesc.Texture2D.MipLevels = mipSize;
             srvDesc.Texture2D.PlaneSlice = 0;
             srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
             break;
         case TextureDimension::Tex1D:
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
-            srvDesc.Texture1D.MipLevels = format.MipLevels;
+            srvDesc.Texture1D.MipLevels = mipSize;
             srvDesc.Texture1D.MostDetailedMip = mipOffset;
             srvDesc.Texture1D.ResourceMinLODClamp = 0.0f;
             break;
         case TextureDimension::Tex2DArray:
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
             srvDesc.Texture2DArray.MostDetailedMip = mipOffset;
-            srvDesc.Texture2DArray.MipLevels = format.MipLevels;
+            srvDesc.Texture2DArray.MipLevels = mipSize;
             srvDesc.Texture2DArray.PlaneSlice = 0;
             srvDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
             srvDesc.Texture2DArray.ArraySize = depth;
@@ -195,7 +195,7 @@ D3D12_SHADER_RESOURCE_VIEW_DESC RenderTexture::GetColorSrvDesc(uint mipOffset) c
             break;
         case TextureDimension::Tex3D:
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-            srvDesc.Texture3D.MipLevels = format.MipLevels;
+            srvDesc.Texture3D.MipLevels = mipSize;
             srvDesc.Texture3D.MostDetailedMip = mipOffset;
             srvDesc.Texture3D.ResourceMinLODClamp = 0.0f;
             break;
@@ -251,6 +251,7 @@ uint RenderTexture::GetGlobalSRVIndex(uint mipOffset) const {
 }
 uint RenderTexture::GetGlobalUAVIndex(uint mipLevel) const {
     if (!allowUav) return std::numeric_limits<uint>::max();
+    mipLevel = std::min<uint>(mipLevel, mip - 1);
     std::lock_guard lck(allocMtx);
     uavIdcs.New();
     auto ite = uavIdcs->Emplace(

@@ -85,12 +85,12 @@ void LCDevice::destroy_bindless_array(uint64_t handle) noexcept {
 void LCDevice::emplace_buffer_in_bindless_array(uint64_t array, size_t index, uint64_t handle, size_t offset_bytes) noexcept {
     auto buffer = reinterpret_cast<Buffer *>(handle);
     reinterpret_cast<BindlessArray *>(array)
-        ->Bind(BufferView(buffer, offset_bytes), index);
+        ->Bind(handle, BufferView(buffer, offset_bytes), index);
 }
 void LCDevice::emplace_tex2d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept {
     auto tex = reinterpret_cast<RenderTexture *>(handle);
     reinterpret_cast<BindlessArray *>(array)
-        ->Bind(std::pair<TextureBase const *, Sampler>(tex, sampler), index);
+        ->Bind(handle, std::pair<TextureBase const *, Sampler>(tex, sampler), index);
 }
 void LCDevice::emplace_tex3d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept {
     emplace_tex2d_in_bindless_array(array, index, handle, sampler);
