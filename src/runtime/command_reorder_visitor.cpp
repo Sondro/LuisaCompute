@@ -312,7 +312,7 @@ void CommandReorderVisitor::visit(const BufferCopyCommand *command) noexcept {
 }
 void CommandReorderVisitor::visit(const BufferToTextureCopyCommand *command) noexcept {
     auto sz = command->size();
-    auto binSize = pixel_storage_size(command->storage()) * sz.x * sz.y * sz.z;
+    auto binSize = pixel_storage_size(command->storage(), sz.x, sz.y, sz.z);
     AddCommand(command, SetRW(command->buffer(), CopyRange(command->buffer_offset(), binSize), ResourceType::Buffer, command->texture(), CopyRange(command->level()), ResourceType::Texture));
 }
 // Texture : resource
@@ -328,7 +328,7 @@ void CommandReorderVisitor::visit(const TextureCopyCommand *command) noexcept {
 }
 void CommandReorderVisitor::visit(const TextureToBufferCopyCommand *command) noexcept {
     auto sz = command->size();
-    auto binSize = pixel_storage_size(command->storage()) * sz.x * sz.y * sz.z;
+    auto binSize = pixel_storage_size(command->storage(), sz.x, sz.y, sz.z);
     AddCommand(command, SetRW(command->texture(), CopyRange(command->level()), ResourceType::Texture, command->buffer(), CopyRange(command->buffer_offset(), binSize), ResourceType::Buffer));
 }
 // Shader : function, read/write multi resources
@@ -435,7 +435,7 @@ void CommandReorderVisitor::clear() noexcept {
     maxAccelReadLevel = -1;
     maxAccelWriteLevel = -1;
     maxMeshLevel = -1;
-    luisa::span<luisa::vector<Command const *>> sp(commandLists.data(), layerCount);
+    luisa::span<decltype(commandLists)::value_type> sp(commandLists.data(), layerCount);
     for (auto &&i : sp) {
         i.clear();
     }

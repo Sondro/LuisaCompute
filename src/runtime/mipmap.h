@@ -53,7 +53,7 @@ public:
     }
 
     [[nodiscard]] constexpr auto size_bytes() const noexcept {
-        return _size.x * _size.y * _size.z * pixel_storage_size(_storage);
+        return pixel_storage_size(_storage, _size.x, _size.y, _size.z);
     }
 
     [[nodiscard]] auto copy_from(const void *data) const noexcept {

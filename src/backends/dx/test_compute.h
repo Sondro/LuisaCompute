@@ -135,10 +135,10 @@ _Result[inputId] = float3(uv, 1);
 		queue.Execute(std::move(alloc)));
 	vstd::vector<vbyte> byteResult;
 	byteResult.push_back_func(
+        floatResult.size(),
 		[&](size_t i) {
 			return (vbyte)clamp(floatResult[i] * 255, 0, 255.99);
-		},
-		floatResult.size());
+		});
 
 	stbi_write_jpg("hdr_result.jpg", 1024, 1024, 3, reinterpret_cast<float*>(byteResult.data()), 100);
 }

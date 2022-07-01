@@ -19,6 +19,16 @@ template<typename T>
 struct vector_stack_obj<T, 0> {
     T *arr;
 };
+template<typename F, typename... Funcs>
+constexpr bool AllFunction() {
+    if constexpr (!(std::is_invocable_v<F> || std::is_invocable_v<F, size_t>)) {
+        return false;
+    } else if constexpr (sizeof...(Funcs) != 0) {
+        return AllFunction<Funcs...>();
+    } else {
+        return true;
+    }
+}
 }// namespace detail
 template<typename T, VEngine_AllocType allocType = VEngine_AllocType::VEngine, size_t stackCount = 0>
     requires(!(std::is_const_v<T> || std::is_reference_v<T>))
@@ -234,20 +244,21 @@ public:
     void push_back_all(span<T const> sp) noexcept {
         push_back_all(sp.data(), sp.size());
     }
-    template<typename Func>
-    void push_back_func(Func &&f, size_t count) {
+    template<typename... Func>
+        requires(detail::AllFunction<Func...>())
+    void push_back_func(size_t count, Func &&...f) {
         ResizeRange(count);
         auto endPtr = vec.arr + mSize;
         size_t index = 0;
-        for (auto &&i : ptr_range(endPtr, endPtr + count)) {
-            T *ptr = &i;
-            if constexpr (std::is_invocable_v<std::remove_cvref_t<Func>, size_t>) {
-                new (ptr) T(std::move(f(index)));
-            } else if constexpr (std::is_invocable_v<std::remove_cvref_t<Func>>) {
-                new (ptr) T(std::move(f()));
+        auto CallFunc = [&]<typename FT>(FT &f) -> decltype(auto) {
+            if constexpr (std::is_invocable_v<FT, size_t>) {
+                return f(index);
             } else {
-                static_assert(AlwaysFalse<Func>, "Invalid Function Type!");
+                return f();
             }
+        };
+        for (auto &&i : ptr_range(endPtr, endPtr + count)) {
+            new (&i) T(CallFunc(f)...);
             ++index;
         }
         mSize += count;

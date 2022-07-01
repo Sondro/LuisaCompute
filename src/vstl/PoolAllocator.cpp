@@ -5,10 +5,9 @@ PoolAllocator::AllocateHandle PoolAllocator::Allocate() {
     if (allocatedData.empty()) {
         auto ptr = data.emplace_back(visitor->Allocate(stride * elementCount));
         allocatedData.push_back_func(
-            [&](size_t i) -> std::pair<void *, size_t> {
+            elementCount, [&](size_t i) -> std::pair<void *, size_t> {
                 return {ptr, i};
-            },
-            elementCount);
+            });
     }
     auto result = allocatedData.erase_last();
     return {

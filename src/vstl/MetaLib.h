@@ -64,7 +64,7 @@ public:
     using SelfType = StackObject<T, false>;
     template<typename... Args>
     inline SelfType &New(Args &&...args) &noexcept {
-        new (storage) T{std::forward<Args>(args)...};
+        new (storage) T(std::forward<Args>(args)...);
         return *this;
     }
     template<typename... Args>

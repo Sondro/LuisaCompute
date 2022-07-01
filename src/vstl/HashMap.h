@@ -318,6 +318,8 @@ public:
     using MoveNodePair = typename Map::Element;
     using Allocator = VAllocHandle<allocType>;
     struct Iterator {
+        friend class HashMap;
+
     private:
         LinkNode **ii;
 
@@ -340,6 +342,8 @@ public:
         }
     };
     struct MoveIterator {
+        friend class HashMap;
+
     private:
         LinkNode **ii;
 
@@ -387,6 +391,12 @@ public:
         inline K const &Key() const noexcept;
         inline ValueType Value() const noexcept;
     };
+    Index GetIndex(Iterator const &ite) {
+        return Index(this, *ite.ii);
+    }
+    Index GetIndex(MoveIterator const &ite) {
+        return Index(this, *ite.ii);
+    }
 
 private:
     LinkNode **nodeArray;
@@ -502,7 +512,7 @@ public:
     HashMap() noexcept : HashMap(16) {}
     ///////////////////////
     template<typename Key, typename... ARGS>
-        requires(std::is_constructible_v<K, Key&&> && detail::MapConstructible<V, ARGS &&...>::value)
+        requires(std::is_constructible_v<K, Key &&> &&detail::MapConstructible<V, ARGS &&...>::value)
     Index ForceEmplace(Key &&key, ARGS &&...args) {
         TryResize();
 
@@ -520,7 +530,7 @@ public:
     }
 
     template<typename Key, typename... ARGS>
-        requires(std::is_constructible_v<K, Key &&> && detail::MapConstructible<V, ARGS &&...>::value)
+        requires(std::is_constructible_v<K, Key &&> &&detail::MapConstructible<V, ARGS &&...>::value)
     Index Emplace(Key &&key, ARGS &&...args) {
         TryResize();
 

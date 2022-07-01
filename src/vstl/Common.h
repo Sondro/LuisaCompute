@@ -16,6 +16,7 @@
 #include <vstl/vstring.h>
 #include <core/mathematics.h>
 #include <string_view>
+#include <vstl/array.h>
 namespace vstd {
 using string_view = std::basic_string_view<char>;
 using wstring_view = std::basic_string_view<wchar_t>;

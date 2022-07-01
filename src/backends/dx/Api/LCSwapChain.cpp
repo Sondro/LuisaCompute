@@ -14,8 +14,8 @@ LCSwapChain::LCSwapChain(
     uint backBufferCount) {
     auto frameCount = backBufferCount + 1;
     m_renderTargets.push_back_func(
-        [&] { return device; },
-        frameCount);
+        frameCount,
+        [&] { return device; });
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.BufferCount = frameCount;
     swapChainDesc.Width = width;

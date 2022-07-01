@@ -32,4 +32,14 @@ public:
         uint64 align);
 	void Clear();
 };
+class LC_VSTL_API DefaultMallocVisitor : public StackAllocatorVisitor {
+public:
+	uint64 Allocate(uint64 size) override;
+	void DeAllocate(uint64 handle) override;
+};
+class LC_VSTL_API VEngineMallocVisitor : public StackAllocatorVisitor {
+public:
+	uint64 Allocate(uint64 size) override;
+	void DeAllocate(uint64 handle) override;
+};
 }// namespace vstd

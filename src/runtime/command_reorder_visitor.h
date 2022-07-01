@@ -74,7 +74,7 @@ private:
     int64_t maxMeshLevel = -1;
     int64_t maxAccelReadLevel = -1;
     int64_t maxAccelWriteLevel = -1;
-    luisa::vector<luisa::vector<Command const*>> commandLists;
+    luisa::vector<vstd::vector<Command const*, VEngine_AllocType::VEngine, 4>> commandLists;
     size_t layerCount = 0;
     bool useBindlessInPass;
     bool useAccelInPass;

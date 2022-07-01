@@ -348,7 +348,7 @@ public:
         bindProps.emplace_back(DescriptorHeapView(device->samplerHeap.get()));
         bindProps.emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
         DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
-        bindProps.push_back_func([&] { return globalHeapView; }, shader->BindlessCount() + 2);
+        bindProps.push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
         cmd->decode(Visitor{this, cmd->kernel(), cmd->kernel().arguments().data()});
 
         auto cs = static_cast<ComputeShader const *>(shader);

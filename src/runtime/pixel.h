@@ -180,6 +180,19 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::BC7UNorm) + 1u;
     }
     return static_cast<size_t>(0u);
 }
+[[nodiscard]] constexpr auto pixel_storage_size(PixelStorage storage, uint width, uint height, uint volume) noexcept {
+    auto pixel_size = pixel_storage_size(storage);
+    switch (storage) {
+        case PixelStorage::BC4:
+        case PixelStorage::BC5:
+        case PixelStorage::BC6:
+        case PixelStorage::BC7:
+            width = (width + 3) / 4;
+            height = (height + 3) / 4;
+            break;
+    }
+    return pixel_size * width * height * volume;
+}
 
 [[nodiscard]] constexpr auto pixel_storage_channel_count(PixelStorage storage) noexcept {
     switch (storage) {

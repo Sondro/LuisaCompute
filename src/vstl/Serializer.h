@@ -100,10 +100,10 @@ struct SerDe<vector<T, alloc, tri>, reverseBytes> {
         Value sz;
         auto s = SerDe<uint, reverseBytes>::Get(sp);
         sz.push_back_func(
+            s,
             [&]() {
                 return SerDe<T, reverseBytes>::Get(sp);
-            },
-            s);
+            });
         return sz;
     }
     static void Set(Value const &data, vector<T> &arr) {
