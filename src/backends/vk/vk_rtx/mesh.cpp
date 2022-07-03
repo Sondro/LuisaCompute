@@ -1,9 +1,11 @@
 #include "mesh.h"
+#include "accel.h"
 #include <gpu_collection/buffer.h>
 #include <vk_runtime/res_state_tracker.h>
 #include "query.h"
 #include <vk_runtime/command_buffer.h>
 #include <vk_runtime/frame_resource.h>
+#include "mesh_handle.h"
 namespace toolhub::vk {
 Mesh::Mesh(Device const* device,
 		   bool allowUpdate, bool allowCompact, bool fastTrace)
@@ -82,7 +84,7 @@ BuildInfo Mesh::Preprocess(
 	bool canUpdate = (lastTriSize == triangleBufferSize) && (lastVertSize == vertexBufferSize);
 	lastTriSize = triangleBufferSize;
 	lastVertSize = vertexBufferSize;
-	isUpdate = isUpdate && canUpdate;
+	isUpdate = isUpdate && canUpdate && allowUpdate;
 	stateTracker.MarkBufferRead(
 		BufferView(vertexBuffer, vertexBufferOffset, vertexBufferSize),
 		BufferReadState::BuildAccel);
@@ -134,6 +136,7 @@ BuildInfo Mesh::Preprocess(
 			&createInfo,
 			Device::Allocator(),
 			&accel));
+		UpdateAccel();
 	}
 	stateTracker.MarkBufferWrite(
 		accelBuffer.get(),
@@ -151,7 +154,7 @@ void Mesh::Build(
 	if (buildBuffer.isUpdate) {
 		buildInfo.srcAccelerationStructure = accel;
 	}
-	buildInfo.scratchData.deviceAddress = buildBuffer.buffer->GetAddress(buildBuffer.scratchOffset);
+	buildInfo.scratchData.deviceAddress = buildBuffer.buffer ? buildBuffer.buffer->GetAddress(buildBuffer.scratchOffset) : 0;
 
 	buildInfo.dstAccelerationStructure = accel;
 	VkAccelerationStructureBuildRangeInfoKHR buildRange;
@@ -167,6 +170,9 @@ void Mesh::Build(
 		&ptr);
 }
 Mesh::~Mesh() {
+	for(auto&& i : handles){
+		i->accel->accelInsts[i->accelIndex].second = nullptr;
+	}
 	if (accel) {
 		device->vkDestroyAccelerationStructureKHR(device->device, accel, Device::Allocator());
 	}
@@ -235,5 +241,34 @@ void Mesh::Compact(
 	});
 	accel = newAccel;
 	accelBuffer = vstd::create_unique(newBuffer);
+	UpdateAccel();
+}
+void Mesh::UpdateAccel() {
+	std::lock_guard lck(handleMtx);
+	for (auto&& i : handles) {
+		i->accel->AddUpdateMesh(i->accelIndex);
+	}
+}
+
+MeshHandle* Mesh::AddAccelRef(Accel* accel, uint index) {
+	auto meshHandle = MeshHandle::AllocateHandle();
+	meshHandle->mesh = this;
+	meshHandle->accel = accel;
+	meshHandle->accelIndex = index;
+	std::lock_guard lck(handleMtx);
+	meshHandle->meshIndex = handles.size();
+	handles.emplace_back(meshHandle);
+	return meshHandle;
+}
+void Mesh::RemoveAccelRef(MeshHandle* handle) {
+	assert(handle->mesh == this);
+	{
+		std::lock_guard lck(handleMtx);
+		auto last = handles.erase_last();
+		if (last != handle) {
+			last->meshIndex = handle->meshIndex;
+			handles[handle->meshIndex] = last;
+		}
+	}
 }
 }// namespace toolhub::vk

@@ -1,5 +1,6 @@
 #include "accel.h"
 #include "mesh.h"
+#include "mesh_handle.h"
 #include <gpu_collection/buffer.h>
 #include <vk_runtime/res_state_tracker.h>
 #include <vk_runtime/command_buffer.h>
@@ -12,19 +13,55 @@ Accel::Accel(Device const* device,
 	  allowCompact(allowCompact),
 	  fastTrace(fastTrace) {}
 Accel::~Accel() {
+	for (auto&& i : accelInsts) {
+		auto mesh = i.second;
+		if (mesh)
+			mesh->mesh->RemoveAccelRef(mesh);
+	}
 	if (accel) {
 		device->vkDestroyAccelerationStructureKHR(device->device, accel, Device::Allocator());
 	}
 }
+void Accel::AddUpdateMesh(uint index) {
+	requireUpdateMesh.emplace(index);
+}
+void Accel::UpdateMesh(FrameResource* frameRes) {
+	if (requireUpdateMesh.empty()) return;
+	auto bfView = frameRes->AllocateUpload(sizeof(uint64) * requireUpdateMesh.size());
+	auto ite = requireUpdateMesh.begin();
+	auto end = requireUpdateMesh.end();
+	frameRes->AddCopyCmd(
+		bfView.buffer,
+		instanceBuffer.get(),
+		[&] -> vstd::optional<VkBufferCopy> {
+			if (ite == end) return {};
+			auto index = *ite;
+			auto newAddressValue = GetAccelAddress(device, accelInsts[index].second->mesh->GetAccel());
+			accelInsts[index].first.accelerationStructureReference = newAddressValue;
+			vstd::optional<VkBufferCopy> v;
+			v.New();
+			bfView.buffer->CopyValueFrom(newAddressValue, bfView.offset);
+			v->srcOffset = bfView.offset;
+			bfView.offset += sizeof(uint64);
+			v->dstOffset = index * ACCEL_INST_SIZE + offsetof(VkAccelerationStructureInstanceKHR, accelerationStructureReference);
+			v->size = sizeof(uint64);
+			++ite;
+			return v;
+		});
+}
+
 VkBufferCopy Accel::SetInstance(
 	BuildInfo& info,
 	size_t index,
-	Mesh const* mesh,
+	Mesh* mesh,
 	float const* matPtr,
 	Buffer const* uploadBuffer,
 	size_t& instByteOffset,
 	bool updateTransform, bool updateMesh, Visibility visible) {
-	VkAccelerationStructureInstanceKHR& inst = accelInsts[index];
+	requireUpdateMesh.erase(index);
+	auto& instPair = accelInsts[index];
+	auto& inst = instPair.first;
+	auto& originMesh = instPair.second;
 	if (updateTransform) {
 		memcpy(&inst.transform, matPtr, sizeof(inst.transform));
 	}
@@ -39,9 +76,17 @@ VkBufferCopy Accel::SetInstance(
 	inst.instanceShaderBindingTableRecordOffset = 0;
 	inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
 	if (updateMesh) {
-		inst.accelerationStructureReference = GetAccelAddress(device, mesh->Accel());
+		if (originMesh) {
+			if (originMesh->mesh != mesh) {
+				originMesh->mesh->RemoveAccelRef(originMesh);
+				originMesh = mesh->AddAccelRef(this, index);
+			}
+		} else {
+			originMesh = mesh->AddAccelRef(this, index);	
+		}
 		info.isUpdate = false;
 	}
+	inst.accelerationStructureReference = GetAccelAddress(device, mesh->GetAccel());
 	uploadBuffer->CopyValueFrom(
 		inst,
 		instByteOffset);
@@ -63,7 +108,7 @@ BuildInfo Accel::Preprocess(
 	FrameResource* frameRes) {
 	if (buildSize != accelInsts.size())
 		accelInsts.resize(buildSize);
-	isUpdate = isUpdate && (lastInstCount == buildSize);
+	isUpdate = isUpdate && (lastInstCount == buildSize) && allowUpdate;
 	lastInstCount = buildSize;
 	if (instanceBuffer) {
 		size_t instanceCount = instanceBuffer->ByteSize() / ACCEL_INST_SIZE;
@@ -187,7 +232,7 @@ void Accel::Build(
 	if (buildBuffer.isUpdate) {
 		buildInfo.srcAccelerationStructure = accel;
 	}
-	buildInfo.scratchData.deviceAddress = buildBuffer.buffer->GetAddress(buildBuffer.scratchOffset);
+	buildInfo.scratchData.deviceAddress = buildBuffer.buffer ? buildBuffer.buffer->GetAddress(buildBuffer.scratchOffset) : 0;
 	buildInfo.dstAccelerationStructure = accel;
 	VkAccelerationStructureBuildRangeInfoKHR buildRange;
 	buildRange.primitiveCount = buildSize;

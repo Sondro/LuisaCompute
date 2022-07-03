@@ -7,6 +7,7 @@
 #include <vk_rtx/accel.h>
 #include <runtime/command_reorder_visitor.h>
 #include <vk_rtx/query.h>
+#include "uniform_pack.h"
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::vk {
@@ -28,6 +29,7 @@ public:
 	vstd::vector<VkAccelerationStructureKHR> compactAccel;
 	CommandReorderVisitor reorder;
 	Query query;
+	UniformPack uniformPack;
 
 	void DispatchCmd(CommandList&& cmdList);
 	LCStream(Device const* device);

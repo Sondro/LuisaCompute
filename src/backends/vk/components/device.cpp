@@ -13,7 +13,7 @@ static auto validationLayers = {"VK_LAYER_KHRONOS_validation"};
 }
 VkInstance Device::InitVkInstance() {
 	VkInstance instance;
-#ifdef DEBUG
+#ifndef NDEBUG
 	auto Check = [&] {
 		uint32_t layerCount;
 		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -60,15 +60,14 @@ VkInstance Device::InitVkInstance() {
 		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
 		requiredExts = vstd::span<const char*>{glfwExtensions, glfwExtensionCount};*/
-#ifdef DEBUG
+#ifndef NDEBUG
 		requiredExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
 	}
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredExts.size());
 	createInfo.ppEnabledExtensionNames = requiredExts.data();
-
 	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-#ifdef DEBUG
+#ifndef NDEBUG
 	createInfo.enabledLayerCount = static_cast<uint32_t>(detail::validationLayers.size());
 	createInfo.ppEnabledLayerNames = detail::validationLayers.begin();
 	auto populateDebugMessengerCreateInfo = [](VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
@@ -259,11 +258,11 @@ void Device::InitBindless() {
 	bindlessBufferSet = pool->Allocate(bindlessBufferSetLayout, &bindlessSize);
 	bindlessIdx.push_back_func(DescriptorPool::MAX_BINDLESS_SIZE, [](size_t i) { return i; });
 }
-uint16 Device::AllocateBindlessIdx() const {
+uint Device::AllocateBindlessIdx() const {
 	std::lock_guard lck(allocIdxMtx);
 	return bindlessIdx.erase_last();
 }
-void Device::DeAllocateBindlessIdx(uint16 index) const {
+void Device::DeAllocateBindlessIdx(uint index) const {
 	std::lock_guard lck(allocIdxMtx);
 	bindlessIdx.emplace_back(index);
 }

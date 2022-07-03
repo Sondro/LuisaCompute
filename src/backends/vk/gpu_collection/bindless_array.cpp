@@ -108,7 +108,7 @@ void BindlessArray::Preprocess(
 		opt->size = sizeof(Instance);
 		if (ref.refCount == 0) {
 			if (inst.first.index != std::numeric_limits<uint>::max()) {
-				device->DeAllocateBindlessIdx(inst.first.index);
+				res->AddDisposeBindlessIdx(inst.first.index);
 				inst.first.index = std::numeric_limits<uint>::max();
 			}
 		} else {

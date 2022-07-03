@@ -20,17 +20,18 @@ void RenderPipeline::CallbackThreadMain() {
 		{
 			std::unique_lock lck(callbackMtx);
 			if (!enabled) return;
-			callbackCv.wait(lck);
+			while (callbackPosition == mainThreadPosition) {
+				if (!enabled) return;
+				callbackCv.wait(lck);
+			}
 		}
-		size_t localCount = 0;
 		while (auto v = executingList.Pop()) {
-			localCount++;
 			v->multi_visit(
 				[&](size_t v) {
 					auto&& frameRes = this->frameRes[v];
 					auto&& locker = frameResLock[v];
 					frameRes.Wait();
-					frameRes.Reset();
+					frameRes.ClearScratchBuffer();
 					{
 						locker.mtx.lock();
 						locker.executing = false;
@@ -44,12 +45,12 @@ void RenderPipeline::CallbackThreadMain() {
 				[&](std::pair<Event*, size_t>& v) {
 					v.first->EndOfFrame(v.second);
 				});
+			{
+				std::lock_guard lck(syncMtx);
+				callbackPosition += 1;
+			}
+			syncCv.notify_all();
 		}
-		{
-			std::lock_guard lck(syncMtx);
-			callbackPosition += localCount;
-		}
-		syncCv.notify_all();
 	}
 }
 FrameResource* RenderPipeline::BeginPrepareFrame() {
@@ -93,7 +94,6 @@ void RenderPipeline::ForceSyncInRendering() {
 	lastExecuteFrame = nullptr;
 	Complete();
 	frame.Wait();
-	frame.Reset();
 	frame.GetCmdBuffer();
 }
 void RenderPipeline::AddEvtSync(Event* evt) {

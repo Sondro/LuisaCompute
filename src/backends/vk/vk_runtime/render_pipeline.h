@@ -16,8 +16,8 @@ class RenderPipeline : public Resource {
 	std::mutex syncMtx;
 	std::condition_variable callbackCv;
 	std::condition_variable syncCv;
-	uint64 callbackPosition = 0;
-	uint64 mainThreadPosition = 0;
+    std::atomic_uint64_t callbackPosition = 0;
+    std::atomic_uint64_t mainThreadPosition = 0;
 	void CallbackThreadMain();
 
 	struct FrameResLck {

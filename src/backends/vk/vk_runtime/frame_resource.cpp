@@ -153,8 +153,8 @@ void FrameResource::ExecuteCopy() {
 	imgBufCopyCmds.Clear();
 }
 void FrameResource::ExecuteScratchAlloc(ResStateTracker& stateTracker) {
-	if (scratchAccumulateSize == 0) return;
-	bfViewBegin = scratchBufferViews.begin();
+    bfViewBegin = scratchBufferViews.begin();
+    if (scratchAccumulateSize == 0) return;
 	for (auto&& i : scratchBuffers) {
 		if (i->ByteSize() >= scratchAccumulateSize) {
 			curScratchBuffer = i.get();
@@ -176,24 +176,28 @@ SKIP_NEW_SCRATCH_BUFFER:
 }
 
 void FrameResource::Wait() {
+	for (auto&& i : disposeBindlessIdx) {
+		device->DeAllocateBindlessIdx(i);
+	}
+	disposeBindlessIdx.clear();
 	ThrowIfFailed(vkWaitForFences(
 		device->device,
 		1,
 		&syncFence,
 		true,
 		std::numeric_limits<uint64>::max()));
+    vkResetFences(device->device, 1, &syncFence);
+    for (auto &&i : disposeFuncs) {
+        i();
+    }
+    disposeFuncs.clear();
+    uploadAlloc.Clear();
+    defaultAlloc.Clear();
+    readBackAlloc.Clear();
+    descManager.EndFrame();
 }
-void FrameResource::Reset() {
-	vkResetFences(device->device, 1, &syncFence);
-	for (auto&& i : disposeFuncs) {
-		i();
-	}
-	disposeFuncs.clear();
-	uploadAlloc.Clear();
-	defaultAlloc.Clear();
-	readBackAlloc.Clear();
-	descManager.EndFrame();
-	scratchBuffers.clear();
+void FrameResource::ClearScratchBuffer() {
+    scratchBuffers.clear();
 }
 
 namespace detail {
@@ -378,6 +382,8 @@ void FrameResource::AddScratchSize(size_t size) {
 	scratchBufferViews.emplace_back(size);
 }
 BufferView FrameResource::GetScratchBufferView() {
+    if (*bfViewBegin == 0)
+        return BufferView();
 	BufferView bf(
 		curScratchBuffer,
 		scratchAccumulateSize,

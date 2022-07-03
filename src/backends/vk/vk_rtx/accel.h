@@ -8,8 +8,10 @@ class ResStateTracker;
 class Buffer;
 class CommandBuffer;
 class FrameResource;
+class MeshHandle;
 class Accel : public GPUCollection {
-	vstd::vector<VkAccelerationStructureInstanceKHR> accelInsts;
+    friend class Mesh;
+	vstd::vector<std::pair<VkAccelerationStructureInstanceKHR, MeshHandle*>> accelInsts;
 	vstd::unique_ptr<Buffer> instanceBuffer;//VkAccelerationStructureInstanceKHR
 	vstd::unique_ptr<Buffer> accelBuffer;
 	VkAccelerationStructureKHR accel = nullptr;
@@ -17,6 +19,7 @@ class Accel : public GPUCollection {
 	bool allowUpdate;
 	bool allowCompact;
 	bool fastTrace;
+	luisa::unordered_set<uint> requireUpdateMesh;
 
 public:
 	enum class Visibility : vbyte {
@@ -25,7 +28,7 @@ public:
 		Unchange
 	};
 	static constexpr auto ACCEL_INST_SIZE = sizeof(VkAccelerationStructureInstanceKHR);
-
+	void AddUpdateMesh(uint index);
 	VkAccelerationStructureKHR AccelNativeHandle() const { return accel; }
 	Buffer* AccelBuffer() const { return accelBuffer.get(); }
 	Buffer* InstanceBuffer() const { return instanceBuffer.get(); }
@@ -35,11 +38,12 @@ public:
 	VkBufferCopy SetInstance(
 		BuildInfo& info,
 		size_t index,
-		Mesh const* mesh,
+		Mesh* mesh,
 		float const* matPtr,
 		Buffer const* uploadBuffer,
 		size_t& instByteOffset,
 		bool updateTransform, bool updateMesh, Visibility visible);
+	void UpdateMesh(FrameResource* frameRes);
 	BuildInfo Preprocess(
 		CommandBuffer* cb,
 		ResStateTracker& stateTracker,

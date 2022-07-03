@@ -8,9 +8,13 @@ class Buffer;
 class Query;
 class CommandBuffer;
 class FrameResource;
+class Accel;
+class MeshHandle;
 class Mesh : public GPUCollection {
 	VkAccelerationStructureKHR accel = nullptr;
 	vstd::unique_ptr<Buffer> accelBuffer;
+	vstd::vector<MeshHandle*, VEngine_AllocType::VEngine, 2> handles;
+	vstd::spin_mutex handleMtx;
 	size_t lastVertSize = 0;
 	size_t lastTriSize = 0;
 	bool allowUpdate;
@@ -29,12 +33,16 @@ class Mesh : public GPUCollection {
 	size_t TryInit(
 		VkAccelerationStructureBuildGeometryInfoKHR& geometryData,
 		size_t triangleBufferSize);
+	void UpdateAccel();
 
 public:
+	MeshHandle* AddAccelRef(Accel* accel, uint index);
+	void RemoveAccelRef(MeshHandle* handle);
+
 	bool AllowUpdate() const { return allowUpdate; }
 	bool AllowCompact() const { return allowCompact; }
 	bool FastTrace() const { return fastTrace; }
-	VkAccelerationStructureKHR Accel() const { return accel; }
+	VkAccelerationStructureKHR GetAccel() const { return accel; }
 	Tag GetTag() const override {
 		return Tag::Mesh;
 	}

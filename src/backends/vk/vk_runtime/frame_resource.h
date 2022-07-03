@@ -43,6 +43,7 @@ class FrameResource : public Resource {
 	Map<Texture, Texture, VkImageCopy> imgCopyCmds;
 	Map<Buffer, Texture, VkBufferImageCopy> bufImgCopyCmds;
 	Map<Texture, Buffer, VkBufferImageCopy> imgBufCopyCmds;
+	vstd::vector<uint> disposeBindlessIdx;
 	// Sync
 	vstd::vector<vstd::move_only_func<void()>> disposeFuncs;
 	vstd::vector<vstd::unique_ptr<Buffer>> scratchBuffers;
@@ -59,12 +60,12 @@ public:
 	FrameResource(FrameResource const&) = delete;
 	FrameResource(FrameResource&&) = delete;
 	CommandBuffer* GetCmdBuffer();
+	void AddDisposeBindlessIdx(uint idx) { disposeBindlessIdx.emplace_back(idx); }
 	void Execute(FrameResource* lastFrame);
-	void InsertSemaphore(Event const* evt);
 	void ExecuteCopy();
 	void ExecuteScratchAlloc(ResStateTracker& stateTracker);
-	void Wait();
-	void Reset();
+    void Wait();
+    void ClearScratchBuffer();
 	void AddDisposeEvent(vstd::move_only_func<void()>&& disposeFunc);
 	void AddCopyCmd(
 		Buffer const* src,

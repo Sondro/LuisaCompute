@@ -103,6 +103,7 @@ LCDevice::LCDevice(Context const& ctx)
 	device = Device::CreateDevice(detail::vkInstance, nullptr, 0);
 }
 LCDevice::~LCDevice() {
+    delete device;
 	{
 		std::lock_guard lck(detail::vkInstMtx);
 		if (--detail::vkDeviceCount == 0) {

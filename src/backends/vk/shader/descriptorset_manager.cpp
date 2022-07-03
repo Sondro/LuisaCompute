@@ -70,8 +70,8 @@ VkDescriptorSet DescriptorSetManager::Allocate(
 	for (auto i : vstd::range(descriptors.size())) {
 		auto&& desc = descriptors[i];
 		auto&& writeDst = computeWriteRes[i];
-		desc.res.multi_visit(
-			[&](Texture const* tex) {
+		desc.multi_visit(
+			[&](TexView const& texView) {
 				auto&& descType = descTypes[i];
 #ifdef DEBUG
 				if (descType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
@@ -83,14 +83,13 @@ VkDescriptorSet DescriptorSetManager::Allocate(
 #endif
 				auto bf = stackAlloc.Allocate(sizeof(VkDescriptorImageInfo));
 				auto ptr = reinterpret_cast<VkDescriptorImageInfo*>(bf.handle + bf.offset);
-				*ptr = tex->GetDescriptor(
-					desc.offset,
-					desc.size);
+				*ptr = texView.tex->GetDescriptor(
+					texView.mipOffset,
+					texView.mipCount);
 				writeDst = vks::initializers::writeDescriptorSet(
 					result, descType, i, ptr);
 			},
-			[&](Buffer const* buffer) {
-				auto bfView = BufferView(buffer, desc.offset, desc.size);
+			[&](BufferView const& bfView) {
 				auto&& descType = descTypes[i];
 #ifdef DEBUG
 				if (descType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
@@ -101,9 +100,9 @@ VkDescriptorSet DescriptorSetManager::Allocate(
 #endif
 				auto bf = stackAlloc.Allocate(sizeof(VkDescriptorBufferInfo));
 				auto ptr = reinterpret_cast<VkDescriptorBufferInfo*>(bf.handle + bf.offset);
-				*ptr = buffer->GetDescriptor(
-					desc.offset,
-					desc.size);
+				*ptr = bfView.buffer->GetDescriptor(
+					bfView.offset,
+					bfView.size);
 				writeDst = vks::initializers::writeDescriptorSet(
 					result, descType, i, ptr);
 			},

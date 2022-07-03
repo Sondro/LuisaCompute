@@ -27,15 +27,15 @@ class Device : public vstd::IOperatorNewBase {
 	void InitBindless();
 	mutable vstd::spin_mutex updateBindlessMtx;
 	mutable vstd::spin_mutex allocIdxMtx;
-	mutable vstd::vector<uint16> bindlessIdx;
+	mutable vstd::vector<uint> bindlessIdx;
 	mutable vstd::vector<VkWriteDescriptorSet> bindlessWriteRes;
 	mutable vstd::StackAllocator bindlessStackAlloc;
 
 public:
 	VkPhysicalDeviceLimits limits;
 	static VkInstance InitVkInstance();
-	uint16 AllocateBindlessIdx() const;
-	void DeAllocateBindlessIdx(uint16 index) const;
+	uint AllocateBindlessIdx() const;
+	void DeAllocateBindlessIdx(uint index) const;
 	mutable vstd::DefaultMallocVisitor mallocVisitor;
 	vstd::unique_ptr<DescriptorSetManager> manager;
 	vstd::unique_ptr<GPUAllocator> gpuAllocator;

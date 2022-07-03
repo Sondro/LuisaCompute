@@ -9,6 +9,7 @@ protected:
 	Device const* device;
 
 public:
+	Device const* GetDevice() const{return device;};
 	Resource(Device const* device) : device(device) {}
 	virtual ~Resource() = default;
 };
