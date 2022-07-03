@@ -172,6 +172,7 @@ void Mesh::Build(
 Mesh::~Mesh() {
 	for(auto&& i : handles){
 		i->accel->accelInsts[i->accelIndex].second = nullptr;
+		MeshHandle::DestroyHandle(i);
 	}
 	if (accel) {
 		device->vkDestroyAccelerationStructureKHR(device->device, accel, Device::Allocator());
@@ -270,5 +271,6 @@ void Mesh::RemoveAccelRef(MeshHandle* handle) {
 			handles[handle->meshIndex] = last;
 		}
 	}
+	MeshHandle::DestroyHandle(handle);
 }
 }// namespace toolhub::vk
