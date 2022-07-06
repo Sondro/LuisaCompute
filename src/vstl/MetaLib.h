@@ -849,7 +849,7 @@ private:
 public:
     using EvalType = decltype(std::declval<Func>()());
     LazyEval(Func &&func)
-        : func(std::forward<Func&&>(func)) {}
+        : func(std::forward<Func &&>(func)) {}
     LazyEval(LazyEval const &) = delete;
     LazyEval(LazyEval &&v)
         : func(std::move(v.func)) {}
@@ -1311,6 +1311,11 @@ struct hash<variant<T...>> {
                 return hs(v);
             });
     }
+    template<typename V>
+        requires((variant<T...>::IndexOf<V>) < (variant<T...>::argSize))
+    size_t operator()(V const &v) const {
+        return hash<V>()(v);
+    }
 };
 template<typename... T>
 struct compare<variant<T...>> {
@@ -1326,6 +1331,15 @@ struct compare<variant<T...>> {
                 });
         } else
             return (a.GetType() > b.GetType()) ? 1 : -1;
+    }
+    template<typename V>
+        requires((variant<T...>::IndexOf<V>) < (variant<T...>::argSize))
+    int32 operator()(variant<T...> const &a, V const &v) {
+        constexpr size_t idx = variant<T...>::IndexOf<V>;
+        if (a.GetType() == idx) {
+            return compare<V>()(a.template get<idx>(), v);
+        } else
+            return (a.GetType() > idx) ? 1 : -1;
     }
 };
 template<typename Vec, typename Func>

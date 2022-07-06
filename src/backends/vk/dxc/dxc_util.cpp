@@ -91,15 +91,9 @@ CompileResult DXShaderCompiler::CompileCompute(
 	args.push_back(L"/T");
 	args.push_back(smStr.c_str());
 	args.push_back_all(
-		{L"/Qstrip_debug",
-		 L"/Qstrip_reflect",
-		 L"/Qstrip_priv",
-		 L"/enable_unbounded_descriptor_tables",
-		 L"/Qstrip_rootsignature",
-		 L"/Gfa",
+		{L"/Qstrip_rootsignature",
 		 L"/quiet",
 		 L"/q",
-		 L"/debug_level=none",
 		 L"-HV 2021",
 		 L"-spirv"});
 	if (optimize) {

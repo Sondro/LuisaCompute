@@ -44,14 +44,14 @@ namespace toolhub::vk {
 // 	func(device, resultArr);
 // }
 }// namespace toolhub::vk
-int main() {
-	auto instance = toolhub::vk::Device::InitVkInstance();
-	auto device = toolhub::vk::Device::CreateDevice(instance, nullptr, 0);
-	//CompileAndTest(device, "test_rayquery.compute", TestRayQuery);
-	std::cout << "max uniform range: " << device->limits.maxUniformBufferRange << '\n';
+// int main() {
+// 	auto instance = toolhub::vk::Device::InitVkInstance();
+// 	auto device = toolhub::vk::Device::CreateDevice(instance, nullptr, 0);
+// 	//CompileAndTest(device, "test_rayquery.compute", TestRayQuery);
+// 	std::cout << "max uniform range: " << device->limits.maxUniformBufferRange << '\n';
 
-	delete device;
-	vkDestroyInstance(instance, toolhub::vk::Device::Allocator());
-	std::cout << "finished\n";
-	return 0;
-}
+// 	delete device;
+// 	vkDestroyInstance(instance, toolhub::vk::Device::Allocator());
+// 	std::cout << "finished\n";
+// 	return 0;
+// }
