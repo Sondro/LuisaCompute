@@ -22,15 +22,14 @@ int main(int argc, char *argv[]) {
 
     Context context{argv[0]};
 
-    auto device = context.create_device("dx");
-
+    auto device = context.create_device("vk");
 
     std::array vertices{
         float3(-0.5f, -0.5f, 0.0f),
         float3(0.5f, -0.5f, 0.0f),
         float3(0.0f, 0.5f, 0.0f)};
     std::array indices{0u, 1u, 2u};
-
+    /*
     Callable linear_to_srgb = [](Var<float3> x) noexcept {
         return select(1.055f * pow(x, 1.0f / 2.4f) - 0.055f,
                       12.92f * x,
@@ -92,23 +91,23 @@ int main(int argc, char *argv[]) {
         auto hdr = hdr_image.read(i).xyz();
         auto ldr = make_uint3(round(saturate(linear_to_srgb(hdr)) * 255.0f));
         ldr_image.write(i, ldr.x | (ldr.y << 8u) | (ldr.z << 16u) | (255u << 24u));
-    };
+    };*/
     auto stream = device.create_stream();
     auto vertex_buffer = device.create_buffer<float3>(3u);
     auto triangle_buffer = device.create_buffer<Triangle>(1u);
     stream << vertex_buffer.copy_from(vertices.data())
            << triangle_buffer.copy_from(indices.data());
 
-    auto accel = device.create_accel();
-    auto mesh = device.create_mesh(vertex_buffer, triangle_buffer);
+    auto accel = device.create_accel(AccelUsageHint::FAST_TRACE, false, false);
+    auto mesh = device.create_mesh(vertex_buffer, triangle_buffer, AccelUsageHint::FAST_TRACE, true);
     accel.emplace_back(mesh, scaling(1.5f));
     accel.emplace_back(mesh, translation(float3(-0.25f, 0.0f, 0.1f)) * rotation(float3(0.0f, 0.0f, 1.0f), 0.5f));
 
     stream << mesh.build()
            << accel.build();
 
-    auto raytracing_shader = device.compile(raytracing_kernel);
-    auto colorspace_shader = device.compile(colorspace_kernel);
+    //auto raytracing_shader = device.compile(raytracing_kernel);
+    //auto colorspace_shader = device.compile(colorspace_kernel);
 
     static constexpr auto width = 512u;
     static constexpr auto height = 512u;
@@ -119,19 +118,14 @@ int main(int argc, char *argv[]) {
     Clock clock;
     clock.tic();
     static constexpr auto spp = 1024u;
+
     for (auto i = 0u; i < spp; i++) {
         auto t = static_cast<float>(i) * (1.0f / spp);
         vertices[2].y = 0.5f - 0.2f * t;
-        accel.set(
-            1u,
-            mesh,
-            translation(float3(-0.25f + t * 0.15f, 0.0f, 0.1f)) *
-                rotation(float3(0.0f, 0.0f, 1.0f), 0.5f + t * 0.5f),
-            true);
         stream << vertex_buffer.copy_from(vertices.data());
         stream << mesh.build();
         stream << accel.build();
-        stream << raytracing_shader(hdr_image, accel, i).dispatch(width, height);
+        //stream << raytracing_shader(hdr_image, accel, i).dispatch(width, height);
         if (i == 511u) {
             accel.emplace_back(
                 mesh,
@@ -140,9 +134,9 @@ int main(int argc, char *argv[]) {
                 true);
         }
     }
-    stream << colorspace_shader(hdr_image, ldr_image).dispatch(width, height)
-           << ldr_image.copy_to(pixels.data())
-           << synchronize();
+    stream//<< colorspace_shader(hdr_image, ldr_image).dispatch(width, height)
+        << ldr_image.copy_to(pixels.data())
+        << synchronize();
     auto time = clock.toc();
     LUISA_INFO("Time: {} ms", time);
     stbi_write_png("test_rtx.png", width, height, 4, pixels.data(), 0);

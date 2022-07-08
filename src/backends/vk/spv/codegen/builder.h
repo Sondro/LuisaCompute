@@ -30,14 +30,13 @@ public:
 
 	Id NewId() { return Id(idCount++); }
 	vstd::string_view UsageName(PointerUsage usage);
-	void Reset(uint3 groupSize);
+	void Reset(uint3 groupSize, bool useRayTracing);
 	////////////////////// Types
 	Id GetTypeId(Type const* type, PointerUsage ptrUsage);
 	std::pair<Id, Id> GetTypeAndPtrId(Type const* type, PointerUsage ptrUsage);
-	Id GetFuncReturnTypeId(Id returnType);
+	Id GetFuncReturnTypeId(Id returnType, vstd::span<Id> argType);
 	void BindVariable(Variable const& var, uint descSet, uint binding);
 	////////////////////// variable
 	Id GetConstId(ConstValue const& value);
-	//Variable GetVariable();
 };
 }// namespace toolhub::spv

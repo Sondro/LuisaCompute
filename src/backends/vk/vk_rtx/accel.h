@@ -2,6 +2,7 @@
 #include <gpu_collection/gpu_collection.h>
 #include "build_info.h"
 #include <vstl/functional.h>
+#include <vstl/StackAllocator.h>
 namespace toolhub::vk {
 class Mesh;
 class ResStateTracker;
@@ -10,7 +11,7 @@ class CommandBuffer;
 class FrameResource;
 class MeshHandle;
 class Accel : public GPUCollection {
-    friend class Mesh;
+	friend class Mesh;
 	vstd::vector<std::pair<VkAccelerationStructureInstanceKHR, MeshHandle*>> accelInsts;
 	vstd::unique_ptr<Buffer> instanceBuffer;//VkAccelerationStructureInstanceKHR
 	vstd::unique_ptr<Buffer> accelBuffer;
@@ -45,6 +46,7 @@ public:
 		bool updateTransform, bool updateMesh, Visibility visible);
 	void UpdateMesh(FrameResource* frameRes);
 	BuildInfo Preprocess(
+		vstd::StackAllocator& stackAlloc,
 		CommandBuffer* cb,
 		ResStateTracker& stateTracker,
 		size_t buildSize,
@@ -53,11 +55,14 @@ public:
 		FrameResource* frameRes);
 
 	void Build(
+		vstd::StackAllocator& stackAlloc,
 		ResStateTracker& stateTracker,
 		CommandBuffer* cb,
 		BuildInfo& buildBuffer,
 		size_t instanceUpdateCount,
-		size_t buildSize);
+		size_t buildSize,
+		vstd::vector<VkAccelerationStructureBuildGeometryInfoKHR>& accelBuildCmd,
+		vstd::vector<VkAccelerationStructureBuildRangeInfoKHR*>& accelRangeCmd);
 	Tag GetTag() const override {
 		return Tag::Accel;
 	}

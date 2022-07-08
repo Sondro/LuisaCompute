@@ -40,24 +40,23 @@ VkDeviceAddress GetAccelAddress(
 		device->device,
 		&createInfo);
 }
-VkAccelerationStructureBuildGeometryInfoKHR Mesh::GetBuildInfo(
-	bool isUpdate, VkAccelerationStructureGeometryKHR& geoData) {
-	VkAccelerationStructureBuildGeometryInfoKHR asBuildGeoInfo{};
+void Mesh::GetBuildInfo(
+	VkAccelerationStructureBuildGeometryInfoKHR& asBuildGeoInfo,
+	bool isUpdate) {
 	GetAccelBuildInfo(
 		asBuildGeoInfo,
 		false,
 		allowUpdate, allowCompact, fastTrace, isUpdate);
-
-	return asBuildGeoInfo;
 }
-VkAccelerationStructureGeometryKHR Mesh::GetGeoInfo(
+void Mesh::GetGeoInfo(
+	VkAccelerationStructureGeometryKHR& geo,
 	Buffer const* vertexBuffer,
 	size_t vertexStride,
 	size_t vertexBufferOffset,
 	size_t vertexBufferSize,
 	Buffer const* triangleBuffer,
 	size_t triangleBufferOffset) {
-	VkAccelerationStructureGeometryKHR geo{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+	geo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 	geo.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
 	geo.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
 	auto&& tri = geo.geometry.triangles;
@@ -68,9 +67,9 @@ VkAccelerationStructureGeometryKHR Mesh::GetGeoInfo(
 	tri.maxVertex = vertexBufferSize / vertexStride;
 	tri.indexData.deviceAddress = triangleBuffer->GetAddress(triangleBufferOffset);
 	tri.indexType = VK_INDEX_TYPE_UINT32;
-	return geo;
 }
 BuildInfo Mesh::Preprocess(
+	vstd::StackAllocator& stackAlloc,
 	ResStateTracker& stateTracker,
 	Buffer const* vertexBuffer,
 	size_t vertexStride,
@@ -91,16 +90,20 @@ BuildInfo Mesh::Preprocess(
 	stateTracker.MarkBufferRead(
 		BufferView(triangleBuffer, triangleBufferOffset, triangleBufferSize),
 		BufferReadState::BuildAccel);
-	auto geoInfo = GetGeoInfo(
+	VkAccelerationStructureGeometryKHR* geoInfo = stackAlloc.AllocateMemory<VkAccelerationStructureGeometryKHR>();
+	GetGeoInfo(
+		*geoInfo,
 		vertexBuffer,
 		vertexStride, vertexBufferOffset,
 		vertexBufferSize,
 		triangleBuffer,
 		triangleBufferOffset);
-	auto asBuildInfo = GetBuildInfo(isUpdate, geoInfo);
+	VkAccelerationStructureBuildGeometryInfoKHR asBuildInfo{};
+
+	GetBuildInfo(asBuildInfo, isUpdate);
 	uint triangleCount = triangleBufferSize / (3 * sizeof(uint));
 	asBuildInfo.geometryCount = 1;
-	asBuildInfo.pGeometries = &geoInfo;
+	asBuildInfo.pGeometries = geoInfo;
 
 	VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
 	device->vkGetAccelerationStructureBuildSizesKHR(
@@ -142,35 +145,31 @@ BuildInfo Mesh::Preprocess(
 		accelBuffer.get(),
 		BufferWriteState::Accel);
 
-	return {asBuildInfo, geoInfo, isUpdate ? buildSizeInfo.updateScratchSize : buildSizeInfo.buildScratchSize, isUpdate};
+	return {asBuildInfo, isUpdate ? buildSizeInfo.updateScratchSize : buildSizeInfo.buildScratchSize, isUpdate};
 }
 void Mesh::Build(
-	VkCommandBuffer cb,
+	vstd::StackAllocator& stackAlloc,
 	BuildInfo& buildBuffer,
-	size_t triangleBufferSize) {
+	size_t triangleBufferSize,
+	vstd::vector<VkAccelerationStructureBuildGeometryInfoKHR>& accelBuildCmd,
+	vstd::vector<VkAccelerationStructureBuildRangeInfoKHR*>& accelRangeCmd) {
 	auto&& buildInfo = buildBuffer.buildInfo;
-	buildInfo.geometryCount = 1;
-	buildInfo.pGeometries = &buildBuffer.geoInfo;
 	if (buildBuffer.isUpdate) {
 		buildInfo.srcAccelerationStructure = accel;
 	}
 	buildInfo.scratchData.deviceAddress = buildBuffer.buffer ? buildBuffer.buffer->GetAddress(buildBuffer.scratchOffset) : 0;
 
 	buildInfo.dstAccelerationStructure = accel;
-	VkAccelerationStructureBuildRangeInfoKHR buildRange;
-	buildRange.primitiveCount = triangleBufferSize / (3 * sizeof(uint));
-	buildRange.primitiveOffset = 0;
-	buildRange.firstVertex = 0;
-	buildRange.transformOffset = 0;
-	auto ptr = &buildRange;
-	device->vkCmdBuildAccelerationStructuresKHR(
-		cb,
-		1,
-		&buildInfo,
-		&ptr);
+	auto buildRange = stackAlloc.AllocateMemory<VkAccelerationStructureBuildRangeInfoKHR, false>();
+	buildRange->primitiveCount = triangleBufferSize / (3 * sizeof(uint));
+	buildRange->primitiveOffset = 0;
+	buildRange->firstVertex = 0;
+	buildRange->transformOffset = 0;
+	accelBuildCmd.emplace_back(buildInfo);
+	accelRangeCmd.emplace_back(buildRange);
 }
 Mesh::~Mesh() {
-	for(auto&& i : handles){
+	for (auto&& i : handles) {
 		i->accel->accelInsts[i->accelIndex].second = nullptr;
 		MeshHandle::DestroyHandle(i);
 	}

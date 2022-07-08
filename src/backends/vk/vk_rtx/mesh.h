@@ -2,6 +2,7 @@
 #include <gpu_collection/buffer.h>
 #include "build_info.h"
 #include <vstl/functional.h>
+#include <vstl/StackAllocator.h>
 namespace toolhub::vk {
 class ResStateTracker;
 class Buffer;
@@ -20,10 +21,11 @@ class Mesh : public GPUCollection {
 	bool allowUpdate;
 	bool allowCompact;
 	bool fastTrace;
-	VkAccelerationStructureBuildGeometryInfoKHR GetBuildInfo(
-		bool isUpdate,
-		VkAccelerationStructureGeometryKHR& geoData);
-	VkAccelerationStructureGeometryKHR GetGeoInfo(
+	void GetBuildInfo(
+		VkAccelerationStructureBuildGeometryInfoKHR& asBuildInfo,
+		bool isUpdate);
+	void GetGeoInfo(
+		VkAccelerationStructureGeometryKHR& geoInfo,
 		Buffer const* vertexBuffer,
 		size_t vertexStride,
 		size_t vertexBufferOffset,
@@ -49,6 +51,7 @@ public:
 	Mesh(Device const* device,
 		 bool allowUpdate, bool allowCompact, bool fastTrace);
 	BuildInfo Preprocess(
+		vstd::StackAllocator& stackAlloc,
 		ResStateTracker& stateTracker,
 		Buffer const* vertexBuffer,
 		size_t vertexStride,
@@ -60,9 +63,11 @@ public:
 		bool isUpdate,
 		FrameResource* frameRes);
 	void Build(
-		VkCommandBuffer cb,
+		vstd::StackAllocator& stackAlloc,
 		BuildInfo& buildBuffer,
-		size_t triangleBufferSize);
+		size_t triangleBufferSize,
+		vstd::vector<VkAccelerationStructureBuildGeometryInfoKHR>& accelBuildCmd,
+		vstd::vector<VkAccelerationStructureBuildRangeInfoKHR*>& accelRangeCmd);
 	// compact
 	VkAccelerationStructureKHR PreprocessLoadCompactSize(
 		ResStateTracker& stateTracker);

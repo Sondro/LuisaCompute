@@ -3,8 +3,8 @@
 #include <components/device.h>
 namespace toolhub::vk {
 struct BuildInfo {
-	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{};
-	VkAccelerationStructureGeometryKHR geoInfo{};
+	VkAccelerationStructureBuildGeometryInfoKHR buildInfo;
+	//VkAccelerationStructureGeometryKHR geoInfo{};
 	size_t scratchSize;
 	bool isUpdate;
 	Buffer const* buffer;

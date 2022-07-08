@@ -63,6 +63,14 @@ static void AddInternalTypeCode(vstd::string& str) {
 %22 = OpTypeVoid
 )"_sv;
 }
+static void AddInternalTypeDecorate(vstd::string& str) {
+	str << R"(
+OpDecorate %16 ColMajor
+OpDecorate %17 ColMajor
+OpDecorate %18 ColMajor
+OpDecorate %17 MatrixStride 16
+)"_sv;
+}
 template<typename T>
 struct VecInfo {
 	static constexpr bool isVector = false;
@@ -82,8 +90,13 @@ struct VecInfo<Matrix<dim>> {
 	static constexpr size_t dimension = dim;
 };
 }// namespace Builder_detail
-void Builder::Reset(uint3 groupSize) {
+void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 	// allocate 1m memory
+	result.clear();
+	decorateStr.clear();
+	typeStr.clear();
+	constValueStr.clear();
+
 	result.reserve(1024 * 1024);
 	decorateStr.reserve(1024);
 	typeStr.reserve(4096);
@@ -93,8 +106,14 @@ void Builder::Reset(uint3 groupSize) {
 	funcTypeMap.Clear();
 	idCount = Id::StartId().id;
 	// init
-	result = R"(OpCapability Shader
-%49 = OpExtInstImport "GLSL.std.450"
+	result = "OpCapability Shader\n"_sv;
+	if (useRayTracing) {
+		result += R"(OpCapability RayQueryKHR
+OpExtension "SPV_KHR_ray_query"
+)"_sv;
+		typeStr += "%23 = OpTypeRayQueryKHR\n"_sv;
+	}
+	result += R"(%49 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %main "main" %DispatchThreadID %GroupThreadID %GroupID
 OpSource HLSL 630
@@ -109,6 +128,7 @@ OpDecorate %DispatchThreadID BuiltIn GlobalInvocationId
 OpDecorate %GroupThreadID BuiltIn LocalInvocationId
 OpDecorate %GroupID BuiltIn WorkgroupId
 )"_sv;
+	Builder_detail::AddInternalTypeDecorate(decorateStr);
 	Builder_detail::AddInternalTypeCode(typeStr);
 }
 Builder::TypeName& Builder::GetTypeName(Type const* type) {
@@ -150,7 +170,8 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 				auto runtimeStr = runtimeId.ToString();
 				auto arrayStride = GetConstId((uint)type->element()->size()).ToString();
 				decorateStr << "OpDecorate " << runtimeStr << " ArrayStride " << arrayStride << '\n';
-				decorateStr << "OpMemberDecorate " << typeName.ToString() << " 0 Offset 0\n"_sv;
+				decorateStr << "OpMemberDecorate " << typeName.ToString() << " 0 Offset 0\nnOpDecorate"_sv
+							<< typeName.ToString() << " BufferBlock\n"_sv;
 				typeStr << runtimeStr
 						<< " = OpTypeRuntimeArray  " << eleTypeName.ToString() << '\n';
 				typeStr << typeName.ToString() << " = OpTypeStruct " << runtimeStr << '\n';
@@ -166,10 +187,15 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 				decorateStr << "OpDecorate " << runtimeStr << " ArrayStride " << vstd::to_string(4) << '\n';
 				decorateStr << "OpMemberDecorate " << typeName.ToString() << " 0 "_sv
 							<< "Offset "_sv
-							<< "0\n"_sv;
+							<< "0\nOpDecorate "_sv
+							<< typeName.ToString() << " BufferBlock\n"_sv;
 				typeStr << runtimeStr
 						<< " = OpTypeRuntimeArray  " << eleTypeName.ToString() << '\n';
 				typeStr << typeName.ToString() << " = OpTypeStruct " << runtimeStr << '\n';
+			} break;
+			case Tag::ACCEL: {
+				typeName = Id(idCount++);
+				typeStr << typeName.ToString() << " = OpTypeAccelerationStructureKHR\n"_sv;
 			} break;
 				//TODO: texture, accel
 		}
@@ -205,13 +231,17 @@ std::pair<Id, Id> Builder::GetTypeAndPtrId(Type const* type, PointerUsage usage)
 	}
 }
 
-Id Builder::GetFuncReturnTypeId(Id returnType) {
+Id Builder::GetFuncReturnTypeId(Id returnType, vstd::span<Id> argType) {
 	return funcTypeMap
 		.Emplace(
 			returnType,
 			vstd::MakeLazyEval([&] {
 				Id newId(idCount++);
-				typeStr << newId.ToString() << " = OpTypeFunction "_sv << returnType.ToString();
+				typeStr << newId.ToString() << " = OpTypeFunction "_sv << returnType.ToString() << ' ';
+				for(auto&& i : argType){
+					typeStr << i.ToString() << ' ';
+				}
+				typeStr << '\n';
 				return newId;
 			}))
 		.Value();

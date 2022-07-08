@@ -83,10 +83,10 @@ after_build(function(target)
     local build_path = nil
     if is_mode("release") then
         build_path = "$(buildir)/windows/x64/release/"
-        os.cp("../../../out/build/x64-Release/bin/*.dll", build_path)
+        os.cp("../../../out/build/x64-Clang-Release/bin/*.dll", build_path)
     else
         build_path = "$(buildir)/windows/x64/debug/"
-        os.cp("../../../out/build/x64-Debug/bin/*.dll", build_path)
+        os.cp("../../../out/build/x64-Clang-Debug/bin/*.dll", build_path)
     end
 end)
 IncludePath = {"./", "../../", "../../ext/abseil-cpp/", "../../ext/EASTL/include/",
@@ -108,11 +108,11 @@ BuildProject({
 
     end,
     debugEvent = function()
-        add_links("../../../out/build/x64-Debug/lib/*", "lib/debug/*")
+        add_links("../../../out/build/x64-Clang-Debug/lib/*", "lib/debug/*")
         add_defines("_DEBUG", "DEBUG")
     end,
     releaseEvent = function()
-        add_links("../../../out/build/x64-Release/lib/*", "lib/release/*")
+        add_links("../../../out/build/x64-Clang-Release/lib/*", "lib/release/*")
         add_defines("NDEBUG")
     end,
     unityBuildBatch = 4,

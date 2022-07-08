@@ -12,7 +12,9 @@ TypeCaster::CompareResult TypeCaster::Compare(
 			case InternalType::Tag::FLOAT:
 			case InternalType::Tag::INT:
 			case InternalType::Tag::UINT:
-				return scalarWeights[static_cast<uint>(t.tag)];
+				return scalarWeights[static_cast<uint>(t.tag)] + t.dimension * 100;
+			default:
+				return t.dimension * t.dimension * 10000;
 		}
 	};
 	auto leftWeight = Weight(srcType);
@@ -21,6 +23,38 @@ TypeCaster::CompareResult TypeCaster::Compare(
 	if (leftWeight == rightWeight) return CompareResult::UnChanged;
 	return CompareResult::ToRight;
 }
+namespace detail {
+template<typename T>
+static Id ConstructVector(Builder* bd, uint dimension, int32 value) {
+	switch (dimension) {
+		case 2:
+			return bd->GetConstId(Vector<T, 2>(value, value));
+		case 3:
+			return bd->GetConstId(Vector<T, 3>(value, value, value));
+		case 4:
+			return bd->GetConstId(Vector<T, 4>(value, value, value, value));
+		default: return Id();
+	}
+}
+static Id ConstructMatrix(Builder* bd, uint dimension, int32 value) {
+	switch (dimension) {
+		case 2:
+			return bd->GetConstId(Matrix<2>(float2(value, value), float2(value, value)));
+		case 3:
+			return bd->GetConstId(Matrix<3>(
+				float3(value, value, value),
+				float3(value, value, value),
+				float3(value, value, value)));
+		case 4:
+			return bd->GetConstId(Matrix<4>(
+				float4(value, value, value, value),
+				float4(value, value, value, value),
+				float4(value, value, value, value),
+				float4(value, value, value, value)));
+		default: return Id();
+	}
+}
+}// namespace detail
 Id TypeCaster::Cast(
 	Builder* bd,
 	InternalType const& srcType,
@@ -28,37 +62,85 @@ Id TypeCaster::Cast(
 	Id value) {
 	Id newId(bd->NewId());
 	bd->result << newId.ToString();
+	auto GetConst = [&](InternalType const& tp, int32 value) {
+		if (tp.dimension <= 1) {
+			switch (tp.tag) {
+				case InternalType::Tag::BOOL:
+					return value == 0 ? Id::FalseId() : Id::TrueId();
+				case InternalType::Tag::MATRIX:
+				case InternalType::Tag::FLOAT:
+					return bd->GetConstId((float)value);
+				case InternalType::Tag::INT:
+					return bd->GetConstId(value);
+				case InternalType::Tag::UINT:
+					return bd->GetConstId((uint)value);
+			}
+		} else {
+			switch (tp.tag) {
+				case InternalType::Tag::BOOL:
+					return detail::ConstructVector<bool>(bd, tp.dimension, value);
+				case InternalType::Tag::FLOAT:
+					return detail::ConstructVector<float>(bd, tp.dimension, value);
+				case InternalType::Tag::INT:
+					return detail::ConstructVector<int>(bd, tp.dimension, value);
+				case InternalType::Tag::UINT:
+					return detail::ConstructVector<uint>(bd, tp.dimension, value);
+				case InternalType::Tag::MATRIX:
+					return detail::ConstructMatrix(bd, tp.dimension, value);
+			}
+		};
+	};
 	if (srcType.tag == InternalType::Tag::BOOL) {
-//OpSelect %dst_type %0_const %1_const
+		auto constZero = GetConst(dstType, 0);
+		auto constOne = GetConst(dstType, 1);
+		bd->result << " = OpSelect "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << ' ' << constOne.ToString() << '\n';
 	} else if (dstType.tag == InternalType::Tag::BOOL) {
-// OpINotEqual
+		auto constZero = GetConst(dstType, 0);
+		bd->result << " = OpINotEqual "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << '\n';
 	} else {
 		switch (srcType.tag) {
 			case InternalType::Tag::FLOAT:
 			case InternalType::Tag::MATRIX:
-				bd->result << " = OpConvertF"_sv;
+				switch (dstType.tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						bd->result << " = OpBitcast "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						break;
+					case InternalType::Tag::INT:
+						bd->result << " = OpConvertFToS "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						break;
+					case InternalType::Tag::UINT:
+						bd->result << " = OpConvertFToU "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						break;
+				}
 				break;
 			case InternalType::Tag::INT:
-				bd->result << " = OpConvertS"_sv;
+				switch (dstType.tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						bd->result << " = OpConvertSToF "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						break;
+					case InternalType::Tag::UINT:
+					case InternalType::Tag::INT:
+						bd->result << " = OpBitcast "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						break;
+				}
 				break;
 			case InternalType::Tag::UINT:
-				bd->result << " = OpConvertU"_sv;
+				switch (dstType.tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						bd->result << " = OpConvertUToF "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						break;
+					case InternalType::Tag::UINT:
+					case InternalType::Tag::INT:
+						bd->result << " = OpBitcast "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						break;
+				}
 				break;
 		}
-		switch (dstType.tag) {
-			case InternalType::Tag::FLOAT:
-			case InternalType::Tag::MATRIX:
-				bd->result << "ToF "_sv;
-				break;
-			case InternalType::Tag::INT:
-				bd->result << "ToS "_sv;
-				break;
-			case InternalType::Tag::UINT:
-				bd->result << "ToU "_sv;
-				break;
-		}
+		bd->result << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 	}
-	bd->result << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 	return newId;
 }
 }// namespace toolhub::spv

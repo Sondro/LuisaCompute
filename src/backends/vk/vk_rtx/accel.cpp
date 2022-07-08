@@ -82,7 +82,7 @@ VkBufferCopy Accel::SetInstance(
 				originMesh = mesh->AddAccelRef(this, index);
 			}
 		} else {
-			originMesh = mesh->AddAccelRef(this, index);	
+			originMesh = mesh->AddAccelRef(this, index);
 		}
 		info.isUpdate = false;
 	}
@@ -100,6 +100,7 @@ VkBufferCopy Accel::SetInstance(
 	return cpy;
 }
 BuildInfo Accel::Preprocess(
+	vstd::StackAllocator& stackAlloc,
 	CommandBuffer* cb,
 	ResStateTracker& stateTracker,
 	size_t buildSize,
@@ -145,17 +146,18 @@ BuildInfo Accel::Preprocess(
 			RWState::None));
 	}
 	BuildInfo info{};
+	VkAccelerationStructureGeometryKHR* geoInfo = stackAlloc.AllocateMemory<VkAccelerationStructureGeometryKHR>();
 	GetAccelBuildInfo(info.buildInfo, true, allowUpdate, allowCompact, fastTrace, isUpdate);
-	info.geoInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-	info.geoInfo.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-	auto&& inst = info.geoInfo.geometry.instances;
+	geoInfo->sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+	geoInfo->geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+	auto&& inst = geoInfo->geometry.instances;
 	inst.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
 	inst.arrayOfPointers = false;
 	inst.data.deviceAddress = instanceBuffer->GetAddress(0);
 	VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
 	uint instCount = buildSize;
 	info.buildInfo.geometryCount = 1;
-	info.buildInfo.pGeometries = &info.geoInfo;
+	info.buildInfo.pGeometries = geoInfo;
 	device->vkGetAccelerationStructureBuildSizesKHR(
 		device->device,
 		VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
@@ -215,11 +217,14 @@ BuildInfo Accel::Preprocess(
 	return info;
 }
 void Accel::Build(
+	vstd::StackAllocator& stackAlloc,
 	ResStateTracker& stateTracker,
 	CommandBuffer* cb,
 	BuildInfo& buildBuffer,
 	size_t instanceUpdateCount,
-	size_t buildSize) {
+	size_t buildSize,
+	vstd::vector<VkAccelerationStructureBuildGeometryInfoKHR>& accelBuildCmd,
+	vstd::vector<VkAccelerationStructureBuildRangeInfoKHR*>& accelRangeCmd) {
 	if (instanceUpdateCount > 0) {
 		stateTracker.MarkBufferRead(
 			instanceBuffer.get(),
@@ -227,23 +232,17 @@ void Accel::Build(
 		stateTracker.Execute(cb);
 	}
 	auto&& buildInfo = buildBuffer.buildInfo;
-	buildInfo.geometryCount = 1;
-	buildInfo.pGeometries = &buildBuffer.geoInfo;
 	if (buildBuffer.isUpdate) {
 		buildInfo.srcAccelerationStructure = accel;
 	}
 	buildInfo.scratchData.deviceAddress = buildBuffer.buffer ? buildBuffer.buffer->GetAddress(buildBuffer.scratchOffset) : 0;
 	buildInfo.dstAccelerationStructure = accel;
-	VkAccelerationStructureBuildRangeInfoKHR buildRange;
-	buildRange.primitiveCount = buildSize;
-	buildRange.primitiveOffset = 0;
-	buildRange.firstVertex = 0;
-	buildRange.transformOffset = 0;
-	auto ptr = &buildRange;
-	device->vkCmdBuildAccelerationStructuresKHR(
-		cb->CmdBuffer(),
-		1,
-		&buildInfo,
-		&ptr);
+	auto buildRange = stackAlloc.AllocateMemory<VkAccelerationStructureBuildRangeInfoKHR, false>();
+	buildRange->primitiveCount = buildSize;
+	buildRange->primitiveOffset = 0;
+	buildRange->firstVertex = 0;
+	buildRange->transformOffset = 0;
+	accelBuildCmd.emplace_back(buildInfo);
+	accelRangeCmd.emplace_back(buildRange);
 }
 }// namespace toolhub::vk

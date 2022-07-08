@@ -8,6 +8,7 @@
 #include <runtime/command_reorder_visitor.h>
 #include <vk_rtx/query.h>
 #include "uniform_pack.h"
+#include <vstl/StackAllocator.h>
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::vk {
@@ -26,6 +27,10 @@ public:
 	vstd::vector<UniformBuffer> sets;
 	vstd::vector<Mesh*> compactMesh;
 	vstd::vector<size_t> compactSizes;
+	vstd::vector<VkAccelerationStructureBuildGeometryInfoKHR> accelBuildCmd;
+	vstd::vector<VkAccelerationStructureBuildRangeInfoKHR*> accelRangeCmd;
+	vstd::DefaultMallocVisitor hostAllocVisitor;
+	vstd::StackAllocator hostAlloc;
 	vstd::vector<VkAccelerationStructureKHR> compactAccel;
 	CommandReorderVisitor reorder;
 	Query query;

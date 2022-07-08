@@ -18,7 +18,8 @@ using ConstValue = vstd::variant<
 	int, uint, float,
 	int2, uint2, float2, bool2,
 	int3, uint3, float3, bool3,
-	int4, uint4, float4, bool4>;
+	int4, uint4, float4, bool4,
+	float2x2, float3x3, float4x4>;
 struct Id : public vstd::IOperatorNewBase {
 	uint id;
 	vstd::string ToString() const {
@@ -47,16 +48,19 @@ struct Id : public vstd::IOperatorNewBase {
 	static constexpr Id FalseId() {
 		return Id(20);
 	}
-	static constexpr Id ZeroId(){
+	static constexpr Id ZeroId() {
 		return Id(21);
 	}
 	static constexpr Id VoidId() {
 		return Id(22);
 	}
-	static constexpr Id StartId(){
+	static constexpr Id StartId() {
 		return Id(50);
 	}
-	static constexpr Id BuiltinFuncId(){
+	static constexpr Id RayQueryId() {
+		return Id(23);
+	}
+	static constexpr Id BuiltinFuncId() {
 		return Id(49);
 	}
 };
