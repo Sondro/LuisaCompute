@@ -60,6 +60,39 @@ struct Id : public vstd::IOperatorNewBase {
 	static constexpr Id RayQueryId() {
 		return Id(23);
 	}
+	static constexpr Id DispatchThreadId() {
+		return Id(24);
+	}
+	static constexpr Id GroupThreadId() {
+		return Id(25);
+	}
+	static constexpr Id GroupId() {
+		return Id(26);
+	}
+	static constexpr Id RayQueryPtrId() {
+		return Id(27);
+	}
+	static constexpr Id AccelId() {
+		return Id(28);
+	}
+	static constexpr Id AccelUniformConstId(){
+		return Id(29);
+	}
+	static constexpr Id AccelVarId(){
+		return Id(30);
+	}
+	static constexpr Id SamplerId(){
+		return Id(31);
+	}
+	static constexpr Id SamplerArrayId(){
+		return Id(32);
+	}
+	static constexpr Id SamplerPtrId(){
+		return Id(33);
+	}
+	static constexpr Id MainId(){
+		return Id(48);
+	}
 	static constexpr Id BuiltinFuncId() {
 		return Id(49);
 	}

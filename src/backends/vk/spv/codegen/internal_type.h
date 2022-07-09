@@ -13,8 +13,13 @@ public:
 		MATRIX
 	};
 	Tag tag;
-	uint dimension = 1;
+	uint dimension;
+	InternalType() {}
+	InternalType(Tag tag, uint dim)
+		: tag(tag), dimension(dim) {}
 	static vstd::optional<InternalType> GetType(Type const* type);
 	Id TypeId() const;
+	size_t Align() const;
+	size_t Size() const;
 };
 }// namespace toolhub::spv

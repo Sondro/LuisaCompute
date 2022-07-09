@@ -434,8 +434,6 @@ void LCStream::DispatchCmd(CommandList&& cmdList) {
 		frameRes->ResetScratch();
 		updateInfos.clear();
 		hostAlloc.Clear();
-		accelBuildCmd.clear();
-        accelRangeCmd.clear();
 		/////////////// Preprocess
 		for (auto&& cmd : list) {
 			cmd->accept(prep);
@@ -470,11 +468,12 @@ void LCStream::DispatchCmd(CommandList&& cmdList) {
 		}
 		if (!accelBuildCmd.empty()) {
 			device->vkCmdBuildAccelerationStructuresKHR(
-                cmdBuffer->CmdBuffer(),
-                accelBuildCmd.size(),
-                accelBuildCmd.data(),
-                accelRangeCmd.data()
-			);
+				cmdBuffer->CmdBuffer(),
+				accelBuildCmd.size(),
+				accelBuildCmd.data(),
+				accelRangeCmd.data());
+			accelBuildCmd.clear();
+			accelRangeCmd.clear();
 		}
 		/////////////// Compact accel
 		if (!compactAccel.empty()) {

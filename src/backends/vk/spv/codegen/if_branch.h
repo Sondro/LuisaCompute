@@ -16,7 +16,7 @@ public:
 	Id trueBranch;
 	Id falseBranch;
 	Branch TrueBranchScope();
-	Branch FalseBranchScoe();
+	Branch FalseBranchScope();
 	IfBranch(Builder* builder, Id condition);
 	~IfBranch();
 };

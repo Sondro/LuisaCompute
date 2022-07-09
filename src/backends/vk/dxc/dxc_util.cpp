@@ -83,7 +83,7 @@ CompileResult DXShaderCompiler::CompileCompute(
 	bool optimize,
 	uint shaderModel) {
 	if (shaderModel < 10) {
-		return "Illegal shader model!"_sv;
+		return "Illegal shader model!"sv;
 	}
 	vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
 	vstd::wstring smStr;
@@ -107,7 +107,7 @@ CompileResult DXShaderCompiler::CompileRayTracing(
     bool optimize,
     uint shaderModel) {
     if (shaderModel < 10) {
-        return "Illegal shader model!"_sv;
+        return "Illegal shader model!"sv;
     }
     vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
     vstd::wstring smStr;

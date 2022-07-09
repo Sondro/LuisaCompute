@@ -115,6 +115,5 @@ BuildProject({
         add_links("../../../out/build/x64-Clang-Release/lib/*", "lib/release/*")
         add_defines("NDEBUG")
     end,
-    unityBuildBatch = 4,
     exception = true
 })

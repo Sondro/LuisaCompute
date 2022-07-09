@@ -19,14 +19,7 @@
 // * Optimizing
 // * Disassembling
 
-#include <iostream>
-#include <string>
-#include <vector>
-
-#include <spirv-tools/libspirv.hpp>
-#include <spirv-tools/optimizer.hpp>
-#include <dxc/dxc_util.h>
-#include <vstl/BinaryReader.h>
+#include "test_codegen.hpp"
 struct SetSpvCompilerAlloc {
 	SetSpvCompilerAlloc() {
 		spvstd::set_malloc_func(vengine_malloc);
@@ -63,14 +56,22 @@ void PrintHLSL() {
 			std::cout << str << '\n';
 		});
 }
+
 int main() {
 	auto func = [&] {
-		std::cout << "0: hlsl to spv\n1: spv compile\n2:exit\n";
+		std::cout << R"(0: hlsl to spv
+1: spv compile
+2: test print
+3:exit
+)"sv;
 		vstd::string cmd;
 		std::cin >> cmd;
-		if(cmd == "2") return 2;
+		if (cmd == "3") return 2;
 		if (cmd == "0") {
 			PrintHLSL();
+			return 0;
+		} else if (cmd == "2") {
+			TestCompile();
 			return 0;
 		} else {
 			BinaryReader reader("example.spvasm");
@@ -105,7 +106,7 @@ int main() {
 			return 0;
 		}
 	};
-	while (func() != 2){
+	while (func() != 2) {
 	}
 	return 0;
 }

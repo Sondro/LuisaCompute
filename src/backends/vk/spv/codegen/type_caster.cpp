@@ -93,10 +93,10 @@ Id TypeCaster::Cast(
 	if (srcType.tag == InternalType::Tag::BOOL) {
 		auto constZero = GetConst(dstType, 0);
 		auto constOne = GetConst(dstType, 1);
-		bd->result << " = OpSelect "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << ' ' << constOne.ToString() << '\n';
+		bd->result << " = OpSelect "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << ' ' << constOne.ToString() << '\n';
 	} else if (dstType.tag == InternalType::Tag::BOOL) {
 		auto constZero = GetConst(dstType, 0);
-		bd->result << " = OpINotEqual "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << '\n';
+		bd->result << " = OpINotEqual "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << '\n';
 	} else {
 		switch (srcType.tag) {
 			case InternalType::Tag::FLOAT:
@@ -104,13 +104,13 @@ Id TypeCaster::Cast(
 				switch (dstType.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
-						bd->result << " = OpBitcast "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						bd->result << " = OpBitcast "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 						break;
 					case InternalType::Tag::INT:
-						bd->result << " = OpConvertFToS "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						bd->result << " = OpConvertFToS "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 						break;
 					case InternalType::Tag::UINT:
-						bd->result << " = OpConvertFToU "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						bd->result << " = OpConvertFToU "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 						break;
 				}
 				break;
@@ -118,11 +118,11 @@ Id TypeCaster::Cast(
 				switch (dstType.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
-						bd->result << " = OpConvertSToF "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						bd->result << " = OpConvertSToF "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 						break;
 					case InternalType::Tag::UINT:
 					case InternalType::Tag::INT:
-						bd->result << " = OpBitcast "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						bd->result << " = OpBitcast "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 						break;
 				}
 				break;
@@ -130,11 +130,11 @@ Id TypeCaster::Cast(
 				switch (dstType.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
-						bd->result << " = OpConvertUToF "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						bd->result << " = OpConvertUToF "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 						break;
 					case InternalType::Tag::UINT:
 					case InternalType::Tag::INT:
-						bd->result << " = OpBitcast "_sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						bd->result << " = OpBitcast "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 						break;
 				}
 				break;

@@ -12,19 +12,30 @@ public:
 	///// Common
 	Id Load();
 	void Store(Id value);
-	
-	///// Vector & Struct
-	Id ReadMember(uint index);
+
+	///// Vector
+	Id ReadVectorElement(uint index);
 	Id Swizzle(vstd::span<uint> swizzles);
+	Id AccessVectorElement(uint index);
+	void WriteVectorElement(uint index, Id result);
+	///// Struct
 	Id AccessMember(uint index);
+	Id ReadMember(uint index);
 	void WriteMember(uint index, Id result);
 	///// Array
 	Id ReadArrayEle(Id index);
 	Id AccessArrayEle(Id index);
 	void WriteArrayEle(Id index, Id result);
 	///// Buffer
-	Id ReadBufferEle(Id index);
-	Id AccessBufferEle(Id index);
-	void WriteBufferEle(Id index, Id result);
+	Id ReadBufferEle(Id bufferIndex, Id index);
+	Id AccessBufferEle(Id bufferIndex, Id index);
+	void WriteBufferEle(Id bufferIndex, Id index, Id result);
+	///// Matrix
+	Id AccessMatrixCol(Id index);					 // return Vector<float, dimension>*
+	Id AccessMatrixValue(Id row, Id col);			 //return float*
+	Id ReadMatrixCol(Id index);						 //return Vector<float, dimension>
+	Id ReadMatrixValue(Id row, Id col);				 //return float
+	void WriteMatrixCol(Id index, Id result);		 // write Vector<float, dimension>
+	void WriteMatrixValue(Id row, Id col, Id result);//write float
 };
 }// namespace toolhub::spv

@@ -8,16 +8,25 @@ WhileBranch::WhileBranch(
 	  conditionBlock(bd->NewId()),
 	  loopBlock(bd->NewId()),
 	  mergeBlock(bd->NewId()) {
-	bd->result << conditionBlock.ToString() << " = OpLabel"_sv << '\n';
+	auto condBlockStr = conditionBlock.ToString();
+	if (bd->inBlock) {
+		bd->result << "OpBranch "sv << condBlockStr << '\n';
+	}
+	bd->inBlock = true;
+	bd->result << condBlockStr << " = OpLabel"sv << '\n';
 	auto condStr = condition().ToString();
 	auto mergeStr = mergeBlock.ToString();
 	auto loopStr = loopBlock.ToString();
-	bd->result << "OpLoopMerge "_sv << mergeStr << ' '
-			   << loopStr << " None\nOpBranchConditional "_sv
-			   << condStr << ' ' << loopStr << mergeStr << '\n'
-               << loopStr << " = OpLabel\n"_sv;
+	bd->result << "OpLoopMerge "sv << mergeStr << ' '
+			   << loopStr << " None\nOpBranchConditional "sv
+			   << condStr << ' ' << loopStr << ' ' << mergeStr << '\n'
+			   << loopStr << " = OpLabel\n"sv;
 }
 WhileBranch::~WhileBranch() {
-    bd->result << "OpBranch "_sv << conditionBlock.ToString() << '\n' << mergeBlock.ToString() << " = OpLabel\n"_sv;
+	if (bd->inBlock) {
+		bd->result << "OpBranch "sv << conditionBlock.ToString() << '\n';
+	}
+	bd->result << mergeBlock.ToString() << " = OpLabel\n"sv;
+	bd->inBlock = true;
 }
 }// namespace toolhub::spv

@@ -2,23 +2,35 @@
 #include "builder.h"
 namespace toolhub::spv {
 IfBranch::IfBranch(Builder* builder, Id condition)
-	: Component(builder), trueBranch(builder->NewId()), falseBranch(builder->NewId()) , mergeBlock(builder->NewId()){
-	builder->result << "OpSelectionMerge "_sv << mergeBlock.ToString() << " None\nOpBranchConditional "_sv
-					<< condition.ToString() << ' ' << trueBranch.ToString() << ' ' << falseBranch.ToString();
+	: Component(builder), trueBranch(builder->NewId()), falseBranch(builder->NewId()), mergeBlock(builder->NewId()) {
+	builder->result << "OpSelectionMerge "sv << mergeBlock.ToString() << " None\nOpBranchConditional "sv
+					<< condition.ToString() << ' ' << trueBranch.ToString() << ' ' << falseBranch.ToString() << '\n';
+	bd->inBlock = false;
 }
 IfBranch::~IfBranch() {
-	bd->result << mergeBlock.ToString() << " = OpLabel"_sv;
+	if (bd->inBlock) {
+		bd->result << "OpBranch "sv << mergeBlock.ToString() << '\n';
+	}
+	bd->result << mergeBlock.ToString() << " = OpLabel\n"sv;
+	bd->inBlock = true;
 }
 IfBranch::Branch::Branch(IfBranch* self, Id id) : self(self), id(id) {
-	self->bd->result << id.ToString() << " = OpLabel\n"_sv;
+	if (self->bd->inBlock) {
+		self->bd->result << "OpBranch "sv << id.ToString() << '\n';
+	}
+	self->bd->result << id.ToString() << " = OpLabel\n"sv;
+	self->bd->inBlock = true;
 }
 IfBranch::Branch::~Branch() {
-	self->bd->result << "OpBranch "_sv << self->mergeBlock.ToString() << '\n';
+	if (self->bd->inBlock) {
+		self->bd->result << "OpBranch "sv << self->mergeBlock.ToString() << '\n';
+		self->bd->inBlock = false;
+	}
 }
 IfBranch::Branch IfBranch::TrueBranchScope() {
-    return Branch(this, trueBranch);
+	return Branch(this, trueBranch);
 }
-IfBranch::Branch IfBranch::FalseBranchScoe() {
-    return Branch(this, falseBranch);
+IfBranch::Branch IfBranch::FalseBranchScope() {
+	return Branch(this, falseBranch);
 }
 }// namespace toolhub::spv

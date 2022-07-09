@@ -45,4 +45,40 @@ Id InternalType::TypeId() const {
 		return scalarTag;
 	}
 }
+size_t InternalType::Align() const {
+	auto dimByte = [](size_t byte, size_t dim) {
+		if (dim == 3) dim = 4;
+		return byte * dim;
+	};
+	return dimByte(
+		[&] {
+			switch (tag) {
+				case InternalType::Tag::BOOL:
+					return 1;
+				default: return 4;
+			}
+		}(),
+		dimension);
+}
+size_t InternalType::Size() const {
+	auto dimByte = [](size_t byte, size_t dim) {
+		if (dim == 3) dim = 4;
+		return byte * dim;
+	};
+	return dimByte(
+		[&] -> uint {
+			switch (tag) {
+				case InternalType::Tag::BOOL:
+					return 1;
+				case InternalType::Tag::FLOAT:
+				case InternalType::Tag::UINT:
+				case InternalType::Tag::INT:
+					return 4;
+				case InternalType::Tag::MATRIX:
+					return 4 * dimension;
+				default: return 4;
+			}
+		}(),
+		dimension);
+}
 }// namespace toolhub::spv
