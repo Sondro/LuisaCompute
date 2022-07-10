@@ -97,7 +97,7 @@ Defines = {"VENGINE_VULKAN_PROJECT", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", 
 
 VulkanLib = "C:/VulkanSDK/1.3.216.0/"
 BuildProject({
-    projectName = "vulkan_backend",
+    projectName = "luisa-compute-backend-vk",
     projectType = "binary",
     event = function()
         add_files("**.cpp|build/**.cpp")

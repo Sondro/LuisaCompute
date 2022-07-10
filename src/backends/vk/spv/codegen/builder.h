@@ -6,8 +6,11 @@
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::spv {
+class Function;
 class Variable;
 class Builder {
+	friend class Function;
+
 public:
 	struct TypeName {
 		Id typeId;
@@ -41,12 +44,16 @@ private:
 		uint runtimeArrayStride);
 	Id GetSampledImageType(
 		TypeName& typeName);
+	vstd::string result;
+	vstd::string bodyStr;
+	vstd::string* bodyStrPtr;
 
 public:
+	vstd::string& Str() const { return *bodyStrPtr; }
+	vstd::string&& Combine();
 	bool inBlock = false;
 	Id GenStruct(vstd::span<InternalType const> type);
 	vstd::string header;
-	vstd::string result;
 	vstd::string decorateStr;
 	vstd::string typeStr;
 	vstd::string constValueStr;

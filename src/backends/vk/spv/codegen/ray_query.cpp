@@ -26,16 +26,16 @@ void RayQuery::PrintFunc(Builder* bd) {
 			vstd::string_view rayPayloadVar,
 			vstd::span<Id const> args,
 			uint hitFlag) -> Id {
-		bd->result << rayPayloadVar << " = OpVariable "sv << rayPayloadPtr.ToString() << " Function\n";
-		bd->result << rqVar << " = OpVariable "sv << Id::RayQueryPtrId().ToString() << " Function\n"sv;
-		bd->result << "OpRayQueryInitializeKHR "sv
+		bd->Str() << rayPayloadVar << " = OpVariable "sv << rayPayloadPtr.ToString() << " Function\n";
+		bd->Str() << rqVar << " = OpVariable "sv << Id::RayQueryPtrId().ToString() << " Function\n"sv;
+		bd->Str() << "OpRayQueryInitializeKHR "sv
 				   << rqVar << ' ' << args[0].ToString() << ' ' << bd->GetConstId(hitFlag).ToString() << ' ' << maxUInt
 				   << ' ' << args[1].ToString() << ' ' << args[3].ToString() << ' ' << args[2].ToString() << ' ' << args[4].ToString() << '\n';
 		Id proceed(bd->NewId());
-		bd->result << proceed.ToString() << " = OpRayQueryProceedKHR "sv << Id::BoolId().ToString() << ' ' << rqVar << '\n';
+		bd->Str() << proceed.ToString() << " = OpRayQueryProceedKHR "sv << Id::BoolId().ToString() << ' ' << rqVar << '\n';
 		Id hitResultInt(bd->NewId());
 		Id hitResultBool(bd->NewId());
-		bd->result << hitResultInt.ToString() << " = OpRayQueryGetIntersectionTypeKHR "sv
+		bd->Str() << hitResultInt.ToString() << " = OpRayQueryGetIntersectionTypeKHR "sv
 				   << Id::UIntId().ToString() << ' ' << rqVar << ' ' << uint_1 << '\n'
 				   << hitResultBool.ToString()
 				   << " = OpIEqual "sv << Id::BoolId().ToString() << ' ' << hitResultInt.ToString() << ' ' << uint_1 << '\n';
@@ -56,7 +56,7 @@ void RayQuery::PrintFunc(Builder* bd) {
 		auto rqVar = bd->NewId().ToString();
 		auto hitResult = GetHitResult(rqVar, rayPayloadVar, traceAnyFunc.argValues, ANY_HIT_RAY_FLAG);
 		auto returnBranch = traceAnyFunc.GetReturnTypeBranch(hitResult);
-		bd->result << "OpBranch "sv << returnBranch.ToString() << '\n';
+		bd->Str() << "OpBranch "sv << returnBranch.ToString() << '\n';
 		bd->inBlock = false;
 	}
 	{
@@ -77,10 +77,10 @@ void RayQuery::PrintFunc(Builder* bd) {
 						return bd->GetConstId(num).ToString();
 				}
 			}());
-			bd->result << chain.ToString() << " = OpAccessChain "sv << ptrType.ToString() << ' ' << rayPayloadVar << ' ' << numId << '\n';
+			bd->Str() << chain.ToString() << " = OpAccessChain "sv << ptrType.ToString() << ' ' << rayPayloadVar << ' ' << numId << '\n';
 		};
 		{
-			auto trueBranch = hitBranch.TrueBranchScope();
+			auto trueBranch = Block(bd, hitBranch.trueBranch, hitBranch.mergeBlock);
 			auto accessInstId(bd->NewId());
 			auto accessPrimId(bd->NewId());
 			auto accessUV(bd->NewId());
@@ -93,27 +93,27 @@ void RayQuery::PrintFunc(Builder* bd) {
 			auto UV(bd->NewId());
 			vstd::string endStr;
 			endStr << ' ' << rqVar << ' ' << uint_1 << '\n';
-			bd->result << instId.ToString() << " = OpRayQueryGetIntersectionInstanceIdKHR "sv << Id::UIntId().ToString() << endStr
+			bd->Str() << instId.ToString() << " = OpRayQueryGetIntersectionInstanceIdKHR "sv << Id::UIntId().ToString() << endStr
 					   << primId.ToString() << " = OpRayQueryGetIntersectionPrimitiveIndexKHR "sv << Id::UIntId().ToString() << endStr
 					   << UV.ToString() << " = OpRayQueryGetIntersectionBarycentricsKHR "sv << Id::VecId(Id::FloatId(), 2).ToString() << endStr
 					   << "OpStore "sv << accessInstId.ToString() << ' ' << instId.ToString() << '\n'
 					   << "OpStore "sv << accessPrimId.ToString() << ' ' << primId.ToString() << '\n'
 					   << "OpStore "sv << accessUV.ToString() << ' ' << UV.ToString() << '\n';
 			auto loadId(bd->NewId());
-			bd->result << loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
+			bd->Str() << loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
 			auto returnBranch = traceClosestFunc.GetReturnTypeBranch(loadId);
-			bd->result << "OpBranch "sv << returnBranch.ToString() << '\n';
+			bd->Str() << "OpBranch "sv << returnBranch.ToString() << '\n';
 			bd->inBlock = false;
 		}
 		{
-			auto falseBranch = hitBranch.FalseBranchScope();
+			auto falseBranch = Block(bd, hitBranch.falseBranch, hitBranch.mergeBlock);
 			auto accessInstId(bd->NewId());
 			BuildAccessChain(accessInstId, uintPtr, 0);
 			auto loadId(bd->NewId());
-			bd->result << "OpStore "sv << accessInstId.ToString() << ' ' << maxUInt << '\n'
+			bd->Str() << "OpStore "sv << accessInstId.ToString() << ' ' << maxUInt << '\n'
 					   << loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
 			auto returnBranch = traceClosestFunc.GetReturnTypeBranch(loadId);
-			bd->result << "OpBranch "sv << returnBranch.ToString() << '\n';
+			bd->Str() << "OpBranch "sv << returnBranch.ToString() << '\n';
 			bd->inBlock = false;
 		}
 	}

@@ -12,7 +12,6 @@ public:
 	///// Common
 	Id Load();
 	void Store(Id value);
-
 	///// Vector
 	Id ReadVectorElement(uint index);
 	Id Swizzle(vstd::span<uint> swizzles);

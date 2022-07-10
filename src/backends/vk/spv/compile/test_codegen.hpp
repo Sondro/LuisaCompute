@@ -7,7 +7,7 @@
 #include <spv/codegen/function.h>
 #include <spv/codegen/variable.h>
 #include <spv/codegen/if_branch.h>
-#include <spv/codegen/while_branch.h>
+#include <spv/codegen/while_loop.h>
 #include <spv/codegen/switch_case.h>
 #include <spv/codegen/ray_query.h>
 using namespace toolhub::spv;
@@ -17,10 +17,6 @@ void FunctionMain(Builder& bd) {
 void TestCompile() {
 	Builder bd;
 	bd.Reset(uint3(8, 8, 2), true);
-	//main func
-	{
-		RayQuery::PrintFunc(&bd);
-	}
 	{
 		Function mainFunc(&bd);
 		std::initializer_list<InternalType> typeIds{
@@ -29,10 +25,9 @@ void TestCompile() {
 			InternalType(InternalType::Tag::MATRIX, 3),
 			InternalType(InternalType::Tag::UINT, 4)};
 		bd.GenStruct(typeIds);
+
 	}
-	vstd::string& disassembly = bd.header;
-	disassembly.reserve(bd.constValueStr.size() + bd.result.size() + bd.header.size() + bd.decorateStr.size() + bd.typeStr.size());
-	disassembly << bd.decorateStr << bd.typeStr << bd.constValueStr << bd.result;
+	vstd::string disassembly = bd.Combine();
 	auto f = fopen("output.spvasm", "wb");
 	if (f) {
 		fwrite(disassembly.data(), disassembly.size(), 1, f);

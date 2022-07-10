@@ -4,17 +4,16 @@
 #include <vstl/small_vector.h>
 namespace toolhub::spv {
 class SwitchCase : public Component {
-	vstd::span<int32 const> cases;
+public:
+	vstd::small_vector<int32> cases;
 	vstd::small_vector<Id> caseId;
 	Id mergeBlock;
+	Id defaultBlock;
 
-public:
-	SwitchCase(Builder* bd, Id condition, vstd::span<int32 const> cases);
-	void IterateCase(
-		vstd::move_only_func<void(
-			size_t index,
-			int32 caseValue,
-			Id caseId)> const& iterateCase);
+	SwitchCase(
+		Builder* bd, Id condition,
+		vstd::span<int32 const> cases,
+		bool containDefault);
 	~SwitchCase();
 };
 }// namespace toolhub::spv

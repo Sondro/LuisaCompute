@@ -88,6 +88,7 @@ void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 	constMap.Clear();
 	funcTypeMap.Clear();
 	inBlock = false;
+	bodyStrPtr = &bodyStr;
 
 	header.reserve(8192);
 	result.reserve(1024 * 1024);
@@ -134,6 +135,22 @@ OpDecorate %26 BuiltIn WorkgroupId
 		<< "%24"sv << inputStr
 		<< "%25"sv << inputStr
 		<< "%26"sv << inputStr;
+}
+vstd::string&& Builder::Combine() {
+	auto disp = vstd::create_disposer([&] { result = {}; });
+	result.resize(
+		header.size() + decorateStr.size() + typeStr.size() + constValueStr.size() + bodyStr.size());
+	char* ptr = result.data();
+	auto copy = [&](vstd::string& str) {
+		memcpy(ptr, str.data(), str.size());
+		ptr += str.size();
+	};
+	copy(header);
+	copy(decorateStr);
+	copy(typeStr);
+	copy(constValueStr);
+	copy(bodyStr);
+	return std::move(result);
 }
 Builder::TypeName& Builder::GetTypeName(InternalType const& type) {
 	auto ite = types.TryEmplace(type);

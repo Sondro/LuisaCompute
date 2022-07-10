@@ -102,6 +102,16 @@ private:
             vec.arr = Allocate(capacity);
         }
     }
+    vector(T const *ptr, size_t count) : mSize(count) {
+        InitCapacity(count);
+        if constexpr (!(std::is_trivially_copy_constructible_v<T>)) {
+            for (size_t i = 0; i < count; ++i) {
+                new (vec.arr + i) T(ptr[i]);
+            }
+        } else {
+            memcpy(vec.arr, ptr, sizeof(T) * count);
+        }
+    }
 
 public:
     void reserve(size_t newCapacity) noexcept {
@@ -158,16 +168,9 @@ public:
             memcpy(vec.arr, ptr, sizeof(T) * mSize);
         }
     }
-    vector(span<T> const &lst) : mSize(lst.size()) {
-        InitCapacity(lst.size());
-        if constexpr (!(std::is_trivially_copy_constructible_v<T>)) {
-            for (size_t i = 0; i < mSize; ++i) {
-                new (vec.arr + i) T(lst[i]);
-            }
-        } else {
-            memcpy(vec.arr, &static_cast<T const &>(*lst.begin()), sizeof(T) * mSize);
-        }
-    }
+
+    vector(span<T> const &lst) : vector(lst.data(), lst.size()) {}
+    vector(span<T const> const &lst) : vector(lst.data(), lst.size()) {}
     vector(const vector &another) noexcept
         : mSize(another.mSize),
           mCapacity(another.mCapacity) {
