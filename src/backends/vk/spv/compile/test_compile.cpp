@@ -20,6 +20,7 @@
 // * Disassembling
 
 #include "test_codegen.hpp"
+#include <vstl/string_builder.h>
 struct SetSpvCompilerAlloc {
 	SetSpvCompilerAlloc() {
 		spvstd::set_malloc_func(vengine_malloc);
@@ -56,7 +57,6 @@ void PrintHLSL() {
 			std::cout << str << '\n';
 		});
 }
-
 int main() {
 	auto func = [&] {
 		std::cout << R"(0: hlsl to spv

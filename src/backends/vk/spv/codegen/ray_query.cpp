@@ -18,7 +18,7 @@ void RayQuery::PrintFunc(Builder* bd) {
 			InternalType(InternalType::Tag::FLOAT, 2),
 		};
 		rayPayload = bd->GenStruct(types);
-		bd->typeStr << rayPayloadPtr.ToString() << " = OpTypePointer Function "sv << rayPayload.ToString() << '\n';
+		bd->TypeStr() << rayPayloadPtr.ToString() << " = OpTypePointer Function "sv << rayPayload.ToString() << '\n';
 	}
 	auto GetHitResult =
 		[&](
@@ -26,7 +26,7 @@ void RayQuery::PrintFunc(Builder* bd) {
 			vstd::string_view rayPayloadVar,
 			vstd::span<Id const> args,
 			uint hitFlag) -> Id {
-		bd->Str() << rayPayloadVar << " = OpVariable "sv << rayPayloadPtr.ToString() << " Function\n";
+		bd->Str() << rayPayloadVar << " = OpVariable "sv << rayPayloadPtr.ToString() << " Function\n"sv;
 		bd->Str() << rqVar << " = OpVariable "sv << Id::RayQueryPtrId().ToString() << " Function\n"sv;
 		bd->Str() << "OpRayQueryInitializeKHR "sv
 				   << rqVar << ' ' << args[0].ToString() << ' ' << bd->GetConstId(hitFlag).ToString() << ' ' << maxUInt

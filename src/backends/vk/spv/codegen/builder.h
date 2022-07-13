@@ -3,13 +3,13 @@
 #include "types.h"
 #include <spirv-tools/spv_include.h>
 #include "tex_descriptor.h"
+#include <vstl/string_builder.h>
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::spv {
 class Function;
 class Variable;
 class Builder {
-	friend class Function;
 
 public:
 	struct TypeName {
@@ -28,10 +28,12 @@ public:
 private:
 	vstd::HashMap<TypeDescriptor, TypeName> types;
 	vstd::HashMap<ConstValue, Id> constMap;
+	vstd::HashMap<uint64, Id> constArrMap;
 	vstd::HashMap<Id, Id> funcTypeMap;
 	uint idCount = 0;
 	Id GenStruct(Type const* type);
-	void GenConstId(Id id, ConstValue const& value);
+	Id GenConstId(ConstValue const& value);
+	Id GenConstArrayId(ConstantData const& value);
 	void AddFloat3x3Decorate(Id structId, uint memberIdx);
 	TypeName& GetTypeName(Type const* type);
 	TypeName& GetTypeName(TexDescriptor const& type);
@@ -46,17 +48,17 @@ private:
 		TypeName& typeName);
 	vstd::string result;
 	vstd::string bodyStr;
-	vstd::string* bodyStrPtr;
-
-public:
-	vstd::string& Str() const { return *bodyStrPtr; }
-	vstd::string&& Combine();
-	bool inBlock = false;
-	Id GenStruct(vstd::span<InternalType const> type);
 	vstd::string header;
 	vstd::string decorateStr;
 	vstd::string typeStr;
 	vstd::string constValueStr;
+
+public:
+	vstd::StringBuilder TypeStr() { return {&typeStr}; }
+	vstd::StringBuilder Str() { return {&bodyStr}; }
+	vstd::string&& Combine();
+	bool inBlock = false;
+	Id GenStruct(vstd::span<InternalType const> type);
 
 	Id NewId() { return Id(idCount++); }
 	vstd::string_view UsageName(PointerUsage usage);
@@ -74,5 +76,6 @@ public:
 	void BindVariable(Variable const& var, uint descSet, uint binding);
 	////////////////////// variable
 	Id GetConstId(ConstValue const& value);
+	Id GetConstArrayId(ConstantData const& data, Type const* type);
 };
 }// namespace toolhub::spv

@@ -13,8 +13,6 @@ public:
 	Id returnType;
 	Id funcBlockId;
 	vstd::small_vector<Id> argValues;
-	vstd::string varStr;
-	vstd::string bodyStr;
 
 	Function(Builder* builder, Id returnType, vstd::span<Id const> argType);
 	// kernel

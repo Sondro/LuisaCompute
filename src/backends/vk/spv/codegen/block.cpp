@@ -10,7 +10,7 @@ Block::Block(Builder* bd, Id selfId, Id jumpId)
 	bd->inBlock = true;
 }
 Block::~Block() {
-	if (bd->inBlock) {
+	if (bd->inBlock && jumpId.valid()) {
 		bd->Str() << "OpBranch "sv << jumpId.ToString() << '\n';
 		bd->inBlock = false;
 	}

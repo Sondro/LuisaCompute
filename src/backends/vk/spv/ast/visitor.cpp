@@ -1,28 +1,52 @@
 #include "visitor.h"
 #include <spv/codegen/builder.h>
+#include <spv/codegen/type_caster.h>
 namespace toolhub::spv {
-Visitor::Visitor(Builder* bd, Function* func)
-	: Component(bd), func(func) {}
+
+Visitor::Visitor(Builder* bd, uint3 kernelGroupSize)
+	: Component(bd), kernelGroupSize(kernelGroupSize) {}
+void Visitor::Reset(Function* func) {
+	this->func = func;
+	loopBranch = nullptr;
+	block.Delete();
+	switchIndices.clear();
+	varId.Clear();
+}
 Visitor::~Visitor() {}
 void Visitor::visit(const BreakStmt* stmt) {
 	bd->Str() << "OpBranch "sv << loopBranch->MergeBlock().ToString() << '\n';
 	bd->inBlock = false;
+	block.Delete();
 }
 void Visitor::visit(const ContinueStmt* stmt) {
 	bd->Str() << "OpBranch "sv << loopBranch->ContinueBlock().ToString() << '\n';
 	bd->inBlock = false;
+	block.Delete();
 }
 template<typename T>
 requires(detail::IsExpression<T>)
-	Id Visitor::Accept(T ptr, Usage usage) {
-	lastUsage = usage;
-	ptr->accept(*this);
-	return lastReturnId;
+	ExprValue Visitor::Accept(T ptr) {
+	ExprVisitorWrapper wrapper;
+	wrapper.visitor = this;
+	ExprValue retId;
+	wrapper.retId = &retId;
+	ptr->accept(wrapper);
+	return retId;
+}
+template<typename T>
+requires(detail::IsExpression<T>)
+	Id Visitor::ReadAccept(T ptr) {
+	ExprValue expr = Accept(ptr);
+	if (expr.usage == PointerUsage::NotPointer) return expr.valueId;
+	auto valueType = bd->GetTypeId(ptr->type(), PointerUsage::NotPointer);
+	Id newId(bd->NewId());
+	bd->Str() << newId.ToString() << " = OpLoad "sv << valueType.ToString() << ' ' << expr.valueId.ToString() << '\n';
 }
 void Visitor::visit(const ReturnStmt* stmt) {
 	if (stmt->expression() == nullptr) {
 		bd->Str() << "OpBranch "sv << func->GetReturnBranch().ToString() << '\n';
 		bd->inBlock = false;
+		block.Delete();
 	}
 }
 void Visitor::visit(const ScopeStmt* stmt) {
@@ -33,7 +57,7 @@ void Visitor::visit(const ScopeStmt* stmt) {
 	block.Delete();
 }
 void Visitor::visit(const IfStmt* stmt) {
-	auto cond = Accept(stmt->condition(), Usage::Read);
+	auto cond = ReadAccept(stmt->condition());
 	IfBranch branch(bd, cond);
 	{
 		block.New(bd, branch.trueBranch, branch.mergeBlock);
@@ -48,10 +72,10 @@ void Visitor::visit(const LoopStmt* stmt) {
 	stmt->body()->accept(*this);
 }
 void Visitor::visit(const ExprStmt* stmt) {
-	stmt->expression()->accept(*this);
+	Accept(stmt->expression());
 }
 void Visitor::visit(const SwitchStmt* stmt) {
-	auto cond = Accept(stmt->expression(), Usage::Read);
+	auto cond = ReadAccept(stmt->expression());
 	// should be switchcase stmt
 	// kill Luisa if it's not
 	switchIndices.clear();
@@ -96,28 +120,286 @@ void Visitor::visit(const SwitchDefaultStmt* stmt) {
 	stmt->body()->accept(*this);
 }
 void Visitor::visit(const ForStmt* stmt) {
-	Accept(stmt->variable(), Usage::None);
-	auto& var = *lastVar;
-	ForLoop forLoop(bd, [&]{
-		return Accept(stmt->condition(), Usage::Read);
+	Accept(stmt->variable());
+	ForLoop forLoop(bd, [&] {
+		return ReadAccept(stmt->condition());
 	});
 	this->loopBranch = &forLoop;
 	block.New(bd, forLoop.LoopBlock(), forLoop.afterLoopBlock);
 	stmt->body()->accept(*this);
 	Block afterLoopBlock(bd, forLoop.afterLoopBlock, forLoop.MergeBlock());
-	Accept(stmt->step(), Usage::None);
+	Accept(stmt->step());
 }
-void Visitor::visit(const AssignStmt* stmt) {}
+void Visitor::visit(const AssignStmt* stmt) {
+	auto varValue = Accept(stmt->lhs());
+	auto readValue = ReadAccept(stmt->rhs());
+	bd->Str() << "OpStore "sv << varValue.valueId.ToString() << ' ' << readValue.ToString() << '\n';
+}
 void Visitor::visit(const CommentStmt* stmt) {}
-void Visitor::visit(const MetaStmt* stmt) {}
+void Visitor::visit(const MetaStmt* stmt) {
+	auto RegisterVariables = [&](auto& RegisterVariables, MetaStmt const* stmt) -> void {
+		[&] {
+			for (auto&& i : stmt->variables()) {
+				PointerUsage usage;
+				using Tag = luisa::compute::Variable::Tag;
+				switch (i.tag()) {
+					case Tag::LOCAL:
+					case Tag::BUFFER:
+					case Tag::TEXTURE:
+					case Tag::BINDLESS_ARRAY:
+					case Tag::ACCEL:
+					case Tag::REFERENCE:
+						usage = PointerUsage::Function;
+						break;
+					case Tag::SHARED:
+						usage = PointerUsage::Workgroup;
+						break;
+					default:
+						return;
+				}
+				varId.Emplace(
+					i.uid(),
+					vstd::MakeLazyEval([&] {
+						return Variable(bd, i.type(), usage);
+					}));
+			}
+		}();
+		for (auto&& i : stmt->children()) {
+			RegisterVariables(RegisterVariables, i);
+		}
+	};
+	RegisterVariables(RegisterVariables, stmt);
+	block.New(bd, func->funcBlockId);
+	stmt->scope()->accept(*this);
+}
 
-void Visitor::visit(const UnaryExpr* expr) {}
-void Visitor::visit(const BinaryExpr* expr) {}
-void Visitor::visit(const MemberExpr* expr) {}
-void Visitor::visit(const AccessExpr* expr) {}
-void Visitor::visit(const LiteralExpr* expr) {}
-void Visitor::visit(const RefExpr* expr) {}
-void Visitor::visit(const ConstantExpr* expr) {}
-void Visitor::visit(const CallExpr* expr) {}
-void Visitor::visit(const CastExpr* expr) {}
+ExprValue Visitor::visit(const UnaryExpr* expr) {
+	if (expr->op() == UnaryOp::PLUS) return Accept(expr->operand());
+	auto dstNewId = bd->NewId();
+	auto dstType = bd->GetTypeId(expr->type(), PointerUsage::NotPointer);
+	auto operandValue = ReadAccept(expr->operand());
+	auto PrintOperator = [&](auto&& getDstTypeAndOp) -> void {
+		auto dstTypeAndOp = getDstTypeAndOp();
+		bd->Str() << dstNewId.ToString() << dstTypeAndOp.first << dstTypeAndOp.second.ToString() << ' ' << operandValue.ToString() << '\n';
+	};
+	auto TypeId = [&](InternalType const* operandType, Id scalarId) {
+		return (operandType->Size() > 1) ? Id::VecId(scalarId, operandType->Size()) : scalarId;
+	};
+	switch (expr->op()) {
+		case UnaryOp::BIT_NOT:
+			PrintOperator(
+				[&] -> std::pair<vstd::string_view, Id> {
+					return {" = OpNot "sv, operandValue};
+				});
+			break;
+		case UnaryOp::NOT:
+			PrintOperator(
+				[&] -> std::pair<vstd::string_view, Id> {
+					return {" = OpLogicalNot "sv, operandValue};
+				});
+			break;
+		case UnaryOp::MINUS: {
+			auto operandType = InternalType::GetType(expr->operand()->type());
+			assert(operandType);
+			PrintOperator(
+				[&] -> std::pair<vstd::string_view, Id> {
+					switch (operandType->tag) {
+						case InternalType::Tag::FLOAT:
+							return {" = OpFNegate "sv, TypeId(operandType, Id::FloatId())};
+						case InternalType::Tag::INT:
+							return {" = OpSNegate "sv, TypeId(operandType, Id::IntId())};
+						default:
+							assert(false);
+					}
+				});
+		} break;
+	}
+	return {dstNewId, PointerUsage::NotPointer};
+}
+ExprValue Visitor::visit(const BinaryExpr* expr) {
+	auto dstNewId = bd->NewId();
+	auto dstType = bd->GetTypeId(expr->type(), PointerUsage::NotPointer);
+	auto PrintSameTypeOp = [&](auto&& getOp) {
+		auto leftType = InternalType::GetType(expr->lhs()->type());
+		auto rightType = InternalType::GetType(expr->rhs()->type());
+		assert(leftType && rightType);
+		auto compResult = TypeCaster::Compare(*leftType, *rightType);
+		auto printOp = [&](InternalType dstType, Id leftValue, Id rightValue, vstd::string_view opName) {
+			bd->Str() << dstNewId.ToString() << " = "sv << opName << ' ' << leftValue.ToString() << ' ' << rightValue.ToString() << '\n';
+		};
+		switch (compResult) {
+			case TypeCaster::CompareResult::UnChanged:
+				printOp(*leftType, ReadAccept(expr->lhs()), ReadAccept(expr->rhs()), getOp(*leftType));
+				break;
+			case TypeCaster::CompareResult::ToLeft:
+				printOp(*leftType, ReadAccept(expr->lhs()),
+						TypeCaster::Cast(bd, *rightType, *leftType, ReadAccept(expr->rhs())), getOp(*leftType));
+				break;
+			default:
+				printOp(*rightType, TypeCaster::Cast(bd, *leftType, *rightType, ReadAccept(expr->lhs())),
+						ReadAccept(expr->rhs()), getOp(*rightType));
+				break;
+		}
+	};
+	auto FloatOrInt = [&](InternalType type, vstd::string_view floatOp, vstd::string_view intOp) -> vstd::string_view {
+		switch (type.tag) {
+			case InternalType::Tag::FLOAT:
+			case InternalType::Tag::MATRIX:
+				return floatOp;
+			case InternalType::Tag::INT:
+			case InternalType::Tag::UINT:
+				return intOp;
+			default:
+				assert(false);
+				break;
+		}
+	};
+	switch (expr->op()) {
+		case BinaryOp::ADD: {
+			PrintSameTypeOp([&](InternalType type) {
+				return FloatOrInt(type, "OpFAdd"sv, "OpIAdd"sv);
+			});
+		} break;
+		case BinaryOp::SUB: {
+			PrintSameTypeOp([&](InternalType type) {
+				return FloatOrInt(type, "OpFSub"sv, "OpISub"sv);
+			});
+		} break;
+		case BinaryOp::DIV:
+			PrintSameTypeOp([&](InternalType type) {
+				switch (type.tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						return "OpFDiv"sv;
+					case InternalType::Tag::INT:
+						return "OpSDiv"sv;
+					case InternalType::Tag::UINT:
+						return "OpUDiv"sv;
+				}
+			});
+			break;
+		case BinaryOp::MUL: {
+			// OpVectorTimesScalar
+			auto lhsType = expr->lhs()->type();
+			auto rhsType = expr->rhs()->type();
+			if (lhsType->is_vector()
+				&& rhsType->is_scalar()) {
+				auto lhsInternalType = InternalType::GetType(lhsType);
+				bd->Str()
+					<< dstNewId.ToString()
+					<< " = OpVectorTimesScalar "sv
+					<< lhsInternalType->TypeId().ToString()
+					<< ' '
+					<< ReadAccept(expr->lhs()).ToString()
+					<< ' ' << ReadAccept(expr->rhs()).ToString()
+					<< '\n';
+
+			}
+			//OpMatrixTimesScalar
+			else if (lhsType->is_matrix() && rhsType->is_scalar()) {
+				auto lhsInternalType = InternalType::GetType(lhsType);
+				bd->Str()
+					<< dstNewId.ToString()
+					<< " = OpMatrixTimesScalar "sv
+					<< lhsInternalType->TypeId().ToString()
+					<< ' '
+					<< ReadAccept(expr->lhs()).ToString()
+					<< ' ' << ReadAccept(expr->rhs()).ToString()
+					<< '\n';
+
+			}
+			//OpVectorTimesMatrix
+			else if (lhsType->is_vector() && rhsType->is_matrix()) {
+				auto rhsInternalType = InternalType::GetType(rhsType);
+				bd->Str()
+					<< dstNewId.ToString()
+					<< " = OpVectorTimesMatrix "sv
+					<< rhsInternalType->TypeId().ToString()
+					<< ' ' << ReadAccept(expr->lhs()).ToString()
+					<< ' ' << ReadAccept(expr->rhs()).ToString()
+					<< '\n';
+			}
+			//OpMatrixTimesVector
+			else if (lhsType->is_matrix() && rhsType->is_vector()) {
+				auto lhsInternalType = InternalType::GetType(lhsType);
+				bd->Str()
+					<< dstNewId.ToString()
+					<< " = OpMatrixTimesVector "sv
+					<< lhsInternalType->TypeId().ToString()
+					<< ' ' << ReadAccept(expr->lhs()).ToString()
+					<< ' ' << ReadAccept(expr->rhs()).ToString()
+					<< '\n';
+			}
+			//OpMatrixTimesMatrix
+			else if (lhsType->is_matrix() && rhsType->is_matrix()) {
+				auto lhsInternalType = InternalType::GetType(lhsType);
+				bd->Str()
+					<< dstNewId.ToString()
+					<< " = OpMatrixTimesMatrix "sv
+					<< lhsInternalType->TypeId().ToString()
+					<< ' ' << ReadAccept(expr->lhs()).ToString()
+					<< ' ' << ReadAccept(expr->rhs()).ToString()
+					<< '\n';
+			} else {
+				PrintSameTypeOp([&](InternalType type) {
+					return FloatOrInt(type, "OpFMul"sv, "OpIMul"sv);
+				});
+			}
+			//
+		} break;
+	}
+	return {dstNewId, PointerUsage::NotPointer};
+}
+ExprValue Visitor::visit(const MemberExpr* expr) {
+	auto value = Accept(expr->self());
+	Id newId(bd->NewId());
+	bd->Str()
+		<< newId.ToString()
+		<< " = OpAccessChain "sv
+		<< bd->GetTypeId(expr->self()->type(), value.usage).ToString()
+		<< ' '
+		<< value.valueId.ToString()
+		<< ' '
+		<< bd->GetConstId((uint)expr->member_index()).ToString() << '\n';
+	return {newId, value.usage};
+}
+ExprValue Visitor::visit(const AccessExpr* expr) {
+	auto value = Accept(expr->range());
+	auto num = ReadAccept(expr->index());
+	Id newId(bd->NewId());
+	bd->Str()
+		<< newId.ToString()
+		<< " = OpAccessChain "sv
+		<< bd->GetTypeId(expr->range()->type(), value.usage).ToString()
+		<< ' ' << value.valueId.ToString()
+		<< ' ' << num.ToString() << '\n';
+}
+ExprValue Visitor::visit(const LiteralExpr* expr) {
+	return {bd->GetConstId(expr->value()), PointerUsage::NotPointer};
+}
+ExprValue Visitor::visit(const RefExpr* expr) {
+	using VarTag = luisa::compute::Variable::Tag;
+	auto var = expr->variable();
+	switch (var.tag()) {
+		case VarTag::DISPATCH_ID:
+			return {Id::DispatchThreadId(), PointerUsage::Input};
+		case VarTag::THREAD_ID:
+			return {Id::GroupThreadId(), PointerUsage::Input};
+		case VarTag::BLOCK_ID:
+			return {Id::GroupId(), PointerUsage::Input};
+		case VarTag::DISPATCH_SIZE:
+			return {bd->GetConstId(kernelGroupSize), PointerUsage::NotPointer};
+		default: {
+			auto ite = varId.Find(var.uid());
+			assert(ite);
+			auto& v = ite.Value();
+			return {v.varId, v.usage};
+		} break;
+	}
+}
+ExprValue Visitor::visit(const ConstantExpr* expr) {
+
+}
+ExprValue Visitor::visit(const CallExpr* expr) {}
+ExprValue Visitor::visit(const CastExpr* expr) {}
 }// namespace toolhub::spv

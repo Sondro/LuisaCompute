@@ -12,7 +12,7 @@ TypeCaster::CompareResult TypeCaster::Compare(
 			case InternalType::Tag::FLOAT:
 			case InternalType::Tag::INT:
 			case InternalType::Tag::UINT:
-				return scalarWeights[static_cast<uint>(t.tag)] + t.dimension * 100;
+				return scalarWeights[static_cast<uint>(t.tag)] + t.dimension * 10;
 			default:
 				return t.dimension * t.dimension * 10000;
 		}

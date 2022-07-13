@@ -11,18 +11,12 @@ Function::Function(Builder* builder, Id returnType, vstd::span<Id const> argType
 			bd->Str() << newId.ToString() << " = OpFunctionParameter "sv << argType[i].ToString() << '\n';
 			return newId;
 		});
-	bd->bodyStrPtr = &bodyStr;
-	bodyStr.reserve(8192);
-	bd->Str() << funcBlockId.ToString() << " = OpLabel\n"sv;
-	bd->inBlock = true;
 }
 Function::Function(Builder* builder)
 	: Component(builder),
 	  returnType(Id::VoidId()),
 	  funcType(bd->GetFuncReturnTypeId(Id::VoidId(), {})), funcBlockId(builder->NewId()) {
-	bd->Str() << "%48 = OpFunction %22 None "sv << funcType.ToString() << '\n'
-			   << funcBlockId.ToString() << " = OpLabel\n"sv;
-	bd->inBlock = true;
+	bd->Str() << "%48 = OpFunction %22 None "sv << funcType.ToString() << '\n';
 }
 Id Function::GetReturnTypeBranch(Id value) {
 	auto id = returnValues.emplace_back(Id(bd->NewId()), value).first;
@@ -35,8 +29,6 @@ Id Function::GetReturnBranch() {
 }
 
 Function::~Function() {
-	bd->bodyStr << varStr << bodyStr;
-	bd->bodyStrPtr = &bd->bodyStr;
 	if (returnValues.empty()) {
 		if (returnVoidCmd.valid()) {
 			if (bd->inBlock) {

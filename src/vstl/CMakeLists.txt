@@ -15,6 +15,7 @@ Log.h
 MD5.h
 Memory.h
 MetaLib.h
+string_builder.h
 Pool.h
 PoolAllocator.h
 Serializer.h
@@ -42,6 +43,7 @@ ThreadTaskHandle.cpp
 StackAllocator.cpp
 BinaryReader.cpp
 PoolAllocator.cpp
+string_builder.cpp
 vstl.cpp)
 
 add_library(luisa-compute-vstl SHARED ${LUISA_COMPUTE_UTIL_SOURCES})

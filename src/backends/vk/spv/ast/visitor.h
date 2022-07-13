@@ -6,20 +6,26 @@
 #include <spv/codegen/for_loop.h>
 #include <spv/codegen/switch_case.h>
 #include <spv/codegen/function.h>
+#include <spv/codegen/variable.h>
+#include <spv/codegen/internal_type.h>
 namespace toolhub::spv {
 namespace detail {
 template<typename T>
 static constexpr bool IsExpression = std::is_base_of_v<Expression, std::remove_cvref_t<std::remove_pointer_t<T>>>;
 }
-class Visitor : public Component, public StmtVisitor, public ExprVisitor {
-	enum class Usage : uint {
-		None,
-		Read,
-		Write
-	};
+struct ExprValue {
+	Id valueId;
+	PointerUsage usage;
+};
+class Visitor : public Component, public StmtVisitor {
+public:
+
 	template<typename T>
 	requires(detail::IsExpression<T>)
-		Id Accept(T ptr, Usage usage);
+		ExprValue Accept(T ptr);
+		template<typename T>
+	requires(detail::IsExpression<T>)
+		Id ReadAccept(T ptr);
 	/////////////////// function cache
 	vstd::HashMap<uint, Variable> varId;
 	/////////////////// statement cache
@@ -28,12 +34,10 @@ class Visitor : public Component, public StmtVisitor, public ExprVisitor {
 	vstd::optional<Block> block;
 	vstd::small_vector<int32> switchIndices;
 	/////////////////// return values
-	Usage lastUsage;
-	Id lastReturnId;
-	Variable* lastVar;
+	uint3 kernelGroupSize;
 
-public:
-	Visitor(Builder* bd, Function* func);
+	Visitor(Builder* bd, uint3 kernelGroupSize);
+	void Reset(Function* func);
 	~Visitor();
 	void visit(const BreakStmt* stmt) override;
 	void visit(const ContinueStmt* stmt) override;
@@ -50,14 +54,31 @@ public:
 	void visit(const CommentStmt* stmt) override;
 	void visit(const MetaStmt* stmt) override;
 
-	void visit(const UnaryExpr* expr) override;
-	void visit(const BinaryExpr* expr) override;
-	void visit(const MemberExpr* expr) override;
-	void visit(const AccessExpr* expr) override;
-	void visit(const LiteralExpr* expr) override;
-	void visit(const RefExpr* expr) override;
-	void visit(const ConstantExpr* expr) override;
-	void visit(const CallExpr* expr) override;
-	void visit(const CastExpr* expr) override;
+	ExprValue visit(const UnaryExpr* expr);
+	ExprValue visit(const BinaryExpr* expr);
+	ExprValue visit(const MemberExpr* expr);
+	ExprValue visit(const AccessExpr* expr);
+	ExprValue visit(const LiteralExpr* expr);
+	ExprValue visit(const RefExpr* expr);
+	ExprValue visit(const ConstantExpr* expr);
+	ExprValue visit(const CallExpr* expr);
+	ExprValue visit(const CastExpr* expr);
+};
+class ExprVisitorWrapper : public ExprVisitor {
+public:
+	Visitor* visitor;
+	ExprValue* retId;
+#define IMPL_VISITOR(Type) \
+	void visit(const Type* expr) override { *retId = visitor->visit(expr); }
+	IMPL_VISITOR(UnaryExpr)
+	IMPL_VISITOR(BinaryExpr)
+	IMPL_VISITOR(MemberExpr)
+	IMPL_VISITOR(AccessExpr)
+	IMPL_VISITOR(LiteralExpr)
+	IMPL_VISITOR(RefExpr)
+	IMPL_VISITOR(ConstantExpr)
+	IMPL_VISITOR(CallExpr)
+	IMPL_VISITOR(CastExpr)
+#undef IMPL_VISITOR
 };
 }// namespace toolhub::spv

@@ -1,6 +1,7 @@
 #pragma once
 #include <vstl/Common.h>
 #include <ast/type.h>
+#include <ast/expression.h>
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::spv {
@@ -14,12 +15,7 @@ enum class PointerUsage : vbyte {
 	Function = 5,
 	UniformConstant = 6
 };
-using ConstValue = vstd::variant<
-	int, uint, float,
-	int2, uint2, float2, bool2,
-	int3, uint3, float3, bool3,
-	int4, uint4, float4, bool4,
-	float2x2, float3x3, float4x4>;
+using ConstValue = luisa::compute::detail::make_literal_value_t<basic_types>;
 struct Id : public vstd::IOperatorNewBase {
 	uint id;
 	vstd::string ToString() const {

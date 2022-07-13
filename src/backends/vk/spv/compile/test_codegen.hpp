@@ -18,7 +18,7 @@ void TestCompile() {
 	Builder bd;
 	bd.Reset(uint3(8, 8, 2), true);
 	{
-		Function mainFunc(&bd);
+		toolhub::spv::Function mainFunc(&bd);
 		std::initializer_list<InternalType> typeIds{
 			InternalType(InternalType::Tag::FLOAT, 2),
 			InternalType(InternalType::Tag::FLOAT, 3),
