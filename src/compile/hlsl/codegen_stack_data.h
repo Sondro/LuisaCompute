@@ -24,7 +24,7 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     uint64 structCount = 0;
     DefinitionAnalysis analyzer;
     
-    vstd::move_only_func<StructGenerator *(Type const *)> generateStruct;
+    vstd::function<StructGenerator *(Type const *)> generateStruct;
     StructGenerator *rayDesc = nullptr;
     StructGenerator *hitDesc = nullptr;
     vstd::HashMap<vstd::string, vstd::string> structReplaceName;

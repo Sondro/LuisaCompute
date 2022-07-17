@@ -4,11 +4,16 @@ namespace toolhub::spv {
 Variable::Variable(Builder* bd, Type const* type, PointerUsage usage)
 	: Component(bd), type(type), usage(usage) {
 	auto typeAndPtrId = bd->GetTypeAndPtrId(type, usage);
-	typePtrId = typeAndPtrId.second;
+	auto typePtrId = typeAndPtrId.second;
 	typeId = typeAndPtrId.first;
 	varId = bd->NewId();
 	bd->Str() << varId.ToString() << " = OpVariable "sv << typePtrId.ToString() << ' ' << bd->UsageName(usage) << '\n';
 }
+Variable::Variable(Builder* bd, Type const* type, Id varId, PointerUsage usage)
+	: Component(bd), type(type), usage(usage), varId(varId) {
+	typeId = bd->GetTypeId(type, usage);
+}
+
 Id Variable::Swizzle(vstd::span<uint> swizzles) {
 	Id newId(bd->NewId());
 	bd->Str() << newId.ToString() << " = OpVectorShuffle "sv << typeId.ToString() << ' ' << typeId.ToString() << ' ';

@@ -42,7 +42,7 @@ void CommandQueue::AddEvent(LCEvent const *evt) {
     waitCv.notify_one();
     
 }
-void CommandQueue::Callback(vstd::move_only_func<void()> &&f) {
+void CommandQueue::Callback(vstd::function<void()> &&f) {
     executedAllocators.Push(std::move(f));
     mtx.lock();
     mtx.unlock();
@@ -116,7 +116,7 @@ uint64 CommandQueue::Execute(AllocatorPtr &&alloc) {
     waitCv.notify_one();
     return curFrame;
 }
-uint64 CommandQueue::Execute(AllocatorPtr &&alloc, vstd::move_only_func<void()> &&callback) {
+uint64 CommandQueue::Execute(AllocatorPtr &&alloc, vstd::function<void()> &&callback) {
     auto curFrame = ++lastFrame;
     alloc->Execute(this, cmdFence.Get(), curFrame);
     executedAllocators.Push(std::move(alloc), curFrame);

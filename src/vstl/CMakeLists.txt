@@ -24,8 +24,6 @@ spin_mutex.h
 StackAllocator.h
 StringUtility.h
 string_hash.h
-ThreadPool.h
-ThreadTaskHandle.h
 TreeMap.h
 TreeMapBase.h
 unique_ptr.h
@@ -38,8 +36,6 @@ StringUtility.cpp
 Log.cpp
 MD5.cpp
 VGuid.cpp
-ThreadPool.cpp
-ThreadTaskHandle.cpp
 StackAllocator.cpp
 BinaryReader.cpp
 PoolAllocator.cpp

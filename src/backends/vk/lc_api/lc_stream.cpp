@@ -188,24 +188,17 @@ public:
 				stream->hostAlloc,
 				cb, stream->StateTracker(), cmd->instance_count(), cmd->request() == AccelBuildRequest::PREFER_UPDATE, mod.size(), frameRes));
 		if (!mod.empty()) {
-			auto begin = mod.begin();
 			auto uploadBuffer = frameRes->AllocateUpload(
 				Accel::ACCEL_INST_SIZE * mod.size());
 			size_t uploadOffset = uploadBuffer.offset;
-			frameRes->AddCopyCmd(
-				uploadBuffer.buffer,
-				accel->InstanceBuffer(),
-				[&] -> vstd::optional<VkBufferCopy> {
-					if (begin == mod.end()) return {};
-					auto&& v = *begin;
+			auto iterator = vstd::MakeIRangeImpl(
+				vstd::MakeCacheEndRange(mod) >> vstd::MakeTransformRange([&](AccelBuildCommand::Modification const& v) {
 					Accel::Visibility vis = Accel::Visibility::Unchange;
 					if (v.flags & AccelBuildCommand::Modification::flag_visibility_on)
 						vis == Accel::Visibility::On;
 					else if (v.flags & AccelBuildCommand::Modification::flag_visibility_off)
 						vis == Accel::Visibility::Off;
-
-					vstd::optional<VkBufferCopy> r;
-					r.New(accel->SetInstance(
+					return accel->SetInstance(
 						updateInfo,
 						v.index,
 						reinterpret_cast<Mesh*>(v.mesh),
@@ -213,10 +206,13 @@ public:
 						uploadBuffer.buffer,
 						uploadOffset,
 						(v.flags & AccelBuildCommand::Modification::flag_transform) != 0,
-						(v.flags & AccelBuildCommand::Modification::flag_mesh) != 0, vis));
-					++begin;
-					return r;
-				},
+						(v.flags & AccelBuildCommand::Modification::flag_mesh) != 0, vis);
+				}));
+
+			frameRes->AddCopyCmd(
+				uploadBuffer.buffer,
+				accel->InstanceBuffer(),
+				&iterator,
 				mod.size());
 		}
 		accel->UpdateMesh(frameRes);

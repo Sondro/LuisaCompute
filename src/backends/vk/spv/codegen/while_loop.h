@@ -7,7 +7,7 @@ class WhileLoop : public Component, public LoopBase {
 public:
 	WhileLoop(
 		Builder* bd,
-		vstd::move_only_func<Id()> const& condition);
+		vstd::function<Id()> const& condition);
 	virtual ~WhileLoop();
 	virtual Id ContinueBlock() const override{ return mergeBlock; }
 };

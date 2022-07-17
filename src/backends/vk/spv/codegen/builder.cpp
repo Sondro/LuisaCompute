@@ -208,10 +208,12 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 		using Tag = Type::Tag;
 		auto GenBuffer = [&](TypeName& eleTypeName, uint arrayStride) {
 			typeName = Id(idCount++);
-			auto runtimeId = GetRuntimeArrayType(eleTypeName, PointerUsage::NotPointer, arrayStride);
-			vstd::StringBuilder(&decorateStr) << "OpMemberDecorate "sv << typeName.ToString() << " 0 Offset 0\nOpDecorate"sv
-											  << typeName.ToString() << " BufferBlock\n"sv;
-			vstd::StringBuilder(&typeStr) << typeName.ToString() << " = OpTypeStruct "sv << runtimeId.ToString() << '\n';
+			vstd::StringBuilder(&decorateStr)
+				<< "OpMemberDecorate "sv << typeName.ToString() << " 0 Offset 0\nOpDecorate"sv
+				<< typeName.ToString() << " BufferBlock\n"sv;
+			vstd::StringBuilder(&typeStr)
+				<< typeName.ToString() << " = OpTypeStruct "sv
+				<< GetRuntimeArrayType(eleTypeName, PointerUsage::NotPointer, arrayStride).ToString() << '\n';
 		};
 		switch (type->tag()) {
 			case Tag::BOOL:
@@ -233,22 +235,20 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 				typeName = Id::MatId(type->dimension());
 			} break;
 			case Tag::ARRAY: {
-				auto&& eleTypeName = func(func, type->element()).typeId;
-				auto dim = GetConstId((uint)type->size()).ToString();
 				typeName = Id(idCount++);
-				vstd::StringBuilder(&typeStr) << typeName.ToString() << " = OpTypeArray "sv << eleTypeName.ToString() << ' ' << dim << '\n';
+				vstd::StringBuilder(&typeStr)
+					<< typeName.ToString() << " = OpTypeArray "sv
+					<< func(func, type->element()).typeId.ToString()
+					<< ' ' << GetConstId((uint)type->size()).ToString() << '\n';
 			} break;
 			case Tag::BUFFER: {
-				auto&& eleTypeName = func(func, type->element());
-				GenBuffer(eleTypeName, type->element()->size());
+				GenBuffer(func(func, type->element()), type->element()->size());
 			} break;
 			case Tag::STRUCTURE: {
 				typeName = GenStruct(type);
 			} break;
 			case Tag::BINDLESS_ARRAY: {
-				auto& eleTypeName = GetTypeName(InternalType(InternalType::Tag::UINT, 1));
-				//uint is dense array, need no stride
-				GenBuffer(eleTypeName, 0);
+				GenBuffer(GetTypeName(InternalType(InternalType::Tag::UINT, 1)), 0);
 			} break;
 			case Tag::ACCEL: {
 				typeName = Id::AccelId();
@@ -512,21 +512,29 @@ Id Builder::GetConstId(ConstValue const& value) {
 			}))
 		.Value();
 }
-Id Builder::GenConstArrayId(ConstantData const& value) {
-	//TODO
+Id Builder::GenConstArrayId(ConstantData const& value, Id typeId) {
+	Id newId(NewId());
+	Id newPtrId(NewId());
+	luisa::visit([&](auto&& sp) {
+		auto builder = Str();
+		builder << newId.ToString() << " = OpConstantComposite "sv << typeId.ToString();
+		for (auto&& i : sp) {
+			builder << ' ' << GetConstId(i).ToString();
+		}
+	},
+				 value.view());
+	return newId;
 }
 
 Id Builder::GetConstArrayId(ConstantData const& data, Type const* type) {
 	return constArrMap
 		.Emplace(
 			data.hash(),
-			vstd::MakeLazyEval([&] -> Id {
-				return GenConstArrayId(data);
+			vstd::MakeLazyEval([&] {
+				return GenConstArrayId(data, GetTypeId(type, PointerUsage::NotPointer));
 			}))
 		.Value();
 }
-
 Component::Component(Builder* bd) : bd(bd) {
 }
-
 }// namespace toolhub::spv

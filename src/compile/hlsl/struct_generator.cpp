@@ -97,7 +97,7 @@ StructureType StructureType::GetMatrix(vbyte dim) {
 void StructGenerator::InitAsStruct(
     vstd::Iterator<Type const *const> const &vars,
     size_t structIdx,
-    vstd::move_only_func<StructGenerator *(Type const *)> const &visitor) {
+    vstd::function<StructGenerator *(Type const *)> const &visitor) {
     size_t structSize = 0;
     structName = "S";
     vstd::to_string(structIdx, structName);
@@ -183,7 +183,7 @@ void StructGenerator::InitAsStruct(
 void StructGenerator::InitAsArray(
     Type const *t,
     size_t structIdx,
-    vstd::move_only_func<StructGenerator *(Type const *)> const &visitor) {
+    vstd::function<StructGenerator *(Type const *)> const &visitor) {
     structName = "A";
     vstd::to_string(structIdx, structName);
     auto &&ele = t->element();
@@ -193,7 +193,7 @@ void StructGenerator::InitAsArray(
 StructGenerator::StructGenerator(
     Type const *structureType,
     size_t structIdx,
-    vstd::move_only_func<StructGenerator *(Type const *)> const &visitor)
+    vstd::function<StructGenerator *(Type const *)> const &visitor)
     : idx(structIdx),
       structureType{structureType} {
     if (structureType->tag() == Type::Tag::STRUCTURE) {

@@ -14,7 +14,7 @@ public:
 private:
     using CallbackEvent = vstd::variant<
         std::pair<AllocatorPtr, uint64>,
-        vstd::move_only_func<void()>,
+        vstd::function<void()>,
         std::pair<LCEvent const *, uint64>>;
     Device *device;
     IGpuAllocator *resourceAllocator;
@@ -41,10 +41,10 @@ public:
         D3D12_COMMAND_LIST_TYPE type);
     ~CommandQueue();
     AllocatorPtr CreateAllocator(size_t maxAllocCount);
-    void Callback(vstd::move_only_func<void()> &&f);
+    void Callback(vstd::function<void()> &&f);
     void AddEvent(LCEvent const *evt);
     uint64 Execute(AllocatorPtr &&alloc);
-    uint64 Execute(AllocatorPtr &&alloc, vstd::move_only_func<void()>&& callback);
+    uint64 Execute(AllocatorPtr &&alloc, vstd::function<void()>&& callback);
     void ExecuteEmpty(AllocatorPtr &&alloc);
     uint64 ExecuteAndPresent(AllocatorPtr &&alloc, IDXGISwapChain3 *swapChain);
     void Complete(uint64 fence);

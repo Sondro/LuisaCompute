@@ -5,10 +5,10 @@ class Variable : public Component {
 public:
 	Type const* type;
 	Id typeId;
-	Id typePtrId;
 	Id varId;
 	PointerUsage usage;
 	Variable(Builder* bd, Type const* type, PointerUsage usage);
+	Variable(Builder* bd, Type const* type, Id varId, PointerUsage usage);
 	///// Common
 	Id Load();
 	void Store(Id value);

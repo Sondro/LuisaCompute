@@ -18,11 +18,11 @@ protected:
     D3D12_COMMAND_LIST_TYPE type;
     IGpuAllocator *resourceAllocator;
     CommandAllocatorBase(Device *device, IGpuAllocator *resourceAllocator, D3D12_COMMAND_LIST_TYPE type);
-    vstd::LockFreeArrayQueue<vstd::move_only_func<void()>> executeAfterComplete;
+    vstd::LockFreeArrayQueue<vstd::function<void()>> executeAfterComplete;
 
 public:
     template<typename Func>
-        requires(std::is_constructible_v<vstd::move_only_func<void()>, Func &&>)
+        requires(std::is_constructible_v<vstd::function<void()>, Func &&>)
     void ExecuteAfterComplete(Func &&func) {
         executeAfterComplete.Push(std::forward<Func>(func));
     }

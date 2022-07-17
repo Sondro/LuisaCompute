@@ -40,11 +40,11 @@ class StructGenerator : public vstd::IOperatorNewBase {
     void InitAsStruct(
         vstd::Iterator<Type const *const> const &vars,
         size_t structIdx,
-        vstd::move_only_func<StructGenerator *(Type const *)> const &visitor);
+        vstd::function<StructGenerator *(Type const *)> const &visitor);
     void InitAsArray(
         Type const *structureType,
         size_t structIdx,
-        vstd::move_only_func<StructGenerator *(Type const *)> const &visitor);
+        vstd::function<StructGenerator *(Type const *)> const &visitor);
 
 public:
     vstd::string const &GetStructVar(uint idx) const {
@@ -62,7 +62,7 @@ public:
     StructGenerator(
         Type const *structureType,
         size_t structIdx,
-        vstd::move_only_func<StructGenerator *(Type const *)> const &visitor);
+        vstd::function<StructGenerator *(Type const *)> const &visitor);
 
     ~StructGenerator();
 };

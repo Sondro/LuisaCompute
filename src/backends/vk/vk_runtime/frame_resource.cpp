@@ -153,8 +153,8 @@ void FrameResource::ExecuteCopy() {
 	imgBufCopyCmds.Clear();
 }
 void FrameResource::ExecuteScratchAlloc(ResStateTracker& stateTracker) {
-    bfViewBegin = scratchBufferViews.begin();
-    if (scratchAccumulateSize == 0) return;
+	bfViewBegin = scratchBufferViews.begin();
+	if (scratchAccumulateSize == 0) return;
 	for (auto&& i : scratchBuffers) {
 		if (i->ByteSize() >= scratchAccumulateSize) {
 			curScratchBuffer = i.get();
@@ -186,18 +186,18 @@ void FrameResource::Wait() {
 		&syncFence,
 		true,
 		std::numeric_limits<uint64>::max()));
-    vkResetFences(device->device, 1, &syncFence);
-    for (auto &&i : disposeFuncs) {
-        i();
-    }
-    disposeFuncs.clear();
-    uploadAlloc.Clear();
-    defaultAlloc.Clear();
-    readBackAlloc.Clear();
-    descManager.EndFrame();
+	vkResetFences(device->device, 1, &syncFence);
+	for (auto&& i : disposeFuncs) {
+		i();
+	}
+	disposeFuncs.clear();
+	uploadAlloc.Clear();
+	defaultAlloc.Clear();
+	readBackAlloc.Clear();
+	descManager.EndFrame();
 }
 void FrameResource::ClearScratchBuffer() {
-    scratchBuffers.clear();
+	scratchBuffers.clear();
 }
 
 namespace detail {
@@ -254,57 +254,57 @@ void FrameResource::AddCopyCmd(
 void FrameResource::AddCopyCmd(
 	Buffer const* src,
 	Buffer const* dst,
-	vstd::move_only_func<vstd::optional<VkBufferCopy>()> const& iterateFunc,
+	vstd::IRange<VkBufferCopy>* iterateFunc,
 	size_t reserveSize) {
 	auto ite = bufferCopyCmds.Emplace(
 		CopyKey<Buffer, Buffer>{src, dst},
 		detail::GetVecPoolLazyEval(bufferCopyVecPool));
 	auto&& vec = ite.Value();
 	vec.reserve(vec.size() + reserveSize);
-	while (auto v = iterateFunc()) {
-		vec.emplace_back(*v);
+	for (auto v : *iterateFunc) {
+		vec.emplace_back(v);
 	}
 }
 void FrameResource::AddCopyCmd(
 	Texture const* src,
 	Texture const* dst,
-	vstd::move_only_func<vstd::optional<VkImageCopy>()> const& iterateFunc,
+	vstd::IRange<VkImageCopy>* iterateFunc,
 	size_t reserveSize) {
 	auto ite = imgCopyCmds.Emplace(
 		CopyKey<Texture, Texture>{src, dst},
 		detail::GetVecPoolLazyEval(imgCopyVecPool));
 	auto&& vec = ite.Value();
 	vec.reserve(vec.size() + reserveSize);
-	while (auto v = iterateFunc()) {
-		vec.emplace_back(*v);
+	for (auto v : *iterateFunc) {
+		vec.emplace_back(v);
 	}
 }
 void FrameResource::AddCopyCmd(
 	Buffer const* src,
 	Texture const* dst,
-	vstd::move_only_func<vstd::optional<VkBufferImageCopy>()> const& iterateFunc,
+	vstd::IRange<VkBufferImageCopy>* iterateFunc,
 	size_t reserveSize) {
 	auto ite = bufImgCopyCmds.Emplace(
 		CopyKey<Buffer, Texture>{src, dst},
 		detail::GetVecPoolLazyEval(bufImgCopyVecPool));
 	auto&& vec = ite.Value();
 	vec.reserve(vec.size() + reserveSize);
-	while (auto v = iterateFunc()) {
-		vec.emplace_back(*v);
+	for (auto v : *iterateFunc) {
+		vec.emplace_back(v);
 	}
 }
 void FrameResource::AddCopyCmd(
 	Texture const* src,
 	Buffer const* dst,
-	vstd::move_only_func<vstd::optional<VkBufferImageCopy>()> const& iterateFunc,
+	vstd::IRange<VkBufferImageCopy>* iterateFunc,
 	size_t reserveSize) {
 	auto ite = imgBufCopyCmds.Emplace(
 		CopyKey<Texture, Buffer>{src, dst},
 		detail::GetVecPoolLazyEval(bufImgCopyVecPool));
 	auto&& vec = ite.Value();
 	vec.reserve(vec.size() + reserveSize);
-	while (auto v = iterateFunc()) {
-		vec.emplace_back(*v);
+	for (auto v : *iterateFunc) {
+		vec.emplace_back(v);
 	}
 }
 void FrameResource::AddCopyCmd(
@@ -370,7 +370,7 @@ void FrameResource::AddCopyCmd(
 	auto sz = src->Size();
 	v.imageExtent = {sz.x, sz.y, sz.z};
 }
-void FrameResource::AddDisposeEvent(vstd::move_only_func<void()>&& disposeFunc) {
+void FrameResource::AddDisposeEvent(vstd::function<void()>&& disposeFunc) {
 	disposeFuncs.emplace_back(std::move(disposeFunc));
 }
 void FrameResource::ResetScratch() {
@@ -382,8 +382,8 @@ void FrameResource::AddScratchSize(size_t size) {
 	scratchBufferViews.emplace_back(size);
 }
 BufferView FrameResource::GetScratchBufferView() {
-    if (*bfViewBegin == 0)
-        return BufferView();
+	if (*bfViewBegin == 0)
+		return BufferView();
 	BufferView bf(
 		curScratchBuffer,
 		scratchAccumulateSize,

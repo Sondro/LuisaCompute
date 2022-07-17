@@ -1,6 +1,7 @@
 #include "visitor.h"
 #include <spv/codegen/builder.h>
 #include <spv/codegen/type_caster.h>
+#include <vstl/ranges.h>
 namespace toolhub::spv {
 
 Visitor::Visitor(Builder* bd, uint3 kernelGroupSize)
@@ -351,28 +352,38 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 	return {dstNewId, PointerUsage::NotPointer};
 }
 ExprValue Visitor::visit(const MemberExpr* expr) {
+	using TypeTag = luisa::compute::Type::Tag;
+	auto selfType = expr->self()->type();
 	auto value = Accept(expr->self());
-	Id newId(bd->NewId());
-	bd->Str()
-		<< newId.ToString()
-		<< " = OpAccessChain "sv
-		<< bd->GetTypeId(expr->self()->type(), value.usage).ToString()
-		<< ' '
-		<< value.valueId.ToString()
-		<< ' '
-		<< bd->GetConstId((uint)expr->member_index()).ToString() << '\n';
-	return {newId, value.usage};
+	Variable var(bd, selfType, value.usage);
+	if (expr->is_swizzle()) {
+		
+	} else {
+		switch (selfType->tag()) {
+			case TypeTag::MATRIX:
+				return {var.AccessMatrixCol(bd->GetConstId((uint)expr->member_index())), value.usage};
+			case TypeTag::STRUCTURE:
+				return {var.AccessMember(expr->member_index()), value.usage};
+			case TypeTag::VECTOR:
+				return {var.AccessVectorElement(expr->member_index()), value.usage};
+			default:
+				assert(false);
+		}
+	}
 }
 ExprValue Visitor::visit(const AccessExpr* expr) {
 	auto value = Accept(expr->range());
 	auto num = ReadAccept(expr->index());
-	Id newId(bd->NewId());
-	bd->Str()
-		<< newId.ToString()
-		<< " = OpAccessChain "sv
-		<< bd->GetTypeId(expr->range()->type(), value.usage).ToString()
-		<< ' ' << value.valueId.ToString()
-		<< ' ' << num.ToString() << '\n';
+	Variable var(bd, expr->type(), value.valueId, value.usage);
+	auto newId = [&] {
+		switch (expr->type()->tag()) {
+			case Type::Tag::ARRAY:
+				return var.AccessArrayEle(num);
+			case Type::Tag::BUFFER:
+				return var.AccessBufferEle(Id::ZeroId(), num);
+		}
+	}();
+	return {newId, value.usage};
 }
 ExprValue Visitor::visit(const LiteralExpr* expr) {
 	return {bd->GetConstId(expr->value()), PointerUsage::NotPointer};
@@ -388,7 +399,7 @@ ExprValue Visitor::visit(const RefExpr* expr) {
 		case VarTag::BLOCK_ID:
 			return {Id::GroupId(), PointerUsage::Input};
 		case VarTag::DISPATCH_SIZE:
-			return {bd->GetConstId(kernelGroupSize), PointerUsage::NotPointer};
+			return {bd->GetConstId(kernelGroupSize), PointerUsage::UniformConstant};
 		default: {
 			auto ite = varId.Find(var.uid());
 			assert(ite);
@@ -398,8 +409,21 @@ ExprValue Visitor::visit(const RefExpr* expr) {
 	}
 }
 ExprValue Visitor::visit(const ConstantExpr* expr) {
-
+	Id arrValueId = bd->GetConstArrayId(expr->data(), expr->type());
+	return {
+		arrValueId,
+		PointerUsage::UniformConstant};
 }
-ExprValue Visitor::visit(const CallExpr* expr) {}
-ExprValue Visitor::visit(const CastExpr* expr) {}
+ExprValue Visitor::visit(const CallExpr* expr) {
+}
+ExprValue Visitor::visit(const CastExpr* expr) {
+	auto value = Accept(expr->expression());
+	auto srcType = InternalType::GetType(expr->expression()->type());
+	auto dstType = InternalType::GetType(expr->type());
+	assert(srcType && dstType);
+	if (srcType->tag == dstType->tag && srcType->dimension == dstType->dimension) {
+		return value;
+	}
+	//TODO
+}
 }// namespace toolhub::spv

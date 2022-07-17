@@ -7,7 +7,7 @@ class ForLoop : public WhileLoop {
 public:
 	Id afterLoopBlock;
 	ForLoop(Builder* bd,
-			vstd::move_only_func<Id()> const& condition);
+			vstd::function<Id()> const& condition);
 	~ForLoop();
 	virtual Id ContinueBlock() const override{ return afterLoopBlock; }
 };

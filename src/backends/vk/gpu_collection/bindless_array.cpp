@@ -89,23 +89,19 @@ void BindlessArray::Preprocess(
 	stateTracker.MarkBufferWrite(
 		&instanceBuffer,
 		BufferWriteState::Copy);
-	auto ite = updateList.begin();
 	BufferView upload = res->AllocateUpload(
 		updateList.size() * sizeof(Instance));
-	auto iterateFunc = [&] -> vstd::optional<VkBufferCopy> {
-		if (ite == updateList.end())
-			return {};
-		vstd::optional<VkBufferCopy> opt;
-		opt.New();
-		auto index = ite->first;
+	auto getCopyBufferFunc = [&](auto&& ite) {
+		VkBufferCopy opt;
+		auto index = ite.first;
 		auto offset = size_t(index) * sizeof(Instance);
 		auto uploadOffset = upload.offset + offset;
 		auto& inst = instances[index];
-		auto& refOp = ite->second;
+		auto& refOp = ite.second;
 		auto& ref = inst.second;
-		opt->srcOffset = uploadOffset;
-		opt->dstOffset = offset;
-		opt->size = sizeof(Instance);
+		opt.srcOffset = uploadOffset;
+		opt.dstOffset = offset;
+		opt.size = sizeof(Instance);
 		if (ref.refCount == 0) {
 			if (inst.first.index != std::numeric_limits<uint>::max()) {
 				res->AddDisposeBindlessIdx(inst.first.index);
@@ -144,13 +140,13 @@ void BindlessArray::Preprocess(
 			inst.second.tex3D = ref.tex3D;
 		}
 		upload.buffer->CopyValueFrom(inst.first, uploadOffset);
-		++ite;
 		return opt;
 	};
+	auto iterateFunc = vstd::MakeIRangeImpl(vstd::MakeCacheEndRange(updateList) >> vstd::MakeTransformRange(std::move(getCopyBufferFunc)));
 	res->AddCopyCmd(
 		upload.buffer,
 		&instanceBuffer,
-		iterateFunc,
+		&iterateFunc,
 		updateList.size());
 	updateList.Clear();
 }

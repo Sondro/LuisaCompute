@@ -9,7 +9,7 @@ LoopBase::LoopBase(Builder* bd)
 
 WhileLoop::WhileLoop(
 	Builder* bd,
-	vstd::move_only_func<Id()> const& condition)
+	vstd::function<Id()> const& condition)
 	: Component(bd),
 	  LoopBase(bd) {
 	auto condBlockStr = conditionBlock.ToString();

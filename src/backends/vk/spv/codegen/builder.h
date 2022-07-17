@@ -33,7 +33,7 @@ private:
 	uint idCount = 0;
 	Id GenStruct(Type const* type);
 	Id GenConstId(ConstValue const& value);
-	Id GenConstArrayId(ConstantData const& value);
+	Id GenConstArrayId(ConstantData const& value, Id typeId);
 	void AddFloat3x3Decorate(Id structId, uint memberIdx);
 	TypeName& GetTypeName(Type const* type);
 	TypeName& GetTypeName(TexDescriptor const& type);

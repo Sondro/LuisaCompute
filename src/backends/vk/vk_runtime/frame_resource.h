@@ -5,6 +5,7 @@
 #include <gpu_collection/buffer.h>
 #include <shader/descriptorset_manager.h>
 #include <vstl/functional.h>
+#include <vstl/ranges.h>
 namespace toolhub::vk {
 class CommandPool;
 class Event;
@@ -45,7 +46,7 @@ class FrameResource : public Resource {
 	Map<Texture, Buffer, VkBufferImageCopy> imgBufCopyCmds;
 	vstd::vector<uint> disposeBindlessIdx;
 	// Sync
-	vstd::vector<vstd::move_only_func<void()>> disposeFuncs;
+	vstd::vector<vstd::function<void()>> disposeFuncs;
 	vstd::vector<vstd::unique_ptr<Buffer>> scratchBuffers;
 	vstd::vector<size_t> scratchBufferViews;
 	size_t* bfViewBegin = nullptr;
@@ -64,9 +65,9 @@ public:
 	void Execute(FrameResource* lastFrame);
 	void ExecuteCopy();
 	void ExecuteScratchAlloc(ResStateTracker& stateTracker);
-    void Wait();
-    void ClearScratchBuffer();
-	void AddDisposeEvent(vstd::move_only_func<void()>&& disposeFunc);
+	void Wait();
+	void ClearScratchBuffer();
+	void AddDisposeEvent(vstd::function<void()>&& disposeFunc);
 	void AddCopyCmd(
 		Buffer const* src,
 		uint64 srcOffset,
@@ -76,7 +77,7 @@ public:
 	void AddCopyCmd(
 		Buffer const* src,
 		Buffer const* dst,
-		vstd::move_only_func<vstd::optional<VkBufferCopy>()> const& iterateFunc,
+		vstd::IRange<VkBufferCopy>* iterateFunc,
 		size_t reserveSize = 0);
 	void AddCopyCmd(
 		Texture const* src,
@@ -86,7 +87,7 @@ public:
 	void AddCopyCmd(
 		Texture const* src,
 		Texture const* dst,
-		vstd::move_only_func<vstd::optional<VkImageCopy>()> const& iterateFunc,
+		vstd::IRange<VkImageCopy>* iterateFunc,
 		size_t reserveSize = 0);
 	void AddCopyCmd(
 		Buffer const* src,
@@ -96,7 +97,7 @@ public:
 	void AddCopyCmd(
 		Buffer const* src,
 		Texture const* dst,
-		vstd::move_only_func<vstd::optional<VkBufferImageCopy>()> const& iterateFunc,
+		vstd::IRange<VkBufferImageCopy>* iterateFunc,
 		size_t reserveSize = 0);
 	void AddCopyCmd(
 		Texture const* src,
@@ -107,7 +108,7 @@ public:
 	void AddCopyCmd(
 		Texture const* src,
 		Buffer const* dst,
-		vstd::move_only_func<vstd::optional<VkBufferImageCopy>()> const& iterateFunc,
+		vstd::IRange<VkBufferImageCopy>* iterateFunc,
 		size_t reserveSize = 0);
 
 	BufferView AllocateUpload(

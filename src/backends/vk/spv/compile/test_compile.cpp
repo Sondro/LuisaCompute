@@ -21,6 +21,7 @@
 
 #include "test_codegen.hpp"
 #include <vstl/string_builder.h>
+#include <vstl/ranges.h>
 struct SetSpvCompilerAlloc {
 	SetSpvCompilerAlloc() {
 		spvstd::set_malloc_func(vengine_malloc);
@@ -93,8 +94,7 @@ int main() {
 			if (!core.Validate(spirv)) return 1;
 			std::cout << "compile success\n";
 			return 0;
-			opt.RegisterPass(spvtools::CreateSetSpecConstantDefaultValuePass({{1, "42"}}))
-				.RegisterPass(spvtools::CreateFreezeSpecConstantValuePass())
+			opt.RegisterPass(spvtools::CreateFreezeSpecConstantValuePass())
 				.RegisterPass(spvtools::CreateUnifyConstantPass())
 				.RegisterPass(spvtools::CreateStripDebugInfoPass());
 			if (!opt.Run(spirv.data(), spirv.size(), &spirv)) return 1;
