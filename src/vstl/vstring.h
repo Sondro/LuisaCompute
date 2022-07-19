@@ -9,6 +9,7 @@
 #include <vstl/Compare.h>
 #include <vstl/string_hash.h>
 #include <vstl/vector.h>
+#include <vstl/ranges.h>
 namespace vstd {
 using string = std::basic_string<char, std::char_traits<char>, luisa::allocator<char>>;
 using wstring = std::basic_string<wchar_t, std::char_traits<wchar_t>, luisa::allocator<wchar_t>>;

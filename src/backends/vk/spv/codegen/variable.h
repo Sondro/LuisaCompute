@@ -14,7 +14,7 @@ public:
 	void Store(Id value);
 	///// Vector
 	Id ReadVectorElement(uint index);
-	Id Swizzle(vstd::span<uint> swizzles);
+	Id Swizzle(vstd::IRange<uint>* swizzles);
 	Id AccessVectorElement(uint index);
 	void WriteVectorElement(uint index, Id result);
 	///// Struct

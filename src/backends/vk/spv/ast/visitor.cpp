@@ -25,8 +25,8 @@ void Visitor::visit(const ContinueStmt* stmt) {
 	block.Delete();
 }
 template<typename T>
-requires(detail::IsExpression<T>)
-	ExprValue Visitor::Accept(T ptr) {
+	requires(detail::IsExpression<T>)
+ExprValue Visitor::Accept(T ptr) {
 	ExprVisitorWrapper wrapper;
 	wrapper.visitor = this;
 	ExprValue retId;
@@ -35,8 +35,8 @@ requires(detail::IsExpression<T>)
 	return retId;
 }
 template<typename T>
-requires(detail::IsExpression<T>)
-	Id Visitor::ReadAccept(T ptr) {
+	requires(detail::IsExpression<T>)
+Id Visitor::ReadAccept(T ptr) {
 	ExprValue expr = Accept(ptr);
 	if (expr.usage == PointerUsage::NotPointer) return expr.valueId;
 	auto valueType = bd->GetTypeId(ptr->type(), PointerUsage::NotPointer);
@@ -283,8 +283,7 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 			// OpVectorTimesScalar
 			auto lhsType = expr->lhs()->type();
 			auto rhsType = expr->rhs()->type();
-			if (lhsType->is_vector()
-				&& rhsType->is_scalar()) {
+			if (lhsType->is_vector() && rhsType->is_scalar()) {
 				auto lhsInternalType = InternalType::GetType(lhsType);
 				bd->Str()
 					<< dstNewId.ToString()
@@ -357,7 +356,15 @@ ExprValue Visitor::visit(const MemberExpr* expr) {
 	auto value = Accept(expr->self());
 	Variable var(bd, selfType, value.usage);
 	if (expr->is_swizzle()) {
-		
+		if (expr->swizzle_size() > 1) {
+			auto swizzleRange = vstd::IRangeImpl(
+				vstd::CacheEndRange(vstd::range(expr->swizzle_size())) |
+				vstd::TransformRange([&](size_t idx) -> uint { return expr->swizzle_index(idx); }));
+			return {var.Swizzle(&swizzleRange), PointerUsage::NotPointer};
+		} else {
+			auto id = var.AccessVectorElement(expr->swizzle_index(0));
+			return {id, var.usage};
+		}
 	} else {
 		switch (selfType->tag()) {
 			case TypeTag::MATRIX:
@@ -415,6 +422,10 @@ ExprValue Visitor::visit(const ConstantExpr* expr) {
 		PointerUsage::UniformConstant};
 }
 ExprValue Visitor::visit(const CallExpr* expr) {
+	if (expr->is_builtin()) {
+		
+	} else {
+	}
 }
 ExprValue Visitor::visit(const CastExpr* expr) {
 	auto value = Accept(expr->expression());

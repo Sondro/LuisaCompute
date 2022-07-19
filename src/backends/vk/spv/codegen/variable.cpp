@@ -14,10 +14,10 @@ Variable::Variable(Builder* bd, Type const* type, Id varId, PointerUsage usage)
 	typeId = bd->GetTypeId(type, usage);
 }
 
-Id Variable::Swizzle(vstd::span<uint> swizzles) {
+Id Variable::Swizzle(vstd::IRange<uint>* swizzles) {
 	Id newId(bd->NewId());
 	bd->Str() << newId.ToString() << " = OpVectorShuffle "sv << typeId.ToString() << ' ' << typeId.ToString() << ' ';
-	for (auto& i : swizzles) {
+	for (auto i : *swizzles) {
 		bd->Str() << vstd::to_string(i) << ' ';
 	}
 	bd->Str() << '\n';

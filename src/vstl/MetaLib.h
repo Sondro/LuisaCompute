@@ -418,47 +418,6 @@ decltype(auto) select(A &&a, B &&b, C &&c, Args &&...args) {
     }
     return a(std::forward<Args>(args)...);
 }
-struct range {
-public:
-    struct rangeIte {
-        int64 v;
-        int64 inc;
-        int64 &operator++() {
-            v += inc;
-            return v;
-        }
-        int64 operator++(int) {
-            auto lastV = v;
-            v += inc;
-            return lastV;
-        }
-        int64 const *operator->() const {
-            return &v;
-        }
-        int64 const &operator*() const {
-            return v;
-        }
-        bool operator==(rangeIte r) const {
-            return r.v == v;
-        }
-        bool operator!=(rangeIte r) const {
-            return r.v != v;
-        }
-    };
-    range(int64 b, int64 e, int64 inc = 1) : b(b), e(e), inc(inc) {}
-    range(int64 e) : b(0), e(e), inc(1) {}
-    rangeIte begin() const {
-        return {b, inc};
-    }
-    rangeIte end() const {
-        return rangeIte{e, 0};
-    }
-
-private:
-    int64 b;
-    int64 e;
-    int64 inc;
-};
 class IDisposable {
 protected:
     IDisposable() = default;
@@ -647,48 +606,6 @@ struct MoveIterator {
     decltype(auto) end() {
         return std::move(*t).end();
     }
-};
-template<typename T>
-struct ptr_range {
-public:
-    struct rangeIte {
-        T *v;
-        int64 inc;
-        T *operator++() {
-            v += inc;
-            return v;
-        }
-        T *operator++(int) {
-            auto lastV = v;
-            v += inc;
-            return lastV;
-        }
-        T *operator->() const {
-            return v;
-        }
-        T &operator*() const {
-            return *v;
-        }
-        bool operator==(rangeIte r) const {
-            return r.v == v;
-        }
-        bool operator!=(rangeIte r) const {
-            return r.v != v;
-        }
-    };
-
-    rangeIte begin() const {
-        return {b, inc};
-    }
-    rangeIte end() const {
-        return {e};
-    }
-    ptr_range(T *b, T *e, int64_t inc = 1) : b(b), e(e), inc(inc) {}
-
-private:
-    T *b;
-    T *e;
-    int64_t inc;
 };
 template<typename T>
 struct disposer {

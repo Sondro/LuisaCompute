@@ -2,6 +2,7 @@
 #include <vstl/Common.h>
 #include <ast/type.h>
 #include <ast/expression.h>
+#include <vstl/ranges.h>
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::spv {
