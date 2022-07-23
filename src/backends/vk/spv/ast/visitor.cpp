@@ -220,27 +220,20 @@ ExprValue Visitor::visit(const UnaryExpr* expr) {
 ExprValue Visitor::visit(const BinaryExpr* expr) {
 	auto dstNewId = bd->NewId();
 	auto dstType = bd->GetTypeId(expr->type(), PointerUsage::NotPointer);
-	auto PrintSameTypeOp = [&](auto&& getOp) {
+	auto tarType = InternalType::GetType(expr->type());
+	auto printOp = [&](InternalType dstType, Id leftValue, Id rightValue, vstd::string_view opName) {
+		bd->Str() << dstNewId.ToString() << " = "sv << opName << ' ' << leftValue.ToString() << ' ' << rightValue.ToString() << '\n';
+	};
+	auto PrintSameTypeOp = [&](vstd::string_view op) {
 		auto leftType = InternalType::GetType(expr->lhs()->type());
 		auto rightType = InternalType::GetType(expr->rhs()->type());
-		assert(leftType && rightType);
-		auto compResult = TypeCaster::Compare(*leftType, *rightType);
-		auto printOp = [&](InternalType dstType, Id leftValue, Id rightValue, vstd::string_view opName) {
-			bd->Str() << dstNewId.ToString() << " = "sv << opName << ' ' << leftValue.ToString() << ' ' << rightValue.ToString() << '\n';
+		assert(leftType && rightType && tarType);
+		auto rightTransform = *rightType != *tarType;
+
+		auto TryCast = [&](InternalType type, Expression const* expr) {
+			return TypeCaster::TryCast(bd, type, *tarType, ReadAccept(expr));
 		};
-		switch (compResult) {
-			case TypeCaster::CompareResult::UnChanged:
-				printOp(*leftType, ReadAccept(expr->lhs()), ReadAccept(expr->rhs()), getOp(*leftType));
-				break;
-			case TypeCaster::CompareResult::ToLeft:
-				printOp(*leftType, ReadAccept(expr->lhs()),
-						TypeCaster::Cast(bd, *rightType, *leftType, ReadAccept(expr->rhs())), getOp(*leftType));
-				break;
-			default:
-				printOp(*rightType, TypeCaster::Cast(bd, *leftType, *rightType, ReadAccept(expr->lhs())),
-						ReadAccept(expr->rhs()), getOp(*rightType));
-				break;
-		}
+		printOp(*tarType, TryCast(*leftType, expr->lhs()), TryCast(*rightType, expr->rhs()), op);
 	};
 	auto FloatOrInt = [&](InternalType type, vstd::string_view floatOp, vstd::string_view intOp) -> vstd::string_view {
 		switch (type.tag) {
@@ -257,18 +250,14 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 	};
 	switch (expr->op()) {
 		case BinaryOp::ADD: {
-			PrintSameTypeOp([&](InternalType type) {
-				return FloatOrInt(type, "OpFAdd"sv, "OpIAdd"sv);
-			});
+			PrintSameTypeOp(FloatOrInt(*tarType, "OpFAdd"sv, "OpIAdd"sv));
 		} break;
 		case BinaryOp::SUB: {
-			PrintSameTypeOp([&](InternalType type) {
-				return FloatOrInt(type, "OpFSub"sv, "OpISub"sv);
-			});
+			PrintSameTypeOp(FloatOrInt(*tarType, "OpFSub"sv, "OpISub"sv));
 		} break;
 		case BinaryOp::DIV:
-			PrintSameTypeOp([&](InternalType type) {
-				switch (type.tag) {
+			PrintSameTypeOp([&] {
+				switch (tarType->tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
 						return "OpFDiv"sv;
@@ -277,8 +266,122 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					case InternalType::Tag::UINT:
 						return "OpUDiv"sv;
 				}
-			});
+			}());
 			break;
+		case BinaryOp::MOD: {
+			PrintSameTypeOp([&] {
+				switch (tarType->tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						return "OpFMod"sv;
+					case InternalType::Tag::INT:
+						return "OpSMod"sv;
+					case InternalType::Tag::UINT:
+						return "OpUMod"sv;
+				}
+			}());
+		} break;
+		case BinaryOp::BIT_AND: {
+			PrintSameTypeOp("OpBitwiseAnd"sv);
+		} break;
+		case BinaryOp::BIT_OR: {
+			PrintSameTypeOp("OpBitwiseOr"sv);
+		} break;
+		case BinaryOp::BIT_XOR: {
+			PrintSameTypeOp("OpBitwiseXor"sv);
+		} break;
+		case BinaryOp::SHL:
+		case BinaryOp::SHR: {
+			auto rightType = InternalType::GetType(expr->rhs()->type());
+			assert(rightType);
+			auto unsignedType = *tarType;
+			unsignedType.tag == InternalType::Tag::UINT;
+			printOp(*tarType, ReadAccept(expr->lhs()), TypeCaster::TryCast(bd, *rightType, unsignedType, ReadAccept(expr->rhs())), expr->op() == BinaryOp::SHR ? "OpShiftRightLogical"sv : "OpShiftLeftLogical"sv);
+		} break;
+		case BinaryOp::AND: {
+			PrintSameTypeOp("OpLogicalAnd"sv);
+		} break;
+		case BinaryOp::OR: {
+			PrintSameTypeOp("OpLogicalOr"sv);
+		} break;
+		case BinaryOp::LESS: {
+			PrintSameTypeOp([&] {
+				switch (tarType->tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						return "OpFUnordLessThan"sv;
+					case InternalType::Tag::INT:
+						return "OpSLessThan"sv;
+					case InternalType::Tag::UINT:
+						return "OpULessThan"sv;
+				}
+			}());
+			//TODO
+		} break;
+		case BinaryOp::GREATER: {
+			PrintSameTypeOp([&] {
+				switch (tarType->tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						return "OpFUnordGreaterThan"sv;
+					case InternalType::Tag::INT:
+						return "OpSGreaterThan"sv;
+					case InternalType::Tag::UINT:
+						return "OpUGreaterThan"sv;
+				}
+			}());
+		} break;
+		case BinaryOp::LESS_EQUAL: {
+			PrintSameTypeOp([&] {
+				switch (tarType->tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						return "OpFUnordLessThanEqual"sv;
+					case InternalType::Tag::INT:
+						return "OpSLessThanEqual"sv;
+					case InternalType::Tag::UINT:
+						return "OpULessThanEqual"sv;
+				}
+			}());
+			//TODO
+		} break;
+		case BinaryOp::GREATER_EQUAL: {
+			PrintSameTypeOp([&] {
+				switch (tarType->tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						return "OpFUnordGreaterThanEqual"sv;
+					case InternalType::Tag::INT:
+						return "OpSGreaterThanEqual"sv;
+					case InternalType::Tag::UINT:
+						return "OpUGreaterThanEqual"sv;
+				}
+			}());
+		} break;
+		case BinaryOp::EQUAL: {
+			PrintSameTypeOp([&] {
+				switch (tarType->tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						return "OpFUnordEqual"sv;
+					case InternalType::Tag::INT:
+					case InternalType::Tag::UINT:
+						return "OpIEqual"sv;
+				}
+			}());
+		} break;
+		case BinaryOp::NOT_EQUAL: {
+			PrintSameTypeOp([&] {
+				switch (tarType->tag) {
+					case InternalType::Tag::FLOAT:
+					case InternalType::Tag::MATRIX:
+						return "OpFUnordNotEqual"sv;
+					case InternalType::Tag::INT:
+					case InternalType::Tag::UINT:
+						return "OpINotEqual"sv;
+				}
+			}());
+		} break;
 		case BinaryOp::MUL: {
 			// OpVectorTimesScalar
 			auto lhsType = expr->lhs()->type();
@@ -341,11 +444,8 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					<< ' ' << ReadAccept(expr->rhs()).ToString()
 					<< '\n';
 			} else {
-				PrintSameTypeOp([&](InternalType type) {
-					return FloatOrInt(type, "OpFMul"sv, "OpIMul"sv);
-				});
+				PrintSameTypeOp(FloatOrInt(*tarType, "OpFMul"sv, "OpIMul"sv));
 			}
-			//
 		} break;
 	}
 	return {dstNewId, PointerUsage::NotPointer};
@@ -423,7 +523,7 @@ ExprValue Visitor::visit(const ConstantExpr* expr) {
 }
 ExprValue Visitor::visit(const CallExpr* expr) {
 	if (expr->is_builtin()) {
-		
+
 	} else {
 	}
 }

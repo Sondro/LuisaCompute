@@ -55,11 +55,12 @@ static Id ConstructMatrix(Builder* bd, uint dimension, int32 value) {
 	}
 }
 }// namespace detail
-Id TypeCaster::Cast(
+Id TypeCaster::TryCast(
 	Builder* bd,
 	InternalType const& srcType,
 	InternalType const& dstType,
 	Id value) {
+	if (srcType == dstType) return value;
 	Id newId(bd->NewId());
 	bd->Str() << newId.ToString();
 	auto GetConst = [&](InternalType const& tp, int32 value) {

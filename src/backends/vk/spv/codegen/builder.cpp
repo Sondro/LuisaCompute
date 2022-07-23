@@ -36,9 +36,6 @@ static void AddInternalTypeCode(vstd::string& str) {
 %21 = OpConstant %2 0
 %22 = OpTypeVoid
 %31 = OpTypeSampler
-%smpsize = OpConstant %2 16
-%32 = OpTypeArray %31 %smpsize
-%33 = OpTypePointer UniformConstant %32
 )"sv;
 }
 static vstd::string_view TexFormatName(InternalType const& texDesc) {
@@ -97,10 +94,14 @@ void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 	constValueStr.reserve(8192);
 	idCount = Id::StartId().id;
 	// init
-	header = "OpCapability Shader\n"sv;
+	header = "OpCapability Shader\nOpCapability RuntimeDescriptorArray\n"sv;
 	if (useRayTracing) {
-		header += R"(OpCapability RayQueryKHR
-OpExtension "SPV_KHR_ray_query"
+		header += "OpCapability RayQueryKHR\n"sv;
+	}
+	header += R"(OpExtension "SPV_EXT_descriptor_indexing"
+)"sv;
+	if (useRayTracing) {
+		header += R"(OpExtension "SPV_KHR_ray_query"
 )"sv;
 		typeStr += R"(%23 = OpTypeRayQueryKHR
 %27 = OpTypePointer Function %23
@@ -128,13 +129,20 @@ OpDecorate %25 BuiltIn LocalInvocationId
 OpDecorate %26 BuiltIn WorkgroupId
 )"sv;
 	Builder_detail::AddInternalTypeCode(typeStr);
+	auto uint16 = NewId();
+	constMap.Emplace(16u, uint16);
+	typeStr << uint16.ToString() << R"( = OpConstant %2 16
+%32 = OpTypeArray %31 %smpsize
+%33 = OpTypePointer UniformConstant %32
+)"sv;
 	auto uint3InputPtr = GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::Input).ToString();
 	string inputStr;
 	inputStr << " = OpVariable "sv << uint3InputPtr << " Input\n"sv;
-	constValueStr
+	vstd::StringBuilder(&constValueStr)
 		<< "%24"sv << inputStr
 		<< "%25"sv << inputStr
-		<< "%26"sv << inputStr;
+		<< "%26"sv << inputStr
+		<< Id::SamplerVarId().ToString() << " = OpVariable "sv << Id::SamplerPtrId().ToString() << " UniformConstant\n"sv;
 }
 vstd::string&& Builder::Combine() {
 	auto disp = vstd::create_disposer([&] { result = {}; });
@@ -347,10 +355,8 @@ Id Builder::GetSampledImageType(
 	return typeName.sampledId;
 }
 Id Builder::GetSampledImageTypeId(
-	TypeDescriptor const& type) {
-	auto& typeName = type.visit_or(
-		*static_cast<TypeName*>(nullptr),
-		[&](auto& v) -> decltype(auto) { return GetTypeName(v); });
+	TexDescriptor const& type) {
+	auto&& typeName = GetTypeName(type);
 	return GetSampledImageType(typeName);
 }
 

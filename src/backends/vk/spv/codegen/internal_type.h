@@ -14,6 +14,10 @@ public:
 	};
 	Tag tag;
 	uint dimension;
+	bool operator==(InternalType const& t) const {
+		return tag == t.tag && dimension == t.dimension;
+	}
+	bool operator!=(InternalType const& t) const {return !operator==(t);};
 	InternalType() {}
 	InternalType(Tag tag, uint dim)
 		: tag(tag), dimension(dim) {}
@@ -21,5 +25,6 @@ public:
 	Id TypeId() const;
 	size_t Align() const;
 	size_t Size() const;
+	ConstValue LiteralValue(vstd::variant<bool, int32, uint, float> var);
 };
 }// namespace toolhub::spv

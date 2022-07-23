@@ -480,10 +480,10 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             str << "pow"sv;
             break;
         case CallOp::CLZ:
-            str << "clz"sv;
+            str << "firstbithigh"sv;
             break;
         case CallOp::CTZ:
-            str << "ctz"sv;
+            str << "firstbitlow"sv;
             break;
         case CallOp::POPCOUNT:
             str << "popcount"sv;

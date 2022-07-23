@@ -14,7 +14,7 @@ public:
 	static CompareResult Compare(
 		InternalType const& srcType,
 		InternalType const& dstType);
-	static Id Cast(
+	static Id TryCast(
 		Builder* bd,
 		InternalType const& srcType,
 		InternalType const& dstType,

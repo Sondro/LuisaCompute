@@ -81,4 +81,117 @@ size_t InternalType::Size() const {
 		}(),
 		dimension);
 }
+ConstValue InternalType::LiteralValue(vstd::variant<bool, int32, uint, float> var) {
+	auto GetValue = [&]<Tag tag> {
+		if constexpr (tag == Tag::BOOL) {
+			return var.visit_or(
+				false,
+				[](auto v) {
+					if constexpr (std::is_same_v<bool, decltype(v)>) {
+						return v;
+					} else {
+						return v != 0;
+					}
+				});
+		} else if constexpr (tag == Tag::UINT) {
+			return var.visit_or(
+				0u,
+				[](auto v) { return static_cast<uint>(v); });
+		} else if constexpr (tag == Tag::INT) {
+			return var.visit_or(
+				0,
+				[](auto v) { return static_cast<int32>(v); });
+		} else {
+			return var.visit_or(
+				0.0f,
+				[](auto v) { return static_cast<float>(v); });
+		}
+	};
+	switch (tag) {
+		case Tag::BOOL: {
+			auto value = GetValue.operator()<Tag::BOOL>();
+			switch (dimension) {
+				case 1:
+					return value;
+				case 2:
+					return bool2(value, value);
+				case 3:
+					return bool3(value, value, value);
+				case 4:
+					return bool4(value, value, value, value);
+				default:
+					assert(false);
+			}
+		}
+		case Tag::UINT: {
+			auto value = GetValue.operator()<Tag::UINT>();
+			switch (dimension) {
+				case 1:
+					return value;
+				case 2:
+					return uint2(value, value);
+				case 3:
+					return uint3(value, value, value);
+				case 4:
+					return uint4(value, value, value, value);
+				default:
+					assert(false);
+			}
+		}
+		case Tag::INT: {
+			auto value = GetValue.operator()<Tag::INT>();
+			switch (dimension) {
+				case 1:
+					return value;
+				case 2:
+					return int2(value, value);
+				case 3:
+					return int3(value, value, value);
+				case 4:
+					return int4(value, value, value, value);
+				default:
+					assert(false);
+			}
+		}
+		case Tag::FLOAT: {
+			auto value = GetValue.operator()<Tag::FLOAT>();
+			switch (dimension) {
+				case 1:
+					return value;
+				case 2:
+					return float2(value, value);
+				case 3:
+					return float3(value, value, value);
+				case 4:
+					return float4(value, value, value, value);
+				default:
+					assert(false);
+			}
+		}
+		case Tag::MATRIX: {
+			auto value = GetValue.operator()<Tag::MATRIX>();
+			switch (dimension) {
+				case 2:
+					return float2x2(
+						float2(value, value),
+						float2(value, value));
+				case 3:
+					return float3x3(
+						float3(value, value, value),
+						float3(value, value, value),
+						float3(value, value, value));
+				case 4:
+					return float4x4(
+						float4(value, value, value, value),
+						float4(value, value, value, value),
+						float4(value, value, value, value),
+						float4(value, value, value, value));
+				default:
+					assert(false);
+			}
+		}
+		default:
+			assert(false);
+	}
+}
 }// namespace toolhub::spv

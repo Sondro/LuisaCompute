@@ -782,6 +782,10 @@ LazyEval<Func> MakeLazyEval(Func &&func) {
 }
 template<typename... Args>
 static constexpr bool AlwaysFalse = false;
+template<typename... Args>
+static constexpr bool AlwaysTrue = true;
+template <typename T>
+T& decl_lvalue(T&&){}
 template<typename... AA>
 class variant {
 

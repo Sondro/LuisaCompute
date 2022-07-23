@@ -27,7 +27,7 @@ public:
 
 private:
 	vstd::HashMap<TypeDescriptor, TypeName> types;
-	vstd::HashMap<ConstValue, Id> constMap;
+	ConstValueMap<Id> constMap;
 	vstd::HashMap<uint64, Id> constArrMap;
 	vstd::HashMap<Id, Id> funcTypeMap;
 	uint idCount = 0;
@@ -70,7 +70,7 @@ public:
 		PointerUsage usage,
 		uint arrayStride);
 	Id GetSampledImageTypeId(
-		TypeDescriptor const& type);
+		TexDescriptor const& type);
 	std::pair<Id, Id> GetTypeAndPtrId(TypeDescriptor const& type, PointerUsage ptrUsage);
 	Id GetFuncReturnTypeId(Id returnType, vstd::span<Id const> argType);
 	void BindVariable(Variable const& var, uint descSet, uint binding);
