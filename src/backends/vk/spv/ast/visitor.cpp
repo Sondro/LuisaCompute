@@ -4,8 +4,8 @@
 #include <vstl/ranges.h>
 namespace toolhub::spv {
 
-Visitor::Visitor(Builder* bd, uint3 kernelGroupSize)
-	: Component(bd), kernelGroupSize(kernelGroupSize) {}
+Visitor::Visitor(Builder* bd)
+	: Component(bd){}
 void Visitor::Reset(Function* func) {
 	this->func = func;
 	loopBranch = nullptr;

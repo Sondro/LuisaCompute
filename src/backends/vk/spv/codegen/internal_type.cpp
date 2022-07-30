@@ -16,7 +16,7 @@ vstd::optional<InternalType> InternalType::GetType(Type const* type) {
 		default:
 			tp->tag = static_cast<Tag>(type->tag());
 			tp->dimension = 1;
-			break;
+			return tp;
 	}
 	if (type->element()) {
 		tp->tag = static_cast<Tag>(type->element()->tag());

@@ -15,6 +15,7 @@ class ComputeShader : public Resource {
 	uint3 threadGroupSize;
 
 public:
+	bool useConstBuffer = false;
 	uint3 ThreadGroupSize() const { return threadGroupSize; }
 	ComputeShader(
 		Device const* device,

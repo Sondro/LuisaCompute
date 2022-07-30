@@ -10,31 +10,31 @@ public:
 	Variable(Builder* bd, Type const* type, PointerUsage usage);
 	Variable(Builder* bd, Type const* type, Id varId, PointerUsage usage);
 	///// Common
-	Id Load();
-	void Store(Id value);
+	Id Load() const;
+	void Store(Id value) const;
 	///// Vector
-	Id ReadVectorElement(uint index);
-	Id Swizzle(vstd::IRange<uint>* swizzles);
-	Id AccessVectorElement(uint index);
-	void WriteVectorElement(uint index, Id result);
+	Id ReadVectorElement(uint index) const;
+	Id Swizzle(vstd::IRange<uint>* swizzles) const;
+	Id AccessVectorElement(uint index) const;
+	void WriteVectorElement(uint index, Id result) const;
 	///// Struct
-	Id AccessMember(uint index);
-	Id ReadMember(uint index);
-	void WriteMember(uint index, Id result);
+	Id AccessMember(uint index) const;
+	Id ReadMember(uint index) const;
+	void WriteMember(uint index, Id result) const;
 	///// Array
-	Id ReadArrayEle(Id index);
-	Id AccessArrayEle(Id index);
-	void WriteArrayEle(Id index, Id result);
+	Id ReadArrayEle(Id index) const;
+	Id AccessArrayEle(Id index) const;
+	void WriteArrayEle(Id index, Id result) const;
 	///// Buffer
-	Id ReadBufferEle(Id bufferIndex, Id index);
-	Id AccessBufferEle(Id bufferIndex, Id index);
-	void WriteBufferEle(Id bufferIndex, Id index, Id result);
+	Id ReadBufferEle(Id bufferIndex, Id index) const;
+	Id AccessBufferEle(Id bufferIndex, Id index) const;
+	void WriteBufferEle(Id bufferIndex, Id index, Id result) const;
 	///// Matrix
-	Id AccessMatrixCol(Id index);					 // return Vector<float, dimension>*
-	Id AccessMatrixValue(Id row, Id col);			 //return float*
-	Id ReadMatrixCol(Id index);						 //return Vector<float, dimension>
-	Id ReadMatrixValue(Id row, Id col);				 //return float
-	void WriteMatrixCol(Id index, Id result);		 // write Vector<float, dimension>
-	void WriteMatrixValue(Id row, Id col, Id result);//write float
+	Id AccessMatrixCol(Id index) const;					 // return Vector<float, dimension>*
+	Id AccessMatrixValue(Id row, Id col) const;			 //return float*
+	Id ReadMatrixCol(Id index) const;						 //return Vector<float, dimension>
+	Id ReadMatrixValue(Id row, Id col) const;				 //return float
+	void WriteMatrixCol(Id index, Id result) const;		 // write Vector<float, dimension>
+	void WriteMatrixValue(Id row, Id col, Id result) const;//write float
 };
 }// namespace toolhub::spv

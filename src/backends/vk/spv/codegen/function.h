@@ -14,7 +14,7 @@ public:
 	Id funcBlockId;
 	vstd::small_vector<Id> argValues;
 
-	Function(Builder* builder, Id returnType, vstd::span<Id const> argType);
+	Function(Builder* builder, Id returnType, vstd::IRange<Id>* argType);
 	// kernel
 	Function(Builder* builder);
 	Function(Function const&) = delete;

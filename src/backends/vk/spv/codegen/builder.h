@@ -9,7 +9,7 @@ using namespace luisa::compute;
 namespace toolhub::spv {
 class Function;
 class Variable;
-class Builder {
+class Builder : public vstd::IOperatorNewBase {
 
 public:
 	struct TypeName {
@@ -26,6 +26,10 @@ public:
 		TexDescriptor>;
 
 private:
+	vstd::optional<TypeName> cbufferType;
+	vstd::optional<TypeName> kernelArgType;
+	size_t cbufferSize;
+	Id cbufferVar;
 	vstd::HashMap<TypeDescriptor, TypeName> types;
 	ConstValueMap<Id> constMap;
 	vstd::HashMap<uint64, Id> constArrMap;
@@ -46,19 +50,25 @@ private:
 		uint runtimeArrayStride);
 	Id GetSampledImageType(
 		TypeName& typeName);
-	vstd::string result;
 	vstd::string bodyStr;
 	vstd::string header;
 	vstd::string decorateStr;
 	vstd::string typeStr;
 	vstd::string constValueStr;
+	void GenBuffer(Id structId, TypeName& eleTypeName, uint arrayStride);
 
 public:
+	void GenCBuffer(vstd::IRange<luisa::compute::Variable>& args);
 	vstd::StringBuilder TypeStr() { return {&typeStr}; }
 	vstd::StringBuilder Str() { return {&bodyStr}; }
-	vstd::string&& Combine();
+	vstd::string Combine();
+	//void GenConstBuffer();
 	bool inBlock = false;
-	Id GenStruct(vstd::span<InternalType const> type);
+	std::pair<Id, size_t> GenStruct(
+		vstd::IRange<
+			vstd::variant<
+				Type const*,
+				InternalType>>& type);
 
 	Id NewId() { return Id(idCount++); }
 	vstd::string_view UsageName(PointerUsage usage);
@@ -72,10 +82,12 @@ public:
 	Id GetSampledImageTypeId(
 		TexDescriptor const& type);
 	std::pair<Id, Id> GetTypeAndPtrId(TypeDescriptor const& type, PointerUsage ptrUsage);
-	Id GetFuncReturnTypeId(Id returnType, vstd::span<Id const> argType);
-	void BindVariable(Variable const& var, uint descSet, uint binding);
+	Id GetFuncReturnTypeId(Id returnType, vstd::IRange<Id>* argType);
+	void BindVariable(Id varId, uint descSet, uint binding);
+	void BindCBuffer(uint binding);
 	////////////////////// variable
 	Id GetConstId(ConstValue const& value);
 	Id GetConstArrayId(ConstantData const& data, Type const* type);
+	Id ReadSampler(Id index);
 };
 }// namespace toolhub::spv

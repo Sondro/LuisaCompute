@@ -1,4 +1,4 @@
-set_policy("build.ccache", false)
+-- set_policy("build.ccache", false)
 add_rules("mode.release", "mode.debug")
 function GetValue(funcOrValue)
     if type(funcOrValue) == 'function' then
@@ -91,15 +91,16 @@ after_build(function(target)
     end
 end)
 IncludePath = {"./", "../../", "../../ext/abseil-cpp/", "../../ext/EASTL/include/",
-"../../ext/EASTL/packages/EABase/include/Common", "../../ext/fmt/include/", "../../ext/spdlog/include/",
-"../../ext/xxHash/", "../../ext/stb/"}
+               "../../ext/EASTL/packages/EABase/include/Common", "../../ext/fmt/include/", "../../ext/spdlog/include/",
+               "../../ext/xxHash/", "../../ext/stb/"}
 Defines = {"VENGINE_VULKAN_PROJECT", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", "NOMINMAX", "EASTL_DLL=1",
-"ABSL_CONSUME_DLL=1", "FMT_CONSTEVAL=constexpr", "FMT_USE_CONSTEXPR=1", "FMT_HEADER_ONLY=1", "_ENABLE_EXTENDED_ALIGNED_STORAGE"}
+           "ABSL_CONSUME_DLL=1", "FMT_CONSTEVAL=constexpr", "FMT_USE_CONSTEXPR=1", "FMT_HEADER_ONLY=1",
+           "_ENABLE_EXTENDED_ALIGNED_STORAGE"}
 
 VulkanLib = "C:/VulkanSDK/1.3.216.0/"
 BuildProject({
     projectName = "luisa-compute-backend-vk",
-    projectType = "binary",
+    projectType = "shared",
     event = function()
         add_files("**.cpp|build/**.cpp")
         add_defines(Defines)
@@ -107,6 +108,24 @@ BuildProject({
         add_links(VulkanLib .. "Lib/vulkan-1")
         add_rules("copy_dll", "copy_to_build")
 
+    end,
+    debugEvent = function()
+        add_links("../../../out/build/x64-Clang-Debug/lib/*", "lib/debug/*")
+        add_defines("_DEBUG", "DEBUG")
+    end,
+    releaseEvent = function()
+        add_links("../../../out/build/x64-Clang-Release/lib/*", "lib/release/*")
+        add_defines("NDEBUG")
+    end,
+    exception = true
+})
+BuildProject({
+    projectName = "lc_test",
+    projectType = "binary",
+    event = function()
+        add_files("build/test/**.cpp")
+        add_defines(Defines)
+        add_includedirs(IncludePath)
     end,
     debugEvent = function()
         add_links("../../../out/build/x64-Clang-Debug/lib/*", "lib/debug/*")

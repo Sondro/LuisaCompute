@@ -36,7 +36,7 @@ public:
 	/////////////////// return values
 	uint3 kernelGroupSize;
 
-	Visitor(Builder* bd, uint3 kernelGroupSize);
+	Visitor(Builder* bd);
 	void Reset(Function* func);
 	~Visitor();
 	void visit(const BreakStmt* stmt) override;

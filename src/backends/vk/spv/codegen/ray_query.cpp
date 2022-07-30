@@ -17,7 +17,11 @@ void RayQuery::PrintFunc(Builder* bd) {
 			InternalType(InternalType::Tag::UINT, 1),
 			InternalType(InternalType::Tag::FLOAT, 2),
 		};
-		rayPayload = bd->GenStruct(types);
+		auto range = vstd::IRangeImpl(
+			vstd::CacheEndRange(types) | vstd::TransformRange([&](auto&& v) -> vstd::variant<Type const*, InternalType> {
+				return v;
+			}));
+		rayPayload = bd->GenStruct(range).first;
 		bd->TypeStr() << rayPayloadPtr.ToString() << " = OpTypePointer Function "sv << rayPayload.ToString() << '\n';
 	}
 	auto GetHitResult =
@@ -29,16 +33,16 @@ void RayQuery::PrintFunc(Builder* bd) {
 		bd->Str() << rayPayloadVar << " = OpVariable "sv << rayPayloadPtr.ToString() << " Function\n"sv;
 		bd->Str() << rqVar << " = OpVariable "sv << Id::RayQueryPtrId().ToString() << " Function\n"sv;
 		bd->Str() << "OpRayQueryInitializeKHR "sv
-				   << rqVar << ' ' << args[0].ToString() << ' ' << bd->GetConstId(hitFlag).ToString() << ' ' << maxUInt
-				   << ' ' << args[1].ToString() << ' ' << args[3].ToString() << ' ' << args[2].ToString() << ' ' << args[4].ToString() << '\n';
+				  << rqVar << ' ' << args[0].ToString() << ' ' << bd->GetConstId(hitFlag).ToString() << ' ' << maxUInt
+				  << ' ' << args[1].ToString() << ' ' << args[3].ToString() << ' ' << args[2].ToString() << ' ' << args[4].ToString() << '\n';
 		Id proceed(bd->NewId());
 		bd->Str() << proceed.ToString() << " = OpRayQueryProceedKHR "sv << Id::BoolId().ToString() << ' ' << rqVar << '\n';
 		Id hitResultInt(bd->NewId());
 		Id hitResultBool(bd->NewId());
 		bd->Str() << hitResultInt.ToString() << " = OpRayQueryGetIntersectionTypeKHR "sv
-				   << Id::UIntId().ToString() << ' ' << rqVar << ' ' << uint_1 << '\n'
-				   << hitResultBool.ToString()
-				   << " = OpIEqual "sv << Id::BoolId().ToString() << ' ' << hitResultInt.ToString() << ' ' << uint_1 << '\n';
+				  << Id::UIntId().ToString() << ' ' << rqVar << ' ' << uint_1 << '\n'
+				  << hitResultBool.ToString()
+				  << " = OpIEqual "sv << Id::BoolId().ToString() << ' ' << hitResultInt.ToString() << ' ' << uint_1 << '\n';
 		return hitResultBool;
 	};
 
@@ -49,9 +53,10 @@ void RayQuery::PrintFunc(Builder* bd) {
 		Id::FloatId(),				//tmin
 		Id::FloatId()				//tmax
 	};
+	auto range = vstd::IRangeImpl(vstd::CacheEndRange(argTypes) | vstd::RemoveCVRefRange());
 	{
 		static constexpr uint ANY_HIT_RAY_FLAG = 12;
-		Function traceAnyFunc(bd, Id::BoolId(), argTypes);
+		Function traceAnyFunc(bd, Id::BoolId(), &range);
 		auto rayPayloadVar = bd->NewId().ToString();
 		auto rqVar = bd->NewId().ToString();
 		auto hitResult = GetHitResult(rqVar, rayPayloadVar, traceAnyFunc.argValues, ANY_HIT_RAY_FLAG);
@@ -61,7 +66,7 @@ void RayQuery::PrintFunc(Builder* bd) {
 	}
 	{
 		static constexpr uint CLOSEST_HIT_RAY_FLAG = 0;
-		Function traceClosestFunc(bd, rayPayload, argTypes);
+		Function traceClosestFunc(bd, rayPayload, &range);
 		auto rayPayloadVar = bd->NewId().ToString();
 		auto rqVar = bd->NewId().ToString();
 		auto hitResult = GetHitResult(rqVar, rayPayloadVar, traceClosestFunc.argValues, CLOSEST_HIT_RAY_FLAG);
@@ -94,11 +99,11 @@ void RayQuery::PrintFunc(Builder* bd) {
 			vstd::string endStr;
 			endStr << ' ' << rqVar << ' ' << uint_1 << '\n';
 			bd->Str() << instId.ToString() << " = OpRayQueryGetIntersectionInstanceIdKHR "sv << Id::UIntId().ToString() << endStr
-					   << primId.ToString() << " = OpRayQueryGetIntersectionPrimitiveIndexKHR "sv << Id::UIntId().ToString() << endStr
-					   << UV.ToString() << " = OpRayQueryGetIntersectionBarycentricsKHR "sv << Id::VecId(Id::FloatId(), 2).ToString() << endStr
-					   << "OpStore "sv << accessInstId.ToString() << ' ' << instId.ToString() << '\n'
-					   << "OpStore "sv << accessPrimId.ToString() << ' ' << primId.ToString() << '\n'
-					   << "OpStore "sv << accessUV.ToString() << ' ' << UV.ToString() << '\n';
+					  << primId.ToString() << " = OpRayQueryGetIntersectionPrimitiveIndexKHR "sv << Id::UIntId().ToString() << endStr
+					  << UV.ToString() << " = OpRayQueryGetIntersectionBarycentricsKHR "sv << Id::VecId(Id::FloatId(), 2).ToString() << endStr
+					  << "OpStore "sv << accessInstId.ToString() << ' ' << instId.ToString() << '\n'
+					  << "OpStore "sv << accessPrimId.ToString() << ' ' << primId.ToString() << '\n'
+					  << "OpStore "sv << accessUV.ToString() << ' ' << UV.ToString() << '\n';
 			auto loadId(bd->NewId());
 			bd->Str() << loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
 			auto returnBranch = traceClosestFunc.GetReturnTypeBranch(loadId);
@@ -111,7 +116,7 @@ void RayQuery::PrintFunc(Builder* bd) {
 			BuildAccessChain(accessInstId, uintPtr, 0);
 			auto loadId(bd->NewId());
 			bd->Str() << "OpStore "sv << accessInstId.ToString() << ' ' << maxUInt << '\n'
-					   << loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
+					  << loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
 			auto returnBranch = traceClosestFunc.GetReturnTypeBranch(loadId);
 			bd->Str() << "OpBranch "sv << returnBranch.ToString() << '\n';
 			bd->inBlock = false;

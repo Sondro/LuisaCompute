@@ -118,14 +118,14 @@ inline decltype(auto) operator|(Ite &&ite, Dst &&dst) {
     return Combiner<Ite, Dst>(std::forward<Ite>(ite), std::forward<Dst>(dst));
 }
 template<typename Tuple, typename Func, size_t i>
-constexpr static decltype(auto) SampleTupleFunc(Tuple&& t, Func&& func) {
-	return func(t.template get<i>());
+constexpr static decltype(auto) SampleTupleFunc(Tuple &&t, Func &&func) {
+    return func(t.template get<i>());
 }
 template<typename Tuple, typename Func, typename Sequencer>
 struct SampleTupleFuncTable;
 template<typename Tuple, typename Func, size_t... i>
 struct SampleTupleFuncTable<Tuple, Func, std::integer_sequence<size_t, i...>> {
-	constexpr static auto table = {SampleTupleFunc<Tuple, Func, i>...};
+    constexpr static auto table = {SampleTupleFunc<Tuple, Func, i>...};
 };
 }// namespace detail
 
@@ -252,6 +252,18 @@ public:
         return getValue(*ite);
     }
 };
+class RemoveCVRefRange : public detail::BuilderFlag {
+public:
+    template<typename Ite>
+    void begin(Ite &&ite) { ite.begin(); }
+    template<typename Ite>
+    bool is_end(Ite &&ite) const { return ite == IteEndTag{}; }
+    template<typename Ite>
+    void next(Ite &&ite) { ++ite; }
+    template<typename Ite>
+    decltype(auto) value(Ite &&ite) { return static_cast<std::remove_cvref_t<decltype(*ite)>>(*ite); }
+    RemoveCVRefRange() {}
+};
 template<typename Dst>
 class v_StaticCastRange : public detail::BuilderFlag {
 public:
@@ -369,97 +381,97 @@ public:
 };
 template<typename... Ts>
 struct v_TupleIterator : public detail::RangeFlag {
-	vstd::tuple<Ts...> ites;
-	size_t index;
-	using Sequencer = std::make_index_sequence<sizeof...(Ts)>;
-	template<typename... Ts>
-	v_TupleIterator(Ts&&... args)
-		: ites(std::forward<Ts>(args)...) {}
-	IteRef<v_TupleIterator> begin() {
-		auto& ite = ites.template get<0>();
-		ite.begin();
-		index = 0;
-		InitIndex();
-		return {this};
-	}
-	decltype(auto) operator*() {
-		auto func = [&](auto&& ite) {
-			return *ite;
-		};
-		return detail::SampleTupleFuncTable<decltype(ites)&, decltype(func)&, Sequencer>::table.begin()[index](ites, func);
-	}
-	vstd::IteEndTag end() const { return {}; }
-	bool operator==(vstd::IteEndTag) const {
-		return index == sizeof...(Ts);
-	}
-	void operator++() {
-		auto func = [&](auto&& ite) {
-			++ite;
-		};
-		detail::SampleTupleFuncTable<decltype(ites)&, decltype(func)&, Sequencer>::table.begin()[index](ites, func);
-		InitIndex();
-	}
+    vstd::tuple<Ts...> ites;
+    size_t index;
+    using Sequencer = std::make_index_sequence<sizeof...(Ts)>;
+    template<typename... Ts>
+    v_TupleIterator(Ts &&...args)
+        : ites(std::forward<Ts>(args)...) {}
+    IteRef<v_TupleIterator> begin() {
+        auto &ite = ites.template get<0>();
+        ite.begin();
+        index = 0;
+        InitIndex();
+        return {this};
+    }
+    decltype(auto) operator*() {
+        auto func = [&](auto &&ite) {
+            return *ite;
+        };
+        return detail::SampleTupleFuncTable<decltype(ites) &, decltype(func) &, Sequencer>::table.begin()[index](ites, func);
+    }
+    vstd::IteEndTag end() const { return {}; }
+    bool operator==(vstd::IteEndTag) const {
+        return index == sizeof...(Ts);
+    }
+    void operator++() {
+        auto func = [&](auto &&ite) {
+            ++ite;
+        };
+        detail::SampleTupleFuncTable<decltype(ites) &, decltype(func) &, Sequencer>::table.begin()[index](ites, func);
+        InitIndex();
+    }
 
 private:
-	void InitIndex() {
-		auto func = [&](auto&& ite) {
-			return ite == vstd::IteEndTag{};
-		};
-		auto beginFunc = [&](auto&& ite) {
-			ite.begin();
-		};
-		using FuncType = detail::SampleTupleFuncTable<decltype(ites)&, decltype(func)&, Sequencer>;
-		using BeginFuncType = detail::SampleTupleFuncTable<decltype(ites)&, decltype(beginFunc)&, Sequencer>;
-		while (true) {
-			if (!FuncType::table.begin()[index](ites, func)) {
-				return;
-			}
-			++index;
-			if (index >= sizeof...(Ts)) return;
-			BeginFuncType::table.begin()[index](ites, beginFunc);
-		}
-	}
+    void InitIndex() {
+        auto func = [&](auto &&ite) {
+            return ite == vstd::IteEndTag{};
+        };
+        auto beginFunc = [&](auto &&ite) {
+            ite.begin();
+        };
+        using FuncType = detail::SampleTupleFuncTable<decltype(ites) &, decltype(func) &, Sequencer>;
+        using BeginFuncType = detail::SampleTupleFuncTable<decltype(ites) &, decltype(beginFunc) &, Sequencer>;
+        while (true) {
+            if (!FuncType::table.begin()[index](ites, func)) {
+                return;
+            }
+            ++index;
+            if (index >= sizeof...(Ts)) return;
+            BeginFuncType::table.begin()[index](ites, beginFunc);
+        }
+    }
 };
 
 template<typename A, typename B>
 struct v_PairIterator : public detail::RangeFlag {
-	A a;
-	B b;
-	bool ite;
-	v_PairIterator(
-		A&& a,
-		B&& b) : a(std::forward<A>(a)), b(std::forward<B>(b)) {}
-	IteRef<v_PairIterator> begin() {
-		a.begin();
-		if (a == vstd::IteEndTag{}) {
-			b.begin();
-			ite = true;
-		} else {
-			ite = false;
-		}
-		return {this};
-	}
-	decltype(auto) operator*() {
-		if (ite)
-			return *b;
-		else
-			return *a;
-	}
-	vstd::IteEndTag end() const { return {}; }
-	bool operator==(vstd::IteEndTag t) const {
-		return ite && b == t;
-	}
-	void operator++() {
-		if (ite) {
-			++b;
-		} else {
-			++a;
-			if (a == vstd::IteEndTag{}) {
-				b.begin();
-				ite = true;
-			}
-		}
-	}
+    A a;
+    B b;
+    bool ite;
+    v_PairIterator(
+        A &&a,
+        B &&b) : a(std::forward<A>(a)), b(std::forward<B>(b)) {}
+    IteRef<v_PairIterator> begin() {
+        a.begin();
+        if (a == vstd::IteEndTag{}) {
+            b.begin();
+            ite = true;
+        } else {
+            ite = false;
+        }
+        return {this};
+    }
+    decltype(auto) operator*() {
+        if (ite)
+            return *b;
+        else
+            return *a;
+    }
+    vstd::IteEndTag end() const { return {}; }
+    bool operator==(vstd::IteEndTag t) const {
+        return ite && b == t;
+    }
+    void operator++() {
+        if (ite) {
+            ++b;
+        } else {
+            ++a;
+            if (a == vstd::IteEndTag{}) {
+                b.begin();
+                ite = true;
+            }
+        }
+    }
 };
 
 template<typename Func>
@@ -481,6 +493,12 @@ template<typename Map>
 v_IRangeImpl<Map> IRangeImpl(Map &&map) {
     return {std::forward<Map>(map)};
 }
+template<typename Map>
+    requires(IterableType<Map>)
+v_IRangeImpl<Map>
+*NewIRangeImpl(Map &&map) {
+    return new v_IRangeImpl<Map>{std::forward<Map>(map)};
+}
 template<typename Dst>
 v_StaticCastRange<Dst> StaticCastRange() { return {}; };
 template<typename Dst>
@@ -492,13 +510,13 @@ auto IRangePipelineImpl(auto &&func) -> v_IRangePipelineImpl<Dst, decltype(func)
     return {std::forward<decltype(func)>(func)};
 }
 template<typename... Ts>
-v_TupleIterator<Ts...> TupleIterator(Ts&&... ts) {
-	return {std::forward<Ts>(ts)...};
+v_TupleIterator<Ts...> TupleIterator(Ts &&...ts) {
+    return {std::forward<Ts>(ts)...};
 }
 template<typename A, typename B>
 v_PairIterator<A, B> PairIterator(
-	A&& a,
-	B&& b) {
-	return {std::forward<A>(a), std::forward<B>(b)};
+    A &&a,
+    B &&b) {
+    return {std::forward<A>(a), std::forward<B>(b)};
 }
 }// namespace vstd

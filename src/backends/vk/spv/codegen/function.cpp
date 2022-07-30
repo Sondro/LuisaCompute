@@ -1,21 +1,23 @@
 #include "function.h"
 #include "builder.h"
 namespace toolhub::spv {
-Function::Function(Builder* builder, Id returnType, vstd::span<Id const> argType)
+Function::Function(Builder* builder, Id returnType, vstd::IRange<Id>* argType)
 	: Component(builder), funcBlockId(builder->NewId()), returnType(returnType), funcType(builder->GetFuncReturnTypeId(returnType, argType)), func(builder->NewId()) {
 	bd->Str() << func.ToString() << " = OpFunction "sv << returnType.ToString() << " None "sv << funcType.ToString() << '\n';
-	argValues.push_back_func(
-		argType.size(),
-		[&](size_t i) {
+	size_t i = 0;
+	if (argType) {
+		for (auto&& arg : *argType) {
 			Id newId(bd->NewId());
-			bd->Str() << newId.ToString() << " = OpFunctionParameter "sv << argType[i].ToString() << '\n';
-			return newId;
-		});
+			bd->Str() << newId.ToString() << " = OpFunctionParameter "sv << arg.ToString() << '\n';
+			argValues.emplace_back(newId);
+			++i;
+		}
+	}
 }
 Function::Function(Builder* builder)
 	: Component(builder),
 	  returnType(Id::VoidId()),
-	  funcType(bd->GetFuncReturnTypeId(Id::VoidId(), {})), funcBlockId(builder->NewId()) {
+	  funcType(bd->GetFuncReturnTypeId(Id::VoidId(), nullptr)), funcBlockId(builder->NewId()) {
 	bd->Str() << "%48 = OpFunction %22 None "sv << funcType.ToString() << '\n';
 }
 Id Function::GetReturnTypeBranch(Id value) {

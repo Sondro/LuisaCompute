@@ -1,11 +1,13 @@
 #pragma once
 #include <runtime/device.h>
 #include <components/device.h>
+#include <spv/compile/spv_compiler.h>
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::vk {
 class LCDevice : public luisa::compute::Device::Interface {
 	Device* device;
+	spv::SpvCompiler compiler;
 
 public:
 	static VkFormat GetNativeFormat(PixelFormat pixelFormat);

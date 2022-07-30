@@ -37,12 +37,12 @@ Id BuiltinFunc::CallFunc(
 	luisa::compute::Type const* callType,
 	CallOp op,
 	vstd::IRange<Variable>& arg) {
-	auto getFirst = vstd::TransformRange([](Variable const& var) { return var.varId; });
+	auto getFirst = vstd::TransformRange([](Variable const& var) { return var.Load(); });
 	auto CastFunctor = [&](InternalType const& dstType) {
 		return vstd::TransformRange([&, dstType](Variable const& var) {
 			auto srcType = InternalType::GetType(var.type);
 			assert(srcType);
-			return TypeCaster::TryCast(bd, *srcType, dstType, var.varId);
+			return TypeCaster::TryCast(bd, *srcType, dstType, var.Load());
 		});
 	};
 	auto ReturnTypeCast = [&](InternalType& dstType, auto&& isDiffType, auto&& transformType) {
@@ -110,10 +110,10 @@ Id BuiltinFunc::CallFunc(
 			<< newId.ToString()
 			<< " = "sv << op << ' '
 			<< bd->GetTypeId(callType, PointerUsage::NotPointer).ToString() << ' '
-			<< args[0].AccessBufferEle(Id::ZeroId(), args[1].varId).ToString() << ' '
+			<< args[0].AccessBufferEle(Id::ZeroId(), args[1].Load()).ToString() << ' '
 			<< uint1.ToString() << ' '
 			<< Id::ZeroId().ToString() << ' '
-			<< args[2].varId.ToString() << '\n';
+			<< args[2].Load().ToString() << '\n';
 		return newId;
 	};
 	switch (op) {
@@ -436,7 +436,7 @@ Id BuiltinFunc::CallFunc(
 					args[idx] = OpCall(
 						uintTypeId,
 						"OpBitcast"sv,
-						i.varId);
+						i.Load());
 					++idx;
 				}
 			}
@@ -461,8 +461,6 @@ Id BuiltinFunc::CallFunc(
 				floatTypeId,
 				"OpBitcast"sv,
 				abOr);
-			//	TODO
-			//asfloat((asuint(a) & 0x7fffffffu) | (asuint(b) & 0x80000000u))
 		}
 		case CallOp::CROSS: {
 			return FuncCall(
@@ -485,7 +483,7 @@ Id BuiltinFunc::CallFunc(
 		case CallOp::LENGTH_SQUARED: {
 			Id argId;
 			for (auto&& i : arg) {
-				argId = i.varId;
+				argId = i.Load();
 				break;
 			}
 			assert(argId.valid());
@@ -556,12 +554,12 @@ Id BuiltinFunc::CallFunc(
 				<< newId.ToString()
 				<< " = OpAtomicCompareExchange "sv
 				<< bd->GetTypeId(callType, PointerUsage::NotPointer).ToString() << ' '
-				<< args[0].AccessBufferEle(Id::ZeroId(), args[1].varId).ToString() << ' '
+				<< args[0].AccessBufferEle(Id::ZeroId(), args[1].Load()).ToString() << ' '
 				<< uint1.ToString() << ' '
 				<< Id::ZeroId().ToString() << ' '
 				<< Id::ZeroId().ToString() << ' '
-				<< args[3].varId.ToString() << ' '
-				<< args[2].varId.ToString() << '\n';
+				<< args[3].Load().ToString() << ' '
+				<< args[2].Load().ToString() << '\n';
 			return newId;
 		}
 		case CallOp::ATOMIC_FETCH_ADD: {
@@ -632,7 +630,7 @@ Id BuiltinFunc::CallFunc(
 			assert(args.size() == 2);
 			return args[0].ReadBufferEle(
 				Id::ZeroId(),
-				args[1].varId);
+				args[1].Load());
 		}
 		case CallOp::BUFFER_WRITE: {
 			// buffer, buf_idx, idx
@@ -643,10 +641,82 @@ Id BuiltinFunc::CallFunc(
 			assert(args.size() == 3);
 			args[0].WriteBufferEle(
 				Id::ZeroId(),
-				args[1].varId,
-				args[2].varId);
+				args[1].Load(),
+				args[2].Load());
 			return Id();
 		}
+		case CallOp::TEXTURE_READ: {
+			vstd::vector<Variable, VEngine_AllocType::VEngine, 2> args;
+			for (auto&& a : arg) {
+				args.emplace_back(a);
+			}
+			assert(args.size() == 2);
+			Id newId(bd->NewId());
+			bd->Str()
+				<< newId.ToString() << " = OpImageFetch "sv
+				<< bd->GetTypeId(callType, PointerUsage::NotPointer).ToString() << ' '
+				<< args[0].Load().ToString() << ' '
+				<< args[1].Load().ToString() << " Lod "sv
+				<< Id::ZeroId().ToString() << '\n';
+			return newId;
+		}
+		case CallOp::TEXTURE_WRITE: {
+			auto builder = bd->Str();
+			builder << "OpImageWrite "sv;
+			for (auto&& i : arg | getFirst) {
+				builder << i.ToString() << ' ';
+			}
+			builder << "None\n"sv;
+			return Id();
+		}
+		case CallOp::BINDLESS_TEXTURE2D_SAMPLE: {
+			auto type = InternalType::GetType(callType);
+			assert(type);
+			vstd::vector<Variable, VEngine_AllocType::VEngine, 3> args;
+			for (auto&& a : arg) {
+				args.emplace_back(a);
+			}
+			assert(args.size() == 3);
+			auto resIdx = args[0].ReadBufferEle(Id::ZeroId(), args[1].Load());
+			TexDescriptor texDesc(
+				*type,
+				type->dimension,
+				TexDescriptor::TexType::SampleTex);
+			auto sampleImgType = bd->GetSampledImageTypeId(texDesc);
+			Id texLoad = args[0].Load();
+			Id result(bd->NewId());
+			Id sampleImg(bd->NewId());
+			auto builder = bd->Str();
+			builder << sampleImg.ToString() << " = OpSampledImage "sv << sampleImgType.ToString() << ' ' << texLoad.ToString() << ' ' << bd->ReadSampler(args[1].Load()).ToString() << '\n'
+					<< result.ToString() << " = OpImageSampleExplicitLod "sv << bd->GetTypeId(*type, PointerUsage::NotPointer).ToString() << ' '
+					<< sampleImg.ToString() << ' ' << args[2].Load().ToString() << " Lod "sv << bd->GetConstId(float(0)).ToString() << '\n';
+			return result;
+		}
+		case CallOp::BINDLESS_TEXTURE2D_SAMPLE_LEVEL: {
+			auto type = InternalType::GetType(callType);
+			assert(type);
+			vstd::vector<Variable, VEngine_AllocType::VEngine, 4> args;
+			for (auto&& a : arg) {
+				args.emplace_back(a);
+			}
+			assert(args.size() == 4);
+			auto resIdx = args[0].ReadBufferEle(Id::ZeroId(), args[1].Load());
+			TexDescriptor texDesc(
+				*type,
+				type->dimension,
+				TexDescriptor::TexType::SampleTex);
+			auto sampleImgType = bd->GetSampledImageTypeId(texDesc);
+			Id texLoad = args[0].Load();
+			Id result(bd->NewId());
+			Id sampleImg(bd->NewId());
+			auto builder = bd->Str();
+			builder << sampleImg.ToString() << " = OpSampledImage "sv << sampleImgType.ToString() << ' '
+					<< texLoad.ToString() << ' ' << bd->ReadSampler(args[1].Load()).ToString() << '\n'
+					<< result.ToString() << " = OpImageSampleExplicitLod "sv << bd->GetTypeId(*type, PointerUsage::NotPointer).ToString() << ' '
+					<< sampleImg.ToString() << ' ' << args[2].Load().ToString() << " Lod "sv << args[3].Load().ToString() << '\n';
+			return result;
+		}
+		//TODO: other methods
 	}
 }
 }// namespace toolhub::spv

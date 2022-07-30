@@ -248,7 +248,7 @@ public:
 		cmd->decode(*this);
 		auto uniformData = stream->uniformPack.Data();
 		BufferView buffer;
-		if (uniformData.empty()) {
+		if (!uniformData.empty()) {
 			auto upload = frameRes->AllocateUpload(
 				uniformData.size());
 			buffer = frameRes->AllocateDefault(
@@ -266,6 +266,7 @@ public:
 				buffer.buffer,
 				buffer.offset,
 				uniformData.size());
+			stream->bindVec.emplace_back(buffer);
 		}
 		stream->sets.emplace_back(
 			cb->PreprocessDispatch(
@@ -356,10 +357,6 @@ public:
 	void visit(ShaderDispatchCommand const* cmd) override {
 		auto cs = reinterpret_cast<ComputeShader const*>(cmd->handle());
 		func = cmd->kernel();
-		auto uniformBuffer = sets->storageBuffer;
-		if (uniformBuffer.size > 0) {
-			//TODO: set arguments buffer
-		}
 		cb->Dispatch(
 			sets->set,
 			cs,

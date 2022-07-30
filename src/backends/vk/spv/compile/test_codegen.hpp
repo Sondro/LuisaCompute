@@ -15,6 +15,7 @@ void FunctionMain(Builder& bd) {
 	//Function f(bd, )
 }
 void TestCompile() {
+	/*
 	Builder bd;
 	bd.Reset(uint3(8, 8, 2), true);
 	{
@@ -24,13 +25,13 @@ void TestCompile() {
 			InternalType(InternalType::Tag::FLOAT, 3),
 			InternalType(InternalType::Tag::MATRIX, 3),
 			InternalType(InternalType::Tag::UINT, 4)};
-		bd.GenStruct(typeIds);
-
+		auto range = vstd::IRangeImpl(vstd::CacheEndRange(typeIds) | vstd::RemoveCVRefRange());
+		bd.GenStruct(range);
 	}
 	vstd::string disassembly = bd.Combine();
 	auto f = fopen("output.spvasm", "wb");
 	if (f) {
 		fwrite(disassembly.data(), disassembly.size(), 1, f);
 		fclose(f);
-	}
+	}*/
 }

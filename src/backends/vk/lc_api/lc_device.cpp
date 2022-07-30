@@ -235,6 +235,7 @@ void LCDevice::present_display_in_stream(uint64_t stream_handle, uint64_t swapch
 }
 // kernel
 uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options) noexcept {
+	compiler.CompileDebugCode(kernel);
 	//TODO
 	return 0;
 }
