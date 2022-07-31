@@ -2,11 +2,15 @@
 #include <spv/codegen/builder.h>
 #include <spv/codegen/type_caster.h>
 #include <vstl/ranges.h>
+#include <spv/codegen/variable.h>
 namespace toolhub::spv {
 
 Visitor::Visitor(Builder* bd)
-	: Component(bd){}
-void Visitor::Reset(Function* func) {
+	: Component(bd) {}
+void Visitor::Reset(
+	luisa::compute::Function kernel,
+	Function* func) {
+	this->kernel = kernel;
 	this->func = func;
 	loopBranch = nullptr;
 	block.Delete();
@@ -155,6 +159,18 @@ void Visitor::visit(const MetaStmt* stmt) {
 					case Tag::SHARED:
 						usage = PointerUsage::Workgroup;
 						break;
+					case Tag::DISPATCH_ID:
+						varId.Emplace(i.uid(), dispatchedThreadId);
+						return;
+					case Tag::THREAD_ID:
+						varId.Emplace(i.uid(), threadId);
+						return;
+					case Tag::BLOCK_ID:
+						varId.Emplace(i.uid(), groupId);
+						return;
+					case Tag::DISPATCH_SIZE:
+						varId.Emplace(i.uid(), dispatchedCountId);
+						//TODO: dispatch size
 					default:
 						return;
 				}
@@ -169,8 +185,60 @@ void Visitor::visit(const MetaStmt* stmt) {
 			RegisterVariables(RegisterVariables, i);
 		}
 	};
-	RegisterVariables(RegisterVariables, stmt);
 	block.New(bd, func->funcBlockId);
+	if (kernel.tag() == luisa::compute::Function::Tag::KERNEL) {
+		threadId = bd->NewId();
+		groupId = bd->NewId();
+		dispatchedThreadId = bd->NewId();
+		dispatchedCountId = bd->NewId();
+		Id dispatchCountVar = bd->NewId();
+		auto uint3Id = Id::VecId(Id::UIntId(), 3).ToString();
+		auto uint3UniformConstPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::UniformConstant).ToString();
+		auto builder = bd->Str();
+		builder
+			<< threadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupThreadId().ToString() << '\n'
+			<< groupId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupId().ToString() << '\n'
+			<< dispatchedThreadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::DispatchThreadId().ToString() << '\n'
+			<< dispatchCountVar.ToString()
+			<< " = OpAccessChain "sv
+			<< uint3UniformConstPtr << ' '		 // arg type
+			<< bd->CBufferVar().ToString() << ' '// buffer
+			<< Id::ZeroId().ToString() << ' '	 // first buffer
+			<< Id::ZeroId().ToString() << ' '	 // first element
+			<< Id::ZeroId().ToString() << '\n'	 // first member
+			<< dispatchedCountId.ToString()
+			<< " = OpLoad "sv
+			<< vstd::string_view(uint3Id) << ' '
+			<< dispatchCountVar.ToString() << '\n';
+
+		uint cbufferIndex = 1;
+		for (auto&& i : kernel.arguments()) {
+			using Tag = luisa::compute::Variable::Tag;
+			switch (i.tag()) {
+				case Tag::LOCAL:
+				case Tag::REFERENCE: {
+					Id newVar = bd->NewId();
+					Id newVarValue = bd->NewId();
+					auto ite = varId.Emplace(i.uid(), newVarValue);
+					builder
+						<< newVar.ToString()
+						<< " = OpAccessChain "sv
+						<< bd->GetTypeId(i.type(), PointerUsage::UniformConstant).ToString() << ' '// arg type
+						<< bd->CBufferVar().ToString() << ' '									   // buffer
+						<< Id::ZeroId().ToString() << ' '										   // first buffer
+						<< Id::ZeroId().ToString() << ' '										   // first element
+						<< bd->GetConstId(cbufferIndex).ToString() << '\n'
+						<< newVarValue.ToString()
+						<< " = OpLoad "sv
+						<< bd->GetTypeId(i.type(), PointerUsage::NotPointer).ToString() << ' '// arg type
+						<< newVar.ToString() << '\n';
+					cbufferIndex++;
+				} break;
+			}
+		}
+	}
+	RegisterVariables(RegisterVariables, stmt);
+
 	stmt->scope()->accept(*this);
 }
 
@@ -498,22 +566,13 @@ ExprValue Visitor::visit(const LiteralExpr* expr) {
 ExprValue Visitor::visit(const RefExpr* expr) {
 	using VarTag = luisa::compute::Variable::Tag;
 	auto var = expr->variable();
-	switch (var.tag()) {
-		case VarTag::DISPATCH_ID:
-			return {Id::DispatchThreadId(), PointerUsage::Input};
-		case VarTag::THREAD_ID:
-			return {Id::GroupThreadId(), PointerUsage::Input};
-		case VarTag::BLOCK_ID:
-			return {Id::GroupId(), PointerUsage::Input};
-		case VarTag::DISPATCH_SIZE:
-			return {bd->GetConstId(kernelGroupSize), PointerUsage::UniformConstant};
-		default: {
-			auto ite = varId.Find(var.uid());
-			assert(ite);
-			auto& v = ite.Value();
-			return {v.varId, v.usage};
-		} break;
-	}
+	auto ite = varId.Find(var.uid());
+	assert(ite);
+	auto& v = ite.Value();
+	return v.multi_visit_or(
+		vstd::UndefEval<ExprValue>{},
+		[&](Variable const& v) -> ExprValue { return {v.varId, v.usage}; },
+		[&](Id v) -> ExprValue { return {v, PointerUsage::NotPointer}; });
 }
 ExprValue Visitor::visit(const ConstantExpr* expr) {
 	Id arrValueId = bd->GetConstArrayId(expr->data(), expr->type());

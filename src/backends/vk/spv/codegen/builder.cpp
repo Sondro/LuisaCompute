@@ -593,7 +593,13 @@ void Builder::GenCBuffer(vstd::IRange<luisa::compute::Variable>& args) {
 		vstd::TransformRange([&](luisa::compute::Variable const& var) -> vstd::variant<Type const*, InternalType> {
 			return var.type();
 		});
-	auto rangeInterface = vstd::IRangeImpl(range);
+	std::initializer_list<InternalType> internalTypes = {
+		InternalType(InternalType::Tag::UINT, 3)
+	};
+	auto addUInt3Range = vstd::CacheEndRange(internalTypes) | vstd::TransformRange([&](auto&& v)-> vstd::variant<Type const*, InternalType>{
+		return std::move(v);
+	});
+	auto rangeInterface = vstd::IRangeImpl(vstd::PairIterator(addUInt3Range, range));
 	auto structId = GenStruct(rangeInterface);
 	kernelArgType->typeId = structId.first;
 	cbufferType->typeId = NewId();

@@ -241,38 +241,38 @@ public:
 	Variable const* vars;
 	void visit(ShaderDispatchCommand const* cmd) override {
 		stream->bindVec.clear();
+		auto&& cbufferPos = stream->bindVec.emplace_back();
 		auto cs = reinterpret_cast<ComputeShader const*>(cmd->handle());
 		func = cmd->kernel();
 		vars = func.arguments().data();
 		stream->uniformPack.Reset();
+		uint3 kernelDispCount = cmd->dispatch_size();
+		stream->uniformPack.AddValue(16, 16, {reinterpret_cast<std::byte const*>(&kernelDispCount), sizeof(uint3)});
 		cmd->decode(*this);
 		auto uniformData = stream->uniformPack.Data();
-		BufferView buffer;
-		if (!uniformData.empty()) {
-			auto upload = frameRes->AllocateUpload(
-				uniformData.size());
-			buffer = frameRes->AllocateDefault(
-				uniformData.size(),
-				stream->GetDevice()->limits.minStorageBufferOffsetAlignment);
-			upload.buffer->CopyFrom({reinterpret_cast<vbyte const*>(uniformData.data()),
-									 uniformData.size()},
-									upload.offset);
-			stream->StateTracker().MarkBufferWrite(
-				buffer,
-				BufferWriteState::Copy);
-			frameRes->AddCopyCmd(
-				upload.buffer,
-				upload.offset,
-				buffer.buffer,
-				buffer.offset,
-				uniformData.size());
-			stream->bindVec.emplace_back(buffer);
-		}
+		auto upload = frameRes->AllocateUpload(
+			uniformData.size());
+		BufferView cbuffer = frameRes->AllocateDefault(
+			uniformData.size(),
+			stream->GetDevice()->limits.minStorageBufferOffsetAlignment);
+		upload.buffer->CopyFrom({reinterpret_cast<vbyte const*>(uniformData.data()),
+								 uniformData.size()},
+								upload.offset);
+		stream->StateTracker().MarkBufferWrite(
+			cbuffer,
+			BufferWriteState::Copy);
+		frameRes->AddCopyCmd(
+			upload.buffer,
+			upload.offset,
+			cbuffer.buffer,
+			cbuffer.offset,
+			uniformData.size());
+		cbufferPos = cbuffer;
 		stream->sets.emplace_back(
 			cb->PreprocessDispatch(
 				cs,
 				stream->bindVec),
-			buffer);
+			cbuffer);
 	}
 	///////////////////// shader dispatch
 	void operator()(ShaderDispatchCommand::BufferArgument const& bf) {
@@ -448,7 +448,6 @@ void LCStream::DispatchCmd(CommandList&& cmdList) {
 		frameRes->ExecuteCopy();
 		/////////////// Set argument buffer to read state
 		for (auto&& i : sets) {
-			if (!i.storageBuffer.buffer) continue;
 			StateTracker().MarkBufferRead(i.storageBuffer, BufferReadState::ComputeOrCopy);
 		}
 		if (!sets.empty())

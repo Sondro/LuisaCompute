@@ -13,8 +13,9 @@ class SpvCompiler {
 	std::mutex builderMtx;
 	CompileData AllocBuilder();
 	void DeAllocBuilder(CompileData&& builder);
-    void Compile(luisa::compute::Function func, Visitor& vis);
-    void Preprocess(luisa::compute::Function func, Builder& bd);
+	void Compile(luisa::compute::Function func, Visitor& vis);
+	void Preprocess(luisa::compute::Function func, Builder& bd);
+
 public:
 	SpvCompiler();
 	~SpvCompiler();

@@ -775,6 +775,14 @@ public:
         return func();
     }
 };
+template<typename T>
+class UndefEval : public Evaluable {
+public:
+	using EvalType = T;
+	operator T() const {
+		assert(false);
+	}
+};
 
 template<class Func>
 LazyEval<Func> MakeLazyEval(Func &&func) {
@@ -784,8 +792,8 @@ template<typename... Args>
 static constexpr bool AlwaysFalse = false;
 template<typename... Args>
 static constexpr bool AlwaysTrue = true;
-template <typename T>
-T& decl_lvalue(T&&){}
+template<typename T>
+T &decl_lvalue(T &&) {}
 template<typename... AA>
 class variant {
 
@@ -1020,7 +1028,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return EvalType{std::forward<Ret>(r)};
+            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
             return detail::Visitor<EvalType, PackedFunctors<Funcs...>, void, AA &...>(
                 switcher,
                 GetPlaceHolder(),
@@ -1039,7 +1047,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return EvalType{std::forward<Ret>(r)};
+            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
             return detail::Visitor<EvalType, PackedFunctors<Funcs...>, void, AA...>(
                 switcher,
                 GetPlaceHolder(),
@@ -1058,7 +1066,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return EvalType{std::forward<Ret>(r)};
+            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
             return detail::Visitor<EvalType, PackedFunctors<Funcs...>, void const, AA const &...>(
                 switcher,
                 GetPlaceHolder(),
@@ -1077,7 +1085,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return EvalType{std::forward<Ret>(r)};
+            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
             return detail::Visitor<EvalType, Func, void, AA &...>(switcher, GetPlaceHolder(), std::forward<Func>(func));
         } else {
             if (switcher >= argSize) return Ret{std::forward<Ret>(r)};
@@ -1089,7 +1097,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return EvalType{std::forward<Ret>(r)};
+            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
             return detail::Visitor<EvalType, Func, void, AA...>(switcher, GetPlaceHolder(), std::forward<Func>(func));
         } else {
             if (switcher >= argSize) return Ret{std::forward<Ret>(r)};
@@ -1101,7 +1109,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return EvalType{std::forward<Ret>(r)};
+            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
             return detail::Visitor<EvalType, Func, void const, AA const &...>(switcher, GetPlaceHolder(), std::forward<Func>(func));
         } else {
             if (switcher >= argSize) return Ret{std::forward<Ret>(r)};

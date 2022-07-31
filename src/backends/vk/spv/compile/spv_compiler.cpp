@@ -31,12 +31,12 @@ void SpvCompiler::CompileDebugCode(luisa::compute::Function func) {
 				return builder.GetTypeId(var.type(), usage);
 			}));
 		Function localFunc(&builder, retValue, &range);
-		visitor.Reset(&localFunc);
+		visitor.Reset(func, &localFunc);
 		Compile(func, visitor);
 	}
 	{
 		Function kernelFunc(&builder);
-		visitor.Reset(&kernelFunc);
+		visitor.Reset(func, &kernelFunc);
 		Compile(func, visitor);
 	}
 	vstd::string strv(builder.Combine());
@@ -66,24 +66,22 @@ void SpvCompiler::Compile(luisa::compute::Function func, Visitor& vis) {
 	func.body()->accept(vis);
 }
 void SpvCompiler::Preprocess(luisa::compute::Function func, Builder& bd) {
-	auto GenRange = [&]<bool isInternalType> {
+	auto GenRange = [&](bool isLocal) {
 		return vstd::CacheEndRange(func.arguments()) |
-			   vstd::FilterRange([&](luisa::compute::Variable const& var) {
-				   if constexpr (isInternalType) {
-					   return static_cast<uint>(var.type()->tag()) <= static_cast<uint>(Type::Tag::MATRIX);
-				   } else {
-					   return static_cast<uint>(var.type()->tag()) > static_cast<uint>(Type::Tag::MATRIX);
-				   }
+			   vstd::FilterRange([=](luisa::compute::Variable const& var) {
+				   using Tag = luisa::compute::Variable::Tag;
+				   bool isLocalValue = var.tag() == Tag::LOCAL || var.tag() == Tag::REFERENCE;
+				   return isLocal ? isLocalValue : !isLocalValue;
 			   }) |
 			   vstd::RemoveCVRefRange{};
 	};
-	auto range = GenRange.operator()<true>();
+	auto range = GenRange(true);
 	auto irange = vstd::IRangeImpl(range);
 	bd.GenCBuffer(irange);
-	uint bindPos = 0;
-	auto propRange =GenRange.operator()<false>();
+	bd.BindCBuffer(0);
+	uint bindPos = 1;
+	auto propRange = GenRange(false);
 	//TODO: properties
-	bd.BindCBuffer(bindPos);
 }
 SpvCompiler::~SpvCompiler() {}
 }// namespace toolhub::spv

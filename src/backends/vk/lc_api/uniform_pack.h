@@ -16,5 +16,6 @@ public:
 	}
 	void Reset();
 	void AddValue(Type const* type, vstd::span<std::byte const> data);
+	void AddValue(size_t size, size_t align, vstd::span<std::byte const> data);
 };
 }// namespace toolhub::vk

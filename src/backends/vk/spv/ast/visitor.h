@@ -19,25 +19,31 @@ struct ExprValue {
 };
 class Visitor : public Component, public StmtVisitor {
 public:
-
 	template<typename T>
-	requires(detail::IsExpression<T>)
-		ExprValue Accept(T ptr);
-		template<typename T>
-	requires(detail::IsExpression<T>)
-		Id ReadAccept(T ptr);
+		requires(detail::IsExpression<T>)
+	ExprValue Accept(T ptr);
+	template<typename T>
+		requires(detail::IsExpression<T>)
+	Id ReadAccept(T ptr);
 	/////////////////// function cache
-	vstd::HashMap<uint, Variable> varId;
+	vstd::HashMap<uint, vstd::variant<Variable, Id>> varId;
 	/////////////////// statement cache
 	WhileLoop* loopBranch;
 	Function* func;
+	luisa::compute::Function kernel;
 	vstd::optional<Block> block;
 	vstd::small_vector<int32> switchIndices;
+	Id threadId;
+	Id groupId;
+	Id dispatchedThreadId;
+	Id dispatchedCountId;
 	/////////////////// return values
 	uint3 kernelGroupSize;
 
 	Visitor(Builder* bd);
-	void Reset(Function* func);
+	void Reset(
+		luisa::compute::Function kernel,
+		Function* func);
 	~Visitor();
 	void visit(const BreakStmt* stmt) override;
 	void visit(const ContinueStmt* stmt) override;

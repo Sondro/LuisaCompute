@@ -58,6 +58,7 @@ private:
 	void GenBuffer(Id structId, TypeName& eleTypeName, uint arrayStride);
 
 public:
+	Id CBufferVar() const { return cbufferVar; }
 	void GenCBuffer(vstd::IRange<luisa::compute::Variable>& args);
 	vstd::StringBuilder TypeStr() { return {&typeStr}; }
 	vstd::StringBuilder Str() { return {&bodyStr}; }
