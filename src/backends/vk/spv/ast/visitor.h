@@ -42,8 +42,7 @@ public:
 
 	Visitor(Builder* bd);
 	void Reset(
-		luisa::compute::Function kernel,
-		Function* func);
+		luisa::compute::Function kernel);
 	~Visitor();
 	void visit(const BreakStmt* stmt) override;
 	void visit(const ContinueStmt* stmt) override;
@@ -59,6 +58,7 @@ public:
 	void visit(const ForStmt* stmt) override;
 	void visit(const CommentStmt* stmt) override;
 	void visit(const MetaStmt* stmt) override;
+	void RegistVariables(vstd::span<luisa::compute::Variable const> variables);
 
 	ExprValue visit(const UnaryExpr* expr);
 	ExprValue visit(const BinaryExpr* expr);

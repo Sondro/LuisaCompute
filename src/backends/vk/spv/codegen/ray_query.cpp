@@ -2,6 +2,7 @@
 #include "builder.h"
 #include "function.h"
 #include "if_branch.h"
+#include "block.h"
 namespace toolhub::spv {
 void RayQuery::PrintFunc(Builder* bd) {
 	///////////////// RayPayload
@@ -57,6 +58,8 @@ void RayQuery::PrintFunc(Builder* bd) {
 	{
 		static constexpr uint ANY_HIT_RAY_FLAG = 12;
 		Function traceAnyFunc(bd, Id::BoolId(), &range);
+		Block b(bd, traceAnyFunc.funcBlockId);
+
 		auto rayPayloadVar = bd->NewId().ToString();
 		auto rqVar = bd->NewId().ToString();
 		auto hitResult = GetHitResult(rqVar, rayPayloadVar, traceAnyFunc.argValues, ANY_HIT_RAY_FLAG);
@@ -67,6 +70,7 @@ void RayQuery::PrintFunc(Builder* bd) {
 	{
 		static constexpr uint CLOSEST_HIT_RAY_FLAG = 0;
 		Function traceClosestFunc(bd, rayPayload, &range);
+		Block b(bd, traceClosestFunc.funcBlockId);
 		auto rayPayloadVar = bd->NewId().ToString();
 		auto rqVar = bd->NewId().ToString();
 		auto hitResult = GetHitResult(rqVar, rayPayloadVar, traceClosestFunc.argValues, CLOSEST_HIT_RAY_FLAG);

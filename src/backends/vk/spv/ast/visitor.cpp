@@ -8,10 +8,8 @@ namespace toolhub::spv {
 Visitor::Visitor(Builder* bd)
 	: Component(bd) {}
 void Visitor::Reset(
-	luisa::compute::Function kernel,
-	Function* func) {
+	luisa::compute::Function kernel) {
 	this->kernel = kernel;
-	this->func = func;
 	loopBranch = nullptr;
 	block.Delete();
 	switchIndices.clear();
@@ -141,52 +139,27 @@ void Visitor::visit(const AssignStmt* stmt) {
 	bd->Str() << "OpStore "sv << varValue.valueId.ToString() << ' ' << readValue.ToString() << '\n';
 }
 void Visitor::visit(const CommentStmt* stmt) {}
-void Visitor::visit(const MetaStmt* stmt) {
-	auto RegisterVariables = [&](auto& RegisterVariables, MetaStmt const* stmt) -> void {
-		[&] {
-			for (auto&& i : stmt->variables()) {
-				PointerUsage usage;
-				using Tag = luisa::compute::Variable::Tag;
-				switch (i.tag()) {
-					case Tag::LOCAL:
-					case Tag::BUFFER:
-					case Tag::TEXTURE:
-					case Tag::BINDLESS_ARRAY:
-					case Tag::ACCEL:
-					case Tag::REFERENCE:
-						usage = PointerUsage::Function;
-						break;
-					case Tag::SHARED:
-						usage = PointerUsage::Workgroup;
-						break;
-					case Tag::DISPATCH_ID:
-						varId.Emplace(i.uid(), dispatchedThreadId);
-						return;
-					case Tag::THREAD_ID:
-						varId.Emplace(i.uid(), threadId);
-						return;
-					case Tag::BLOCK_ID:
-						varId.Emplace(i.uid(), groupId);
-						return;
-					case Tag::DISPATCH_SIZE:
-						varId.Emplace(i.uid(), dispatchedCountId);
-						//TODO: dispatch size
-					default:
-						return;
-				}
-				varId.Emplace(
-					i.uid(),
-					vstd::MakeLazyEval([&] {
-						return Variable(bd, i.type(), usage);
-					}));
-			}
-		}();
-		for (auto&& i : stmt->children()) {
-			RegisterVariables(RegisterVariables, i);
-		}
-	};
-	block.New(bd, func->funcBlockId);
+void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variables) {
+	using Tag = luisa::compute::Variable::Tag;
 	if (kernel.tag() == luisa::compute::Function::Tag::KERNEL) {
+		for (auto&& i : kernel.arguments()) {
+			switch (i.tag()) {
+				case Tag::LOCAL:
+				case Tag::REFERENCE: {
+					if ((static_cast<uint>(kernel.variable_usage(i.uid())) & static_cast<uint>(Usage::WRITE)) == 0) {
+						Id newVarValue = bd->NewId();
+						varId.Emplace(i.uid(), newVarValue);
+					} else {
+						varId.Emplace(
+							i.uid(),
+							vstd::MakeLazyEval([&] {
+								return Variable(bd, i.type(), PointerUsage::Function);
+							}));
+					}
+					break;
+				}
+			}
+		}
 		threadId = bd->NewId();
 		groupId = bd->NewId();
 		dispatchedThreadId = bd->NewId();
@@ -194,8 +167,7 @@ void Visitor::visit(const MetaStmt* stmt) {
 		Id dispatchCountVar = bd->NewId();
 		auto uint3Id = Id::VecId(Id::UIntId(), 3).ToString();
 		auto uint3UniformConstPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::UniformConstant).ToString();
-		auto builder = bd->Str();
-		builder
+		bd->Str()
 			<< threadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupThreadId().ToString() << '\n'
 			<< groupId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupId().ToString() << '\n'
 			<< dispatchedThreadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::DispatchThreadId().ToString() << '\n'
@@ -213,32 +185,101 @@ void Visitor::visit(const MetaStmt* stmt) {
 
 		uint cbufferIndex = 1;
 		for (auto&& i : kernel.arguments()) {
-			using Tag = luisa::compute::Variable::Tag;
 			switch (i.tag()) {
 				case Tag::LOCAL:
 				case Tag::REFERENCE: {
 					Id newVar = bd->NewId();
-					Id newVarValue = bd->NewId();
-					auto ite = varId.Emplace(i.uid(), newVarValue);
-					builder
-						<< newVar.ToString()
-						<< " = OpAccessChain "sv
-						<< bd->GetTypeId(i.type(), PointerUsage::UniformConstant).ToString() << ' '// arg type
-						<< bd->CBufferVar().ToString() << ' '									   // buffer
-						<< Id::ZeroId().ToString() << ' '										   // first buffer
-						<< Id::ZeroId().ToString() << ' '										   // first element
-						<< bd->GetConstId(cbufferIndex).ToString() << '\n'
-						<< newVarValue.ToString()
-						<< " = OpLoad "sv
-						<< bd->GetTypeId(i.type(), PointerUsage::NotPointer).ToString() << ' '// arg type
-						<< newVar.ToString() << '\n';
-					cbufferIndex++;
+					auto ite = varId.Find(i.uid());
+					if (!ite) break;
+					auto LoadVar = [&](Id newVarValue) {
+						bd->Str()
+							<< newVar.ToString()
+							<< " = OpAccessChain "sv
+							<< bd->GetTypeId(i.type(), PointerUsage::UniformConstant).ToString() << ' '// arg type
+							<< bd->CBufferVar().ToString() << ' '									   // buffer
+							<< Id::ZeroId().ToString() << ' '										   // first buffer
+							<< Id::ZeroId().ToString() << ' '										   // first element
+							<< bd->GetConstId(cbufferIndex).ToString() << '\n'
+							<< newVarValue.ToString()
+							<< " = OpLoad "sv
+							<< bd->GetTypeId(i.type(), PointerUsage::NotPointer).ToString() << ' '// arg type
+							<< newVar.ToString() << '\n';
+						++cbufferIndex;
+					};
+					ite.Value().multi_visit(
+						[&](Variable const& var) {
+							Id loadId(bd->NewId());
+							LoadVar(loadId);
+							var.Store(loadId);
+						},
+						[&](Id id) {
+							LoadVar(id);
+						});
 				} break;
 			}
 		}
+	} else {
+		size_t argIndex = 0;
+		for (auto&& i : kernel.arguments()) {
+			switch (i.tag()) {
+				case Tag::LOCAL:
+				case Tag::REFERENCE: {
+					if ((static_cast<uint>(kernel.variable_usage(i.uid())) & static_cast<uint>(Usage::WRITE)) == 0) {
+						varId.Emplace(i.uid(), func->argValues[argIndex]);
+					} else {
+						varId.Emplace(
+							i.uid(),
+							vstd::MakeLazyEval([&] {
+								auto var = Variable(bd, i.type(), PointerUsage::Function);
+								var.Store(func->argValues[argIndex]);
+								return var;
+							}));
+					}
+					break;
+				}
+			}
+			++argIndex;
+		}
 	}
-	RegisterVariables(RegisterVariables, stmt);
-
+	for (auto&& i : variables) {
+		PointerUsage usage;
+		switch (i.tag()) {
+			case Tag::LOCAL:
+			case Tag::BUFFER:
+			case Tag::TEXTURE:
+			case Tag::BINDLESS_ARRAY:
+			case Tag::ACCEL:
+			case Tag::REFERENCE:
+				usage = PointerUsage::Function;
+				break;
+			case Tag::SHARED:
+				usage = PointerUsage::Workgroup;
+				break;
+			case Tag::DISPATCH_ID:
+				varId.Emplace(i.uid(), dispatchedThreadId);
+				return;
+			case Tag::THREAD_ID:
+				varId.Emplace(i.uid(), threadId);
+				return;
+			case Tag::BLOCK_ID:
+				varId.Emplace(i.uid(), groupId);
+				return;
+			case Tag::DISPATCH_SIZE:
+				varId.Emplace(i.uid(), dispatchedCountId);
+				return;
+			default:
+				return;
+		}
+		varId.Emplace(
+			i.uid(),
+			vstd::MakeLazyEval([&] {
+				return Variable(bd, i.type(), usage);
+			}));
+	}
+}
+void Visitor::visit(const MetaStmt* stmt) {
+	block.New(bd, func->funcBlockId);
+	RegistVariables(stmt->variables());
 	stmt->scope()->accept(*this);
 }
 
@@ -594,6 +635,7 @@ ExprValue Visitor::visit(const CastExpr* expr) {
 	if (srcType->tag == dstType->tag && srcType->dimension == dstType->dimension) {
 		return value;
 	}
+	return {TypeCaster::TryCast(bd, *srcType, *dstType, value.valueId), PointerUsage::NotPointer};
 	//TODO
 }
 }// namespace toolhub::spv

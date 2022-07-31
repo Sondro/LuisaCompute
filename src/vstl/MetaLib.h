@@ -771,7 +771,7 @@ public:
     LazyEval(LazyEval const &) = delete;
     LazyEval(LazyEval &&v)
         : func(std::move(v.func)) {}
-    operator decltype(auto)() const {
+    operator EvalType() const {
         return func();
     }
 };

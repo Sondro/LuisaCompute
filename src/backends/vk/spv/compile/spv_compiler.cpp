@@ -1,6 +1,7 @@
 #include "spv_compiler.h"
 #include <spirv-tools/libspirv.hpp>
 #include <spirv-tools/optimizer.hpp>
+#include <spv/codegen/ray_query.h>
 namespace toolhub::spv {
 SpvCompiler::SpvCompiler() {}
 SpvCompiler::CompileData SpvCompiler::AllocBuilder() {
@@ -20,7 +21,37 @@ void SpvCompiler::CompileDebugCode(luisa::compute::Function func) {
 	auto disp = vstd::create_disposer([&] { DeAllocBuilder(std::move(compData)); });
 	builder.Reset(func.block_size(), func.raytracing());
 	visitor.kernelGroupSize = func.block_size();
+	vstd::vector<std::pair<uint, Variable>> uniformVars;
+	uint bindPos = 1;
+	for (auto&& i : func.arguments()) {
+		using Tag = luisa::compute::Variable::Tag;
+		switch (i.tag()) {
+			case Tag::ACCEL:
+			case Tag::BINDLESS_ARRAY:
+			case Tag::TEXTURE:
+			case Tag::BUFFER: {
+				auto usage = ((static_cast<uint>(func.variable_usage(i.uid())) &
+							   static_cast<uint>(Usage::WRITE)) != 0) ?
+								 PointerUsage::Uniform :
+								   PointerUsage::UniformConstant;
+				auto ite = uniformVars.emplace_back(
+					i.uid(),
+					vstd::MakeLazyEval([&] {
+						return Variable(&builder, i.type(), usage);
+					}));
+				builder.BindVariable(
+					ite.second.varId,
+					0,
+					bindPos);
+				++bindPos;
+			} break;
+		}
+	}
 	Preprocess(func, builder);
+	if (func.raytracing()) {
+		RayQuery::PrintFunc(&builder);
+	}
+
 	for (auto&& i : func.custom_callables()) {
 		auto func = luisa::compute::Function(i.get());
 		Id retValue = builder.GetTypeId(func.return_type(), PointerUsage::NotPointer);
@@ -31,12 +62,17 @@ void SpvCompiler::CompileDebugCode(luisa::compute::Function func) {
 				return builder.GetTypeId(var.type(), usage);
 			}));
 		Function localFunc(&builder, retValue, &range);
-		visitor.Reset(func, &localFunc);
+		visitor.Reset(func);
+		visitor.func = &localFunc;
 		Compile(func, visitor);
 	}
 	{
+		visitor.Reset(func);
+		for (auto&& i : uniformVars) {
+			visitor.varId.Emplace(i.first, i.second);
+		}
 		Function kernelFunc(&builder);
-		visitor.Reset(func, &kernelFunc);
+		visitor.func = &kernelFunc;
 		Compile(func, visitor);
 	}
 	vstd::string strv(builder.Combine());
@@ -60,28 +96,28 @@ void SpvCompiler::CompileDebugCode(luisa::compute::Function func) {
 	}
 	spvstd::string disassembly;
 	if (!core.Disassemble(spirv, &disassembly)) return;
+	f = fopen("disasm.spvasm", "wb");
+	////////////////////////// Debug output
+	if (f) {
+		fwrite(disassembly.data(), disassembly.size(), 1, f);
+		fclose(f);
+	}
 	std::cout << "compile success\n";
 }
 void SpvCompiler::Compile(luisa::compute::Function func, Visitor& vis) {
 	func.body()->accept(vis);
 }
 void SpvCompiler::Preprocess(luisa::compute::Function func, Builder& bd) {
-	auto GenRange = [&](bool isLocal) {
-		return vstd::CacheEndRange(func.arguments()) |
-			   vstd::FilterRange([=](luisa::compute::Variable const& var) {
-				   using Tag = luisa::compute::Variable::Tag;
-				   bool isLocalValue = var.tag() == Tag::LOCAL || var.tag() == Tag::REFERENCE;
-				   return isLocal ? isLocalValue : !isLocalValue;
-			   }) |
-			   vstd::RemoveCVRefRange{};
-	};
-	auto range = GenRange(true);
+	auto range =
+		vstd::CacheEndRange(func.arguments()) |
+		vstd::FilterRange([=](luisa::compute::Variable const& var) {
+			using Tag = luisa::compute::Variable::Tag;
+			return var.tag() == Tag::LOCAL || var.tag() == Tag::REFERENCE;
+		}) |
+		vstd::RemoveCVRefRange{};
 	auto irange = vstd::IRangeImpl(range);
 	bd.GenCBuffer(irange);
 	bd.BindCBuffer(0);
-	uint bindPos = 1;
-	auto propRange = GenRange(false);
-	//TODO: properties
 }
 SpvCompiler::~SpvCompiler() {}
 }// namespace toolhub::spv
