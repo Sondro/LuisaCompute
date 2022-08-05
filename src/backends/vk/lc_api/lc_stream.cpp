@@ -255,9 +255,10 @@ public:
 		BufferView cbuffer = frameRes->AllocateDefault(
 			uniformData.size(),
 			stream->GetDevice()->limits.minStorageBufferOffsetAlignment);
-		upload.buffer->CopyFrom({reinterpret_cast<vbyte const*>(uniformData.data()),
-								 uniformData.size()},
-								upload.offset);
+		upload.buffer->CopyFrom(
+			{reinterpret_cast<vbyte const*>(uniformData.data()),
+			 uniformData.size()},
+			upload.offset);
 		stream->StateTracker().MarkBufferWrite(
 			cbuffer,
 			BufferWriteState::Copy);

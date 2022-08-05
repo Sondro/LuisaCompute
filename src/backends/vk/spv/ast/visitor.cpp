@@ -140,7 +140,9 @@ void Visitor::visit(const AssignStmt* stmt) {
 	bd->Str() << "OpStore "sv << varValue.valueId.ToString() << ' ' << readValue.ToString() << '\n';
 }
 void Visitor::visit(const CommentStmt* stmt) {}
-void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variables) {
+void Visitor::RegistVariables(
+	vstd::span<luisa::compute::Variable const> variables,
+	vstd::span<luisa::compute::Variable const> builtinVariables) {
 	using Tag = luisa::compute::Variable::Tag;
 	auto LoadOrdinaryArgs = [&] {
 		for (auto&& i : variables) {
@@ -157,6 +159,17 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 				case Tag::SHARED:
 					usage = PointerUsage::Workgroup;
 					break;
+				default:
+					return;
+			}
+			varId.Emplace(
+				i.uid(),
+				vstd::LazyEval([&] {
+					return Variable(bd, i.type(), usage);
+				}));
+		}
+		for (auto&& i : builtinVariables) {
+			switch (i.tag()) {
 				case Tag::DISPATCH_ID:
 					varId.Emplace(i.uid(), dispatchedThreadId);
 					return;
@@ -169,14 +182,7 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 				case Tag::DISPATCH_SIZE:
 					varId.Emplace(i.uid(), dispatchedCountId);
 					return;
-				default:
-					return;
 			}
-			varId.Emplace(
-				i.uid(),
-				vstd::LazyEval([&] {
-					return Variable(bd, i.type(), usage);
-				}));
 		}
 	};
 	if (kernel.tag() == luisa::compute::Function::Tag::KERNEL) {
@@ -212,7 +218,7 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 			<< dispatchedThreadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::DispatchThreadId().ToString() << '\n'
 			<< dispatchCountVar.ToString()
 			<< " = OpAccessChain "sv
-			<< uint3UniformPtr << ' '		 // arg type
+			<< uint3UniformPtr << ' '			 // arg type
 			<< bd->CBufferVar().ToString() << ' '// buffer
 			<< Id::ZeroId().ToString() << ' '	 // first buffer
 			<< Id::ZeroId().ToString() << ' '	 // first element
@@ -235,9 +241,9 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 							<< newVar.ToString()
 							<< " = OpAccessChain "sv
 							<< bd->GetTypeId(i.type(), PointerUsage::Uniform).ToString() << ' '// arg type
-							<< bd->CBufferVar().ToString() << ' '									   // buffer
-							<< Id::ZeroId().ToString() << ' '										   // first buffer
-							<< Id::ZeroId().ToString() << ' '										   // first element
+							<< bd->CBufferVar().ToString() << ' '							   // buffer
+							<< Id::ZeroId().ToString() << ' '								   // first buffer
+							<< Id::ZeroId().ToString() << ' '								   // first element
 							<< bd->GetConstId(cbufferIndex).ToString() << '\n'
 							<< newVarValue.ToString()
 							<< " = OpLoad "sv
@@ -284,8 +290,8 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 }
 void Visitor::visit(const MetaStmt* stmt) {
 	block.New(bd, func->funcBlockId);
-	RegistVariables(stmt->variables());
-	stmt->scope()->accept(*this);
+	RegistVariables(stmt->variables(), kernel.builtin_variables());
+	CullRedundentThread(stmt->scope());
 }
 
 ExprValue Visitor::visit(const UnaryExpr* expr) {
@@ -568,7 +574,7 @@ ExprValue Visitor::visit(const MemberExpr* expr) {
 	using TypeTag = luisa::compute::Type::Tag;
 	auto selfType = expr->self()->type();
 	auto value = Accept(expr->self());
-	Variable var(bd, selfType, value.usage);
+	Variable var(bd, selfType, value.valueId, value.usage);
 	if (expr->is_swizzle()) {
 		if (expr->swizzle_size() > 1) {
 			auto swizzleRange = vstd::IRangeImpl(
@@ -657,6 +663,25 @@ ExprValue Visitor::visit(const CallExpr* expr) {
 		return {newId, PointerUsage::NotPointer};
 	}
 }
+void Visitor::CullRedundentThread(ScopeStmt const* scope) {
+	Id threadCompareVec(bd->NewId());
+	Id threadCompareScalar(bd->NewId());
+	bd->Str()
+		<< threadCompareVec.ToString() << " = OpULessThan "sv
+		<< bd->GetTypeId(InternalType(InternalType::Tag::BOOL, 3), PointerUsage::NotPointer).ToString() << ' '
+		<< dispatchedThreadId.ToString() << ' '
+		<< dispatchedCountId.ToString() << '\n'
+		<< threadCompareScalar.ToString() << " = OpAll "sv
+		<< bd->GetTypeId(InternalType(InternalType::Tag::BOOL, 1), PointerUsage::NotPointer).ToString() << ' '
+		<< threadCompareVec.ToString() << '\n';
+	IfBranch branch(bd, threadCompareScalar);
+	{
+		Block trueBlock(bd, branch.trueBranch, branch.mergeBlock);
+		scope->accept(*this);
+	}
+	Block falseBlock(bd, branch.falseBranch, branch.mergeBlock);
+}
+
 ExprValue Visitor::visit(const CastExpr* expr) {
 	auto value = ReadAccept(expr->expression());
 	auto srcType = InternalType::GetType(expr->expression()->type());

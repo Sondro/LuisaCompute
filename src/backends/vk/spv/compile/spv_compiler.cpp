@@ -97,7 +97,6 @@ SpvCompiler::CompileSpirV(luisa::compute::Function func, bool debug, bool optimi
 	if (optimize) {
 		opt.RegisterPerformancePasses();
 	} else {
-
 		opt.RegisterPass(spvtools::CreateFreezeSpecConstantValuePass())
 			.RegisterPass(spvtools::CreateUnifyConstantPass())
 			.RegisterPass(spvtools::CreateStripDebugInfoPass());

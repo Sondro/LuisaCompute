@@ -268,7 +268,7 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 				break;
 		}
 	}
-	return compileResult.multi_visit_or(
+	auto value = compileResult.multi_visit_or(
 		uint64(0),
 		[&](spvstd::vector<uint> const& code) {
 			ShaderCode shaderCode(device, code, {});
@@ -280,9 +280,11 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 			return reinterpret_cast<uint64>(cs);
 		},
 		[&](vstd::string const& errCode) {
-			std::cout << errCode << '\n';
+			std::cout << "compile error: " << errCode << '\n';
+			assert(false);
 			return 0;
 		});
+	return value;
 }
 void LCDevice::destroy_shader(uint64_t handle) noexcept {
 	delete reinterpret_cast<ComputeShader*>(handle);

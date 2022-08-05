@@ -53,7 +53,10 @@ public:
 	void visit(const ForStmt* stmt) override;
 	void visit(const CommentStmt* stmt) override;
 	void visit(const MetaStmt* stmt) override;
-	void RegistVariables(vstd::span<luisa::compute::Variable const> variables);
+	void RegistVariables(
+		vstd::span<luisa::compute::Variable const> variables,
+		vstd::span<luisa::compute::Variable const> builtinVariables);
+	void CullRedundentThread(ScopeStmt const* scope);
 
 	ExprValue visit(const UnaryExpr* expr);
 	ExprValue visit(const BinaryExpr* expr);
