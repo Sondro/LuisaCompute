@@ -150,6 +150,9 @@ struct Id : public vstd::IOperatorNewBase {
 	static constexpr Id SamplerVarId() {
 		return Id(34);
 	}
+	static constexpr Id SamplerArrayPtrId() {
+		return Id(35);
+	}
 	static constexpr Id MainId() {
 		return Id(48);
 	}

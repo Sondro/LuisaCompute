@@ -169,7 +169,7 @@ void ResStateTracker::MarkTexture(
 	subRange.layerCount = 1;
 	auto ite = collectedBarriers
 				   .Emplace(StagePair{srcStage, dstStage},
-							vstd::MakeLazyEval([&] {
+							vstd::LazyEval([&] {
 								return AllocateBarrier();
 							}));
 	ite.Value().imageBarriers.emplace_back(v);

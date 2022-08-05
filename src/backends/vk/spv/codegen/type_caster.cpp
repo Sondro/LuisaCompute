@@ -99,19 +99,20 @@ Id TypeCaster::TryCast(
 		auto constZero = GetConst(dstType, 0);
 		bd->Str() << " = OpINotEqual "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << '\n';
 	} else {
+		auto builder = bd->Str();
 		switch (srcType.tag) {
 			case InternalType::Tag::FLOAT:
 			case InternalType::Tag::MATRIX:
 				switch (dstType.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
-						bd->Str() << " = OpBitcast "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						builder << " = OpBitcast "sv;
 						break;
 					case InternalType::Tag::INT:
-						bd->Str() << " = OpConvertFToS "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						builder << " = OpConvertFToS "sv;
 						break;
 					case InternalType::Tag::UINT:
-						bd->Str() << " = OpConvertFToU "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						builder << " = OpConvertFToU "sv;
 						break;
 				}
 				break;
@@ -119,11 +120,11 @@ Id TypeCaster::TryCast(
 				switch (dstType.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
-						bd->Str() << " = OpConvertSToF "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						builder << " = OpConvertSToF "sv;
 						break;
 					case InternalType::Tag::UINT:
 					case InternalType::Tag::INT:
-						bd->Str() << " = OpBitcast "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						builder << " = OpBitcast "sv;
 						break;
 				}
 				break;
@@ -131,16 +132,16 @@ Id TypeCaster::TryCast(
 				switch (dstType.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
-						bd->Str() << " = OpConvertUToF "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						builder << " = OpConvertUToF "sv;
 						break;
 					case InternalType::Tag::UINT:
 					case InternalType::Tag::INT:
-						bd->Str() << " = OpBitcast "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+						builder << " = OpBitcast "sv;
 						break;
 				}
 				break;
 		}
-		bd->Str() << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+		builder << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
 	}
 	return newId;
 }

@@ -6,7 +6,7 @@
 namespace toolhub::spv {
 
 Visitor::Visitor(Builder* bd)
-	: Component(bd) {}
+	: Component(bd), builtinFunc(bd) {}
 void Visitor::Reset(
 	luisa::compute::Function kernel) {
 	this->kernel = kernel;
@@ -26,9 +26,7 @@ void Visitor::visit(const ContinueStmt* stmt) {
 	bd->inBlock = false;
 	block.Delete();
 }
-template<typename T>
-	requires(detail::IsExpression<T>)
-ExprValue Visitor::Accept(T ptr) {
+ExprValue Visitor::Accept(Expression const* ptr) {
 	ExprVisitorWrapper wrapper;
 	wrapper.visitor = this;
 	ExprValue retId;
@@ -36,14 +34,17 @@ ExprValue Visitor::Accept(T ptr) {
 	ptr->accept(wrapper);
 	return retId;
 }
-template<typename T>
-	requires(detail::IsExpression<T>)
-Id Visitor::ReadAccept(T ptr) {
+Id Visitor::ReadAccept(Type const* type, Id valueId) {
+	auto valueType = bd->GetTypeId(type, PointerUsage::NotPointer);
+	Id newId(bd->NewId());
+	bd->Str() << newId.ToString() << " = OpLoad "sv << valueType.ToString() << ' ' << valueId.ToString() << '\n';
+	return newId;
+}
+
+Id Visitor::ReadAccept(Expression const* ptr) {
 	ExprValue expr = Accept(ptr);
 	if (expr.usage == PointerUsage::NotPointer) return expr.valueId;
-	auto valueType = bd->GetTypeId(ptr->type(), PointerUsage::NotPointer);
-	Id newId(bd->NewId());
-	bd->Str() << newId.ToString() << " = OpLoad "sv << valueType.ToString() << ' ' << expr.valueId.ToString() << '\n';
+	return ReadAccept(ptr->type(), expr.valueId);
 }
 void Visitor::visit(const ReturnStmt* stmt) {
 	if (stmt->expression() == nullptr) {
@@ -141,6 +142,43 @@ void Visitor::visit(const AssignStmt* stmt) {
 void Visitor::visit(const CommentStmt* stmt) {}
 void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variables) {
 	using Tag = luisa::compute::Variable::Tag;
+	auto LoadOrdinaryArgs = [&] {
+		for (auto&& i : variables) {
+			PointerUsage usage;
+			switch (i.tag()) {
+				case Tag::LOCAL:
+				case Tag::BUFFER:
+				case Tag::TEXTURE:
+				case Tag::BINDLESS_ARRAY:
+				case Tag::ACCEL:
+				case Tag::REFERENCE:
+					usage = PointerUsage::Function;
+					break;
+				case Tag::SHARED:
+					usage = PointerUsage::Workgroup;
+					break;
+				case Tag::DISPATCH_ID:
+					varId.Emplace(i.uid(), dispatchedThreadId);
+					return;
+				case Tag::THREAD_ID:
+					varId.Emplace(i.uid(), threadId);
+					return;
+				case Tag::BLOCK_ID:
+					varId.Emplace(i.uid(), groupId);
+					return;
+				case Tag::DISPATCH_SIZE:
+					varId.Emplace(i.uid(), dispatchedCountId);
+					return;
+				default:
+					return;
+			}
+			varId.Emplace(
+				i.uid(),
+				vstd::LazyEval([&] {
+					return Variable(bd, i.type(), usage);
+				}));
+		}
+	};
 	if (kernel.tag() == luisa::compute::Function::Tag::KERNEL) {
 		for (auto&& i : kernel.arguments()) {
 			switch (i.tag()) {
@@ -152,7 +190,7 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 					} else {
 						varId.Emplace(
 							i.uid(),
-							vstd::MakeLazyEval([&] {
+							vstd::LazyEval([&] {
 								return Variable(bd, i.type(), PointerUsage::Function);
 							}));
 					}
@@ -164,16 +202,17 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 		groupId = bd->NewId();
 		dispatchedThreadId = bd->NewId();
 		dispatchedCountId = bd->NewId();
+		LoadOrdinaryArgs();
 		Id dispatchCountVar = bd->NewId();
 		auto uint3Id = Id::VecId(Id::UIntId(), 3).ToString();
-		auto uint3UniformConstPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::UniformConstant).ToString();
+		auto uint3UniformPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::Uniform).ToString();
 		bd->Str()
 			<< threadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupThreadId().ToString() << '\n'
 			<< groupId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupId().ToString() << '\n'
 			<< dispatchedThreadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::DispatchThreadId().ToString() << '\n'
 			<< dispatchCountVar.ToString()
 			<< " = OpAccessChain "sv
-			<< uint3UniformConstPtr << ' '		 // arg type
+			<< uint3UniformPtr << ' '		 // arg type
 			<< bd->CBufferVar().ToString() << ' '// buffer
 			<< Id::ZeroId().ToString() << ' '	 // first buffer
 			<< Id::ZeroId().ToString() << ' '	 // first element
@@ -195,7 +234,7 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 						bd->Str()
 							<< newVar.ToString()
 							<< " = OpAccessChain "sv
-							<< bd->GetTypeId(i.type(), PointerUsage::UniformConstant).ToString() << ' '// arg type
+							<< bd->GetTypeId(i.type(), PointerUsage::Uniform).ToString() << ' '// arg type
 							<< bd->CBufferVar().ToString() << ' '									   // buffer
 							<< Id::ZeroId().ToString() << ' '										   // first buffer
 							<< Id::ZeroId().ToString() << ' '										   // first element
@@ -229,7 +268,7 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 					} else {
 						varId.Emplace(
 							i.uid(),
-							vstd::MakeLazyEval([&] {
+							vstd::LazyEval([&] {
 								auto var = Variable(bd, i.type(), PointerUsage::Function);
 								var.Store(func->argValues[argIndex]);
 								return var;
@@ -240,41 +279,7 @@ void Visitor::RegistVariables(vstd::span<luisa::compute::Variable const> variabl
 			}
 			++argIndex;
 		}
-	}
-	for (auto&& i : variables) {
-		PointerUsage usage;
-		switch (i.tag()) {
-			case Tag::LOCAL:
-			case Tag::BUFFER:
-			case Tag::TEXTURE:
-			case Tag::BINDLESS_ARRAY:
-			case Tag::ACCEL:
-			case Tag::REFERENCE:
-				usage = PointerUsage::Function;
-				break;
-			case Tag::SHARED:
-				usage = PointerUsage::Workgroup;
-				break;
-			case Tag::DISPATCH_ID:
-				varId.Emplace(i.uid(), dispatchedThreadId);
-				return;
-			case Tag::THREAD_ID:
-				varId.Emplace(i.uid(), threadId);
-				return;
-			case Tag::BLOCK_ID:
-				varId.Emplace(i.uid(), groupId);
-				return;
-			case Tag::DISPATCH_SIZE:
-				varId.Emplace(i.uid(), dispatchedCountId);
-				return;
-			default:
-				return;
-		}
-		varId.Emplace(
-			i.uid(),
-			vstd::MakeLazyEval([&] {
-				return Variable(bd, i.type(), usage);
-			}));
+		LoadOrdinaryArgs();
 	}
 }
 void Visitor::visit(const MetaStmt* stmt) {
@@ -331,7 +336,7 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 	auto dstType = bd->GetTypeId(expr->type(), PointerUsage::NotPointer);
 	auto tarType = InternalType::GetType(expr->type());
 	auto printOp = [&](InternalType dstType, Id leftValue, Id rightValue, vstd::string_view opName) {
-		bd->Str() << dstNewId.ToString() << " = "sv << opName << ' ' << leftValue.ToString() << ' ' << rightValue.ToString() << '\n';
+		bd->Str() << dstNewId.ToString() << " = "sv << opName << ' ' << bd->GetTypeId(dstType, PointerUsage::NotPointer).ToString() << ' ' << leftValue.ToString() << ' ' << rightValue.ToString() << '\n';
 	};
 	auto PrintSameTypeOp = [&](vstd::string_view op) {
 		auto leftType = InternalType::GetType(expr->lhs()->type());
@@ -623,19 +628,44 @@ ExprValue Visitor::visit(const ConstantExpr* expr) {
 }
 ExprValue Visitor::visit(const CallExpr* expr) {
 	if (expr->is_builtin()) {
-
+		auto range = vstd::IRangeImpl(
+			vstd::CacheEndRange(expr->arguments()) |
+			vstd::TransformRange([&](Expression const* expr) -> Variable {
+				auto exprValue = Accept(expr);
+				return Variable(bd, expr->type(), exprValue.valueId, exprValue.usage);
+			}));
+		return {builtinFunc.CallFunc(expr->type(), expr->op(), range), PointerUsage::NotPointer};
 	} else {
+		auto builder = bd->Str();
+		Id newId;
+		if (expr->type()) {
+			newId = bd->NewId();
+			builder << newId.ToString() << " = OpFunctionCall "sv << bd->GetTypeId(expr->type(), PointerUsage::NotPointer).ToString();
+		} else {
+			builder << "OpFunctionCall "sv << Id::VoidId().ToString();
+		}
+		auto argRefl = expr->custom().arguments();
+		auto args = expr->arguments();
+		for (auto i : vstd::range(argRefl.size())) {
+			auto exprValue = Accept(args[i]);
+			if (argRefl[i].tag() != luisa::compute::Variable::Tag::REFERENCE &&
+				exprValue.usage != PointerUsage::NotPointer) {
+				exprValue.valueId = ReadAccept(argRefl[i].type(), exprValue.valueId);
+			}
+			builder << ' ' << exprValue.valueId.ToString();
+		}
+		return {newId, PointerUsage::NotPointer};
 	}
 }
 ExprValue Visitor::visit(const CastExpr* expr) {
-	auto value = Accept(expr->expression());
+	auto value = ReadAccept(expr->expression());
 	auto srcType = InternalType::GetType(expr->expression()->type());
 	auto dstType = InternalType::GetType(expr->type());
 	assert(srcType && dstType);
 	if (srcType->tag == dstType->tag && srcType->dimension == dstType->dimension) {
-		return value;
+		return {value, PointerUsage::NotPointer};
 	}
-	return {TypeCaster::TryCast(bd, *srcType, *dstType, value.valueId), PointerUsage::NotPointer};
+	return {TypeCaster::TryCast(bd, *srcType, *dstType, value), PointerUsage::NotPointer};
 	//TODO
 }
 }// namespace toolhub::spv

@@ -239,7 +239,7 @@ uint RenderTexture::GetGlobalSRVIndex(uint mipOffset) const {
     srvIdcs.New();
     auto ite = srvIdcs->Emplace(
         mipOffset,
-        vstd::MakeLazyEval([&]() -> uint {
+        vstd::LazyEval([&]() -> uint {
             auto v = device->globalHeap->AllocateIndex();
             device->globalHeap->CreateSRV(
                 GetResource(),
@@ -256,7 +256,7 @@ uint RenderTexture::GetGlobalUAVIndex(uint mipLevel) const {
     uavIdcs.New();
     auto ite = uavIdcs->Emplace(
         mipLevel,
-        vstd::MakeLazyEval([&]() -> uint {
+        vstd::LazyEval([&]() -> uint {
             auto v = device->globalHeap->AllocateIndex();
             device->globalHeap->CreateUAV(
                 GetResource(),

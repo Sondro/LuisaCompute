@@ -79,12 +79,10 @@ private:
         }
     }
     void ResizeRange(size_t count) {
-        if (mSize + count > mCapacity) {
+        size_t targetMinSize = mSize + count;
+        if (targetMinSize > mCapacity) {
             size_t newCapacity = GetNewVectorSize(mCapacity);
-            size_t values[2] = {
-                mCapacity + 1, count + mSize};
-            newCapacity = newCapacity > values[0] ? newCapacity : values[0];
-            newCapacity = newCapacity > values[1] ? newCapacity : values[1];
+            newCapacity = std::max<size_t>(newCapacity, targetMinSize);
             reserve(newCapacity);
         }
     }
@@ -246,6 +244,23 @@ public:
     }
     void push_back_all(span<T const> sp) noexcept {
         push_back_all(sp.data(), sp.size());
+    }
+    void push_back_all(vector<T> const &sp) noexcept {
+        push_back_all(sp.data(), sp.size());
+    }
+    void push_back_all(vector<T> &&sp) noexcept {
+        auto count = sp.size();
+        ResizeRange(count);
+        if constexpr (!(std::is_trivially_copy_constructible_v<T>)) {
+            auto endPtr = vec.arr + mSize;
+            for (size_t i = 0; i < count; ++i) {
+                T *ptr = endPtr + i;
+                new (ptr) T(std::move(sp[i]));
+            }
+        } else {
+            memcpy(vec.arr + mSize, sp.data(), count * sizeof(T));
+        }
+        mSize += count;
     }
     template<typename... Func>
         requires(detail::AllFunction<Func...>())

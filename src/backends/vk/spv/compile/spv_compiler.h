@@ -19,6 +19,9 @@ class SpvCompiler {
 public:
 	SpvCompiler();
 	~SpvCompiler();
-	void CompileDebugCode(luisa::compute::Function func);
+	vstd::variant<
+		spvstd::vector<uint>,
+		vstd::string>
+	CompileSpirV(luisa::compute::Function func, bool debug, bool optimize);
 };
 }// namespace toolhub::spv

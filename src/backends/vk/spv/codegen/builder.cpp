@@ -132,17 +132,46 @@ OpDecorate %26 BuiltIn WorkgroupId
 	Builder_detail::AddInternalTypeCode(typeStr);
 	auto uint16 = NewId();
 	constMap.Emplace(16u, uint16);
-	typeStr << uint16.ToString() << " = OpConstant %2 16\n%32 = OpTypeArray %31 "sv << uint16.ToString() << "\n%33 = OpTypePointer UniformConstant %32\n"sv;
+	typeStr << uint16.ToString() << " = OpConstant %2 16\n%32 = OpTypeArray %31 "sv << uint16.ToString() << R"(
+%35 = OpTypePointer UniformConstant %32
+%33 = OpTypePointer UniformConstant %31
+)"sv;
 
 	auto uint3InputPtr = GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::Input).ToString();
 	string inputStr;
 	inputStr << " = OpVariable "sv << uint3InputPtr << " Input\n"sv;
-	vstd::StringBuilder(&constValueStr)
+	Str()
 		<< "%24"sv << inputStr
 		<< "%25"sv << inputStr
 		<< "%26"sv << inputStr
-		<< Id::SamplerVarId().ToString() << " = OpVariable "sv << Id::SamplerPtrId().ToString() << " UniformConstant\n"sv;
-	BindVariable(Id::SamplerVarId(), 2, 0);
+		<< Id::SamplerVarId().ToString() << " = OpVariable "sv << Id::SamplerArrayPtrId().ToString() << " UniformConstant\n"sv;
+	BindVariable(Id::SamplerVarId(), 4, 0);
+	InternalType float4Type = InternalType(InternalType::Tag::FLOAT, 4);
+
+	TexDescriptor bdlsTex2DTypeDesc(
+		float4Type,
+		2,
+		TexDescriptor::TexType::SampleTex);
+	TexDescriptor bdlsTex3DTypeDesc(
+		float4Type,
+		3,
+		TexDescriptor::TexType::SampleTex);
+	auto bindlessTex2DType = GetRuntimeArrayTypeId(bdlsTex2DTypeDesc, PointerUsage::UniformConstant, 0);
+	auto bindlessTex3DType = GetRuntimeArrayTypeId(bdlsTex3DTypeDesc, PointerUsage::UniformConstant, 0);
+	//auto bufferUInt = GetTypeId(BufferTypeDescriptor(InternalType(InternalType::Tag::UINT, 1)), PointerUsage::Uniform);
+	bdlsTex2D = NewId();
+	bdlsTex3D = NewId();
+	//bdlsBuffer = NewId();
+	Str()
+		//<< bdlsBuffer.ToString() << " = OpVariable "sv << bufferUInt.ToString() << " Uniform\n"sv
+		<< bdlsTex2D.ToString() << " = OpVariable "sv << bindlessTex2DType.ToString() << " UniformConstant\n"sv
+		<< bdlsTex3D.ToString() << " = OpVariable "sv << bindlessTex3DType.ToString() << " UniformConstant\n"sv;
+	//BindVariable(bdlsBuffer, 1, 0);
+	BindVariable(bdlsTex2D, 2, 0);
+	BindVariable(bdlsTex3D, 3, 0);
+	//TODO: buffer b[] : 1;
+	//TODO: texture2d<float4> samp[] : 2;
+	//TODO: texture3d<float4> samp[] : 3;
 }
 vstd::string Builder::Combine() {
 	vstd::string result;
@@ -160,6 +189,17 @@ vstd::string Builder::Combine() {
 	copy(bodyStr);
 	return result;
 }
+Builder::TypeName& Builder::GetTypeName(BufferTypeDescriptor const& type) {
+	auto ite = types.TryEmplace(type);
+	auto& result = ite.first.Value();
+	Id& typeName = result.typeId;
+	typeName = Id(idCount++);
+	if (!ite.second) return result;
+	auto& eleType = GetTypeName(type.type);
+	GenBuffer(typeName, eleType, type.type.Size());
+	return result;
+}
+
 Builder::TypeName& Builder::GetTypeName(InternalType const& type) {
 	auto ite = types.TryEmplace(type);
 	auto& result = ite.first.Value();
@@ -217,6 +257,14 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 		if (internalType) {
 			return GetTypeName(*internalType);
 		}
+		if (type->tag() == Type::Tag::BUFFER) {
+			auto eleInternalType = InternalType::GetType(type);
+			if (eleInternalType) {
+				return GetTypeName(BufferTypeDescriptor(*eleInternalType));
+			}
+		} else if (type->tag() == Type::Tag::BINDLESS_ARRAY) {
+			return GetTypeName(BufferTypeDescriptor(InternalType(InternalType::Tag::UINT, 1)));
+		}
 		auto ite = types.TryEmplace(type);
 		auto& result = ite.first.Value();
 		Id& typeName = result.typeId;
@@ -254,9 +302,6 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 			} break;
 			case Tag::STRUCTURE: {
 				typeName = GenStruct(type);
-			} break;
-			case Tag::BINDLESS_ARRAY: {
-				GenBuffer(typeName, GetTypeName(InternalType(InternalType::Tag::UINT, 1)), 0);
 			} break;
 			case Tag::ACCEL: {
 				typeName = Id::AccelId();
@@ -320,7 +365,8 @@ Id Builder::GetRuntimeArrayType(TypeName& typeName, PointerUsage usage, uint run
 		return typeName.runtimeId;
 	auto& id = typeName.runtimePointerId[static_cast<uint>(usage) - 1];
 	if (id.valid()) return id;
-	vstd::StringBuilder(&typeStr) << id.ToString() << " = OpTypePointer "sv << UsageName(usage) << typeName.runtimeId.ToString() << '\n';
+	id = NewId();
+	vstd::StringBuilder(&typeStr) << id.ToString() << " = OpTypePointer "sv << UsageName(usage) << ' ' << typeName.runtimeId.ToString() << '\n';
 	return id;
 }
 
@@ -332,7 +378,7 @@ Id Builder::GetTypeId(TypeDescriptor const& type, PointerUsage usage) {
 }
 Id Builder::GetRuntimeArrayTypeId(TypeDescriptor const& type, PointerUsage usage, uint arrayStride) {
 	auto& typeName = type.visit_or(
-		*static_cast<TypeName*>(nullptr),
+		vstd::UndefEval<TypeName&>{},
 		[&](auto& v) -> decltype(auto) { return GetTypeName(v); });
 	return GetRuntimeArrayType(typeName, usage, arrayStride);
 }
@@ -368,7 +414,7 @@ Id Builder::GetFuncReturnTypeId(Id returnType, vstd::IRange<Id>* argType) {
 	return funcTypeMap
 		.Emplace(
 			returnType,
-			vstd::MakeLazyEval([&] {
+			vstd::LazyEval([&] {
 				Id newId(idCount++);
 				vstd::StringBuilder builder(&typeStr);
 				builder << newId.ToString() << " = OpTypeFunction "sv << returnType.ToString() << ' ';
@@ -393,6 +439,7 @@ std::pair<Id, size_t> Builder::GenStruct(
 	auto structStr = structId.ToString();
 	vstd::StringBuilder cmd(&typeStr);
 	cmd << structStr << " = OpTypeStruct "sv;
+	size_t maxAlign = 1;
 	for (auto&& m : type) {
 		size_t align = m.multi_visit_or(
 			size_t(0), [](Type const* t) { return t->alignment(); }, [](InternalType const& t) { return t.Align(); });
@@ -407,7 +454,8 @@ std::pair<Id, size_t> Builder::GenStruct(
 		auto structSize =
 			[&] { return m.multi_visit_or(
 					  size_t(0), [](Type const* t) { return t->size(); }, [](InternalType const& t) { return t.Size(); }); };
-		vk::CalcAlign(size, align);
+		size = vk::CalcAlign(size, align);
+		maxAlign = std::max(align, maxAlign);
 		vstd::StringBuilder(&decorateStr) << "OpMemberDecorate "sv << structStr << ' ' << vstd::to_string(memIdx) << " Offset "sv << vstd::to_string(size) << '\n';
 		if (isMatrix() && dimension() == 3)
 			AddFloat3x3Decorate(structId, memIdx);
@@ -421,6 +469,8 @@ std::pair<Id, size_t> Builder::GenStruct(
 			<< ' ';
 		memIdx++;
 	}
+	size = vk::CalcAlign(size, maxAlign);
+
 	cmd << '\n';
 	return {structId, size};
 }
@@ -549,7 +599,7 @@ Id Builder::GetConstId(ConstValue const& value) {
 	return constMap
 		.Emplace(
 			value,
-			vstd::MakeLazyEval([&] -> Id {
+			vstd::LazyEval([&] -> Id {
 				return GenConstId(value);
 			}))
 		.Value();
@@ -572,7 +622,7 @@ Id Builder::GetConstArrayId(ConstantData const& data, Type const* type) {
 	return constArrMap
 		.Emplace(
 			data.hash(),
-			vstd::MakeLazyEval([&] {
+			vstd::LazyEval([&] {
 				return GenConstArrayId(data, GetTypeId(type, PointerUsage::NotPointer));
 			}))
 		.Value();
@@ -594,11 +644,10 @@ void Builder::GenCBuffer(vstd::IRange<luisa::compute::Variable>& args) {
 			return var.type();
 		});
 	std::initializer_list<InternalType> internalTypes = {
-		InternalType(InternalType::Tag::UINT, 3)
-	};
-	auto addUInt3Range = vstd::CacheEndRange(internalTypes) | vstd::TransformRange([&](auto&& v)-> vstd::variant<Type const*, InternalType>{
-		return std::move(v);
-	});
+		InternalType(InternalType::Tag::UINT, 3)};
+	auto addUInt3Range = vstd::CacheEndRange(internalTypes) | vstd::TransformRange([&](auto&& v) -> vstd::variant<Type const*, InternalType> {
+							 return std::move(v);
+						 });
 	auto rangeInterface = vstd::IRangeImpl(vstd::PairIterator(addUInt3Range, range));
 	auto structId = GenStruct(rangeInterface);
 	kernelArgType->typeId = structId.first;
@@ -607,8 +656,8 @@ void Builder::GenCBuffer(vstd::IRange<luisa::compute::Variable>& args) {
 	cbufferSize = structId.second;
 	cbufferVar = NewId();
 	Str() << cbufferVar.ToString()
-		  << " = OpVariable "sv << GetTypeNamePointer(*cbufferType, PointerUsage::UniformConstant).ToString()
-		  << ' ' << UsageName(PointerUsage::UniformConstant)
+		  << " = OpVariable "sv << GetTypeNamePointer(*cbufferType, PointerUsage::Uniform).ToString()
+		  << ' ' << UsageName(PointerUsage::Uniform)
 		  << '\n';
 }
 }// namespace toolhub::spv

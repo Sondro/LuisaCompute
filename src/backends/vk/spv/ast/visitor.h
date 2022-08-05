@@ -8,23 +8,17 @@
 #include <spv/codegen/function.h>
 #include <spv/codegen/variable.h>
 #include <spv/codegen/internal_type.h>
+#include <spv/codegen/builtin_func.h>
 namespace toolhub::spv {
-namespace detail {
-template<typename T>
-static constexpr bool IsExpression = std::is_base_of_v<Expression, std::remove_cvref_t<std::remove_pointer_t<T>>>;
-}
 struct ExprValue {
 	Id valueId;
 	PointerUsage usage;
 };
 class Visitor : public Component, public StmtVisitor {
 public:
-	template<typename T>
-		requires(detail::IsExpression<T>)
-	ExprValue Accept(T ptr);
-	template<typename T>
-		requires(detail::IsExpression<T>)
-	Id ReadAccept(T ptr);
+	ExprValue Accept(Expression const* ptr);
+	Id ReadAccept(Expression const* ptr);
+	Id ReadAccept(Type const* type, Id valueId);
 	/////////////////// function cache
 	vstd::HashMap<uint, vstd::variant<Variable, Id>> varId;
 	/////////////////// statement cache
@@ -39,6 +33,7 @@ public:
 	Id dispatchedCountId;
 	/////////////////// return values
 	uint3 kernelGroupSize;
+	BuiltinFunc builtinFunc;
 
 	Visitor(Builder* bd);
 	void Reset(

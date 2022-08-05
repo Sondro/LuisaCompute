@@ -231,7 +231,7 @@ BufferView FrameResource::AllocateDefault(
 namespace detail {
 template<typename Ele>
 decltype(auto) GetVecPoolLazyEval(vstd::vector<Ele>& vec) {
-	return vstd::MakeLazyEval([&]() -> Ele {
+	return vstd::LazyEval([&]() -> Ele {
 		if (vec.empty()) return {};
 		return vec.erase_last();
 	});

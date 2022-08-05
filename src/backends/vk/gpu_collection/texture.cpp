@@ -86,7 +86,7 @@ VkImageView Texture::GetImageView(uint mipLayer, uint mipCount) const {
 	return imgViews
 		.Emplace(
 			std::pair<uint, uint>(mipLayer, mipCount),
-			vstd::MakeLazyEval([&]() {
+			vstd::LazyEval([&]() {
 				VkImageView imgView;
 				vkCreateImageView(
 					device->device,

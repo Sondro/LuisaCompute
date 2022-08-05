@@ -26,7 +26,7 @@ void ResourceStateTracker::RecordState(
     bool isWrite = detail::IsWriteState(state);
     auto ite = stateMap.Emplace(
         resource,
-        vstd::MakeLazyEval([&] {
+        vstd::LazyEval([&] {
             newAdd = true;
             if (isWrite) {
                 writeStateMap.Emplace(resource);

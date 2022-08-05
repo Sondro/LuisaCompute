@@ -683,40 +683,21 @@ Id BuiltinFunc::CallFunc(
 				type->dimension,
 				TexDescriptor::TexType::SampleTex);
 			auto sampleImgType = bd->GetSampledImageTypeId(texDesc);
+			/*
+
 			Id texLoad = args[0].Load();
 			Id result(bd->NewId());
 			Id sampleImg(bd->NewId());
 			auto builder = bd->Str();
-			builder << sampleImg.ToString() << " = OpSampledImage "sv << sampleImgType.ToString() << ' ' << texLoad.ToString() << ' ' << bd->ReadSampler(args[1].Load()).ToString() << '\n'
+			builder << sampleImg.ToString() << " = OpSampledImage "sv << sampleImgType.ToString() << ' ' << texLoad.ToString() << ' ' << resIdx.ToString() << '\n'
 					<< result.ToString() << " = OpImageSampleExplicitLod "sv << bd->GetTypeId(*type, PointerUsage::NotPointer).ToString() << ' '
 					<< sampleImg.ToString() << ' ' << args[2].Load().ToString() << " Lod "sv << bd->GetConstId(float(0)).ToString() << '\n';
-			return result;
+			return result;*/
 		}
 		case CallOp::BINDLESS_TEXTURE2D_SAMPLE_LEVEL: {
-			auto type = InternalType::GetType(callType);
-			assert(type);
-			vstd::vector<Variable, VEngine_AllocType::VEngine, 4> args;
-			for (auto&& a : arg) {
-				args.emplace_back(a);
-			}
-			assert(args.size() == 4);
-			auto resIdx = args[0].ReadBufferEle(Id::ZeroId(), args[1].Load());
-			TexDescriptor texDesc(
-				*type,
-				type->dimension,
-				TexDescriptor::TexType::SampleTex);
-			auto sampleImgType = bd->GetSampledImageTypeId(texDesc);
-			Id texLoad = args[0].Load();
-			Id result(bd->NewId());
-			Id sampleImg(bd->NewId());
-			auto builder = bd->Str();
-			builder << sampleImg.ToString() << " = OpSampledImage "sv << sampleImgType.ToString() << ' '
-					<< texLoad.ToString() << ' ' << bd->ReadSampler(args[1].Load()).ToString() << '\n'
-					<< result.ToString() << " = OpImageSampleExplicitLod "sv << bd->GetTypeId(*type, PointerUsage::NotPointer).ToString() << ' '
-					<< sampleImg.ToString() << ' ' << args[2].Load().ToString() << " Lod "sv << args[3].Load().ToString() << '\n';
-			return result;
+			
 		}
-		//TODO: other methods
+			//TODO: other methods
 	}
 }
 }// namespace toolhub::spv

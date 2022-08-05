@@ -119,6 +119,7 @@ BuildProject({
     end,
     exception = true
 })
+-- --[[
 BuildProject({
     projectName = "lc_test",
     projectType = "binary",
@@ -137,3 +138,4 @@ BuildProject({
     end,
     exception = true
 })
+-- ]]

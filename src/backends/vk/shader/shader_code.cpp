@@ -3,14 +3,14 @@
 namespace toolhub::vk {
 ShaderCode::ShaderCode(
 	Device const* device,
-	vstd::span<vbyte const> spirvCode,
+	vstd::span<uint const> spirvCode,
 	vstd::span<vbyte const> psoCache)
 	: Resource(device),
 	  spirvCode(std::move(spirvCode)) {
 	VkPipelineCacheCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	PipelineCachePrefixHeader const* ptr = reinterpret_cast<PipelineCachePrefixHeader const*>(psoCache.data());
-	if (ptr && (*ptr == device->psoHeader)) {
+	if (ptr && (psoCache.size() > sizeof(PipelineCachePrefixHeader)) && (*ptr == device->psoHeader)) {
 		createInfo.initialDataSize = psoCache.size() - sizeof(PipelineCachePrefixHeader);
 		createInfo.pInitialData = psoCache.data() + sizeof(PipelineCachePrefixHeader);
 		cacheAvailable = true;

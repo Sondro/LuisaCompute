@@ -11,7 +11,7 @@ Variable::Variable(Builder* bd, Type const* type, PointerUsage usage)
 }
 Variable::Variable(Builder* bd, Type const* type, Id varId, PointerUsage usage)
 	: Component(bd), type(type), usage(usage), varId(varId) {
-	typeId = bd->GetTypeId(type, usage);
+	typeId = bd->GetTypeId(type, PointerUsage::NotPointer);
 }
 
 Id Variable::Swizzle(vstd::IRange<uint>* swizzles) const {

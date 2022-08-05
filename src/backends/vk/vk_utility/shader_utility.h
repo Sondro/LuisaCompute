@@ -7,6 +7,6 @@ class ShaderUtility {
 	ShaderUtility(ShaderUtility&&) = delete;
 
 public:
-	static VkShaderModule LoadShader(vstd::span<vbyte const> data, VkDevice device);
+	static VkShaderModule LoadShader(vstd::span<uint const> data, VkDevice device);
 };
 }// namespace toolhub::vk

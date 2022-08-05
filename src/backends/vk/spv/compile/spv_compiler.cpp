@@ -14,7 +14,10 @@ void SpvCompiler::DeAllocBuilder(CompileData&& builder) {
 	std::lock_guard lck(builderMtx);
 	builders.emplace_back(std::move(builder));
 }
-void SpvCompiler::CompileDebugCode(luisa::compute::Function func) {
+vstd::variant<
+	spvstd::vector<uint>,
+	vstd::string>
+SpvCompiler::CompileSpirV(luisa::compute::Function func, bool debug, bool optimize) {
 	auto compData = AllocBuilder();
 	auto&& builder = *compData.builder;
 	auto&& visitor = *compData.visitor;
@@ -30,13 +33,10 @@ void SpvCompiler::CompileDebugCode(luisa::compute::Function func) {
 			case Tag::BINDLESS_ARRAY:
 			case Tag::TEXTURE:
 			case Tag::BUFFER: {
-				auto usage = ((static_cast<uint>(func.variable_usage(i.uid())) &
-							   static_cast<uint>(Usage::WRITE)) != 0) ?
-								 PointerUsage::Uniform :
-								   PointerUsage::UniformConstant;
+				auto usage = PointerUsage::Uniform;
 				auto ite = uniformVars.emplace_back(
 					i.uid(),
-					vstd::MakeLazyEval([&] {
+					vstd::LazyEval([&] {
 						return Variable(&builder, i.type(), usage);
 					}));
 				builder.BindVariable(
@@ -76,33 +76,49 @@ void SpvCompiler::CompileDebugCode(luisa::compute::Function func) {
 		Compile(func, visitor);
 	}
 	vstd::string strv(builder.Combine());
-	auto f = fopen("output.spvasm", "wb");
-	////////////////////////// Debug output
-	if (f) {
-		fwrite(strv.data(), strv.size(), 1, f);
-		fclose(f);
+	if (debug) {
+		auto f = fopen("output.spvasm", "wb");
+		////////////////////////// Debug output
+		if (f) {
+			fwrite(strv.data(), strv.size(), 1, f);
+			fclose(f);
+		}
 	}
 	spvtools::SpirvTools core(SPV_ENV_UNIVERSAL_1_3);
 	spvtools::Optimizer opt(SPV_ENV_UNIVERSAL_1_3);
-	spvstd::vector<uint32_t> spirv;
-	auto print_msg_to_stderr = [](spv_message_level_t, const char*,
-								  const spv_position_t&, const char* m) {
-		std::cerr << "error: " << m << std::endl;
+	spvstd::vector<uint> spirv;
+	vstd::string errMsg;
+	auto print_msg_to_stderr = [&](spv_message_level_t, const char*,
+								   const spv_position_t&, const char* m) {
+		errMsg = m;
 	};
 	core.SetMessageConsumer(print_msg_to_stderr);
 	opt.SetMessageConsumer(print_msg_to_stderr);
-	if (!core.Assemble(strv, &spirv) || !core.Validate(spirv)) {
-		return;
+	if (optimize) {
+		opt.RegisterPerformancePasses();
+	} else {
+
+		opt.RegisterPass(spvtools::CreateFreezeSpecConstantValuePass())
+			.RegisterPass(spvtools::CreateUnifyConstantPass())
+			.RegisterPass(spvtools::CreateStripDebugInfoPass());
 	}
-	spvstd::string disassembly;
-	if (!core.Disassemble(spirv, &disassembly)) return;
-	f = fopen("disasm.spvasm", "wb");
-	////////////////////////// Debug output
-	if (f) {
-		fwrite(disassembly.data(), disassembly.size(), 1, f);
-		fclose(f);
+	if (!core.Assemble(strv, &spirv) || (debug && !core.Validate(spirv))) {
+		return errMsg;
 	}
-	std::cout << "compile success\n";
+	if (!opt.Run(spirv.data(), spirv.size(), &spirv)) return errMsg;
+	if (debug) {
+		spvstd::string disassembly;
+		bool disasmResult = core.Disassemble(spirv, &disassembly);
+		auto f = fopen("disasm.spvasm", "wb");
+		////////////////////////// Debug output
+		if (f) {
+			fwrite(disassembly.data(), disassembly.size(), 1, f);
+			fclose(f);
+		}
+		if (disasmResult)
+			std::cout << "compile success\n";
+	}
+	return spirv;
 }
 void SpvCompiler::Compile(luisa::compute::Function func, Visitor& vis) {
 	func.body()->accept(vis);

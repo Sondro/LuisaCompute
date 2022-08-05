@@ -9,8 +9,21 @@ using namespace luisa::compute;
 namespace toolhub::spv {
 class Function;
 class Variable;
+struct BufferTypeDescriptor {
+	InternalType type;
+	explicit BufferTypeDescriptor(InternalType type) : type(type) {}
+};
+}// namespace toolhub::spv
+namespace vstd {
+template<>
+struct hash<luisa::compute::Type const*> {
+	size_t operator()(luisa::compute::Type const* t) const {
+		return t->hash();
+	}
+};
+}// namespace vstd
+namespace toolhub::spv {
 class Builder : public vstd::IOperatorNewBase {
-
 public:
 	struct TypeName {
 		Id typeId;
@@ -23,11 +36,15 @@ public:
 	using TypeDescriptor = vstd::variant<
 		Type const*,
 		InternalType,
-		TexDescriptor>;
+		TexDescriptor,
+		BufferTypeDescriptor>;
 
 private:
 	vstd::optional<TypeName> cbufferType;
 	vstd::optional<TypeName> kernelArgType;
+	Id bdlsTex2D;
+	Id bdlsTex3D;
+	//Id bdlsBuffer;
 	size_t cbufferSize;
 	Id cbufferVar;
 	vstd::HashMap<TypeDescriptor, TypeName> types;
@@ -42,6 +59,7 @@ private:
 	TypeName& GetTypeName(Type const* type);
 	TypeName& GetTypeName(TexDescriptor const& type);
 	TypeName& GetTypeName(InternalType const& type);
+	TypeName& GetTypeName(BufferTypeDescriptor const& type);
 
 	Id GetTypeNamePointer(TypeName& typeName, PointerUsage usage);
 	Id GetRuntimeArrayType(

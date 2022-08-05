@@ -760,16 +760,16 @@ static constexpr decltype(auto) TypeOfFunc() {
 }// namespace detail
 class Evaluable {};
 template<class Func>
-class LazyEval : public Evaluable {
+class v_LazyEval : public Evaluable {
 private:
     Func func;
 
 public:
     using EvalType = decltype(std::declval<Func>()());
-    LazyEval(Func &&func)
+    v_LazyEval(Func &&func)
         : func(std::forward<Func &&>(func)) {}
-    LazyEval(LazyEval const &) = delete;
-    LazyEval(LazyEval &&v)
+    v_LazyEval(v_LazyEval const &) = delete;
+    v_LazyEval(v_LazyEval &&v)
         : func(std::move(v.func)) {}
     operator EvalType() const {
         return func();
@@ -785,7 +785,7 @@ public:
 };
 
 template<class Func>
-LazyEval<Func> MakeLazyEval(Func &&func) {
+v_LazyEval<Func> LazyEval(Func &&func) {
     return std::forward<Func>(func);
 }
 template<typename... Args>
@@ -1278,13 +1278,13 @@ void push_back_func(Vec &&vec, Func &&func, size_t count) {
         std::fill_n(
             std::back_inserter(vec),
             count,
-            LazyEval<std::remove_cvref_t<Func>>(std::forward<Func>(func)));
+            v_LazyEval<std::remove_cvref_t<Func>>(std::forward<Func>(func)));
     } else if constexpr (std::is_invocable_v<Func, size_t>) {
         size_t i = 0;
         std::fill_n(
             std::back_inserter(vec),
             count,
-            MakeLazyEval([&] {
+            LazyEval([&] {
                 auto d = create_disposer([&] { ++i; });
                 return func(i);
             }));

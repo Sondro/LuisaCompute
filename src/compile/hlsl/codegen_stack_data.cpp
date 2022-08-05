@@ -37,7 +37,7 @@ uint CodegenStackData::AddBindlessType(Type const *type) {
     return bindlessBufferTypes
         .Emplace(
             type,
-            vstd::MakeLazyEval([&] {
+            vstd::LazyEval([&] {
                 return bindlessBufferCount++;
             }))
         .Value();
@@ -71,7 +71,7 @@ StructGenerator *CodegenStackData::CreateStruct(Type const *t) {
 uint64 CodegenStackData::GetConstCount(uint64 data) {
     auto ite = constTypes.Emplace(
         data,
-        vstd::MakeLazyEval(
+        vstd::LazyEval(
             [&] {
                 return constCount++;
             }));
@@ -80,7 +80,7 @@ uint64 CodegenStackData::GetConstCount(uint64 data) {
 uint64 CodegenStackData::GetFuncCount(uint64 data) {
     auto ite = funcTypes.Emplace(
         data,
-        vstd::MakeLazyEval(
+        vstd::LazyEval(
             [&] {
                 return funcCount++;
             }));
@@ -89,7 +89,7 @@ uint64 CodegenStackData::GetFuncCount(uint64 data) {
 uint64 CodegenStackData::GetTypeCount(Type const *t) {
     auto ite = structTypes.Emplace(
         t,
-        vstd::MakeLazyEval(
+        vstd::LazyEval(
             [&] {
                 return count++;
             }));

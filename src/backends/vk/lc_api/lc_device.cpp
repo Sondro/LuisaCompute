@@ -6,6 +6,8 @@
 #include <vk_rtx/mesh.h>
 #include <vk_runtime/event.h>
 #include <vk_rtx/accel.h>
+#include <shader/shader_code.h>
+#include <shader/compute_shader.h>
 namespace toolhub::vk {
 namespace detail {
 static VkInstance vkInstance = nullptr;
@@ -103,7 +105,7 @@ LCDevice::LCDevice(Context const& ctx)
 	device = Device::CreateDevice(detail::vkInstance, nullptr, 0);
 }
 LCDevice::~LCDevice() {
-    delete device;
+	delete device;
 	{
 		std::lock_guard lck(detail::vkInstMtx);
 		if (--detail::vkDeviceCount == 0) {
@@ -235,12 +237,55 @@ void LCDevice::present_display_in_stream(uint64_t stream_handle, uint64_t swapch
 }
 // kernel
 uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options) noexcept {
-	compiler.CompileDebugCode(kernel);
-	//TODO
-	return 0;
+	//Debug now
+	auto compileResult = compiler.CompileSpirV(kernel, true, false);
+	vstd::small_vector<VkDescriptorType> types;
+	types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	for (auto&& i : kernel.arguments()) {
+		auto isWrite = (static_cast<uint>(kernel.variable_usage(i.uid())) & static_cast<uint>(Usage::WRITE)) != 0;
+		using Tag = luisa::compute::Variable::Tag;
+		switch (i.tag()) {
+			case Tag::BUFFER:
+				types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+				break;
+			case Tag::TEXTURE:
+				if (isWrite) {
+					types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+				} else {
+					types.emplace_back(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+				}
+				break;
+			case Tag::BINDLESS_ARRAY:
+				types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+				break;
+			case Tag::ACCEL:
+				if (isWrite) {
+					types.emplace_back(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+				} else {
+					types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+				}
+				break;
+		}
+	}
+	return compileResult.multi_visit_or(
+		uint64(0),
+		[&](spvstd::vector<uint> const& code) {
+			ShaderCode shaderCode(device, code, {});
+			auto cs = new ComputeShader(
+				device,
+				shaderCode,
+				types,
+				kernel.block_size());
+			return reinterpret_cast<uint64>(cs);
+		},
+		[&](vstd::string const& errCode) {
+			std::cout << errCode << '\n';
+			return 0;
+		});
 }
 void LCDevice::destroy_shader(uint64_t handle) noexcept {
-	//TODO
+	delete reinterpret_cast<ComputeShader*>(handle);
 }
 
 // event
