@@ -9,8 +9,9 @@
 #include <core/dynamic_module.h>
 namespace toolhub::vk {
 namespace detail {
+static constexpr bool USE_VALIDATION = true;
 static auto validationLayers = {"VK_LAYER_KHRONOS_validation"};
-}
+}// namespace detail
 VkInstance Device::InitVkInstance() {
 	VkInstance instance;
 #ifndef NDEBUG
@@ -20,21 +21,22 @@ VkInstance Device::InitVkInstance() {
 
 		vstd::vector<VkLayerProperties> availableLayers(layerCount);
 		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-		for (const char* layerName : detail::validationLayers) {
-			bool layerFound = false;
+		if constexpr (detail::USE_VALIDATION) {
+			for (const char* layerName : detail::validationLayers) {
+				bool layerFound = false;
 
-			for (const auto& layerProperties : availableLayers) {
-				if (strcmp(layerName, layerProperties.layerName) == 0) {
-					layerFound = true;
-					break;
+				for (const auto& layerProperties : availableLayers) {
+					if (strcmp(layerName, layerProperties.layerName) == 0) {
+						layerFound = true;
+						break;
+					}
+				}
+
+				if (!layerFound) {
+					return false;
 				}
 			}
-
-			if (!layerFound) {
-				return false;
-			}
 		}
-
 		return true;
 	};
 	if (!Check()) {
@@ -68,8 +70,13 @@ VkInstance Device::InitVkInstance() {
 	createInfo.ppEnabledExtensionNames = requiredExts.data();
 	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
 #ifndef NDEBUG
-	createInfo.enabledLayerCount = static_cast<uint32_t>(detail::validationLayers.size());
-	createInfo.ppEnabledLayerNames = detail::validationLayers.begin();
+	if (detail::USE_VALIDATION) {
+		createInfo.enabledLayerCount = static_cast<uint32_t>(detail::validationLayers.size());
+		createInfo.ppEnabledLayerNames = detail::validationLayers.begin();
+	} else {
+		createInfo.enabledLayerCount = 0;
+		createInfo.ppEnabledLayerNames = nullptr;
+	}
 	auto populateDebugMessengerCreateInfo = [](VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
 		createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -101,7 +108,7 @@ VkInstance Device::InitVkInstance() {
 namespace detail {
 class VulkanAllocatorImpl {
 public:
-/*
+	/*
 	vstd::funcPtr_t<void*(size_t)> mallocFunc = nullptr;
 	vstd::funcPtr_t<void(void*)> freeFunc = nullptr;
 	vstd::funcPtr_t<void*(void*, size_t)> reallocFunc = nullptr;
@@ -243,10 +250,7 @@ void Device::InitBindless() {
 	setLayoutBindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
 	setLayoutBindingFlags.bindingCount = 1;
 	VkDescriptorBindingFlagsEXT descriptorBindingFlags =
-		VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT
-		| VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
-		| VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
-		| VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT;
+		VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT;
 	setLayoutBindingFlags.pBindingFlags = &descriptorBindingFlags;
 	descriptorLayout.pNext = &setLayoutBindingFlags;
 	ThrowIfFailed(vkCreateDescriptorSetLayout(device, &descriptorLayout, Device::Allocator(), &bindlessTex2DSetLayout));
@@ -445,8 +449,13 @@ Device* Device::CreateDevice(
 	createInfo.pEnabledFeatures = &deviceFeatures;
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredFeatures.size());
 	createInfo.ppEnabledExtensionNames = requiredFeatures.begin();
-	createInfo.enabledLayerCount = static_cast<uint32_t>(detail::validationLayers.size());
-	createInfo.ppEnabledLayerNames = detail::validationLayers.begin();
+	if (detail::USE_VALIDATION) {
+		createInfo.enabledLayerCount = static_cast<uint32_t>(detail::validationLayers.size());
+		createInfo.ppEnabledLayerNames = detail::validationLayers.begin();
+	} else {
+		createInfo.enabledLayerCount = 0;
+		createInfo.ppEnabledLayerNames = nullptr;
+	}
 	VkDevice device;
 	auto createDeviceResult = vkCreateDevice(physicalDevice, &createInfo, Device::Allocator(), &device);
 	if (createDeviceResult != VK_SUCCESS) {

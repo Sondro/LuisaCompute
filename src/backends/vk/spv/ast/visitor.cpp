@@ -48,9 +48,10 @@ Id Visitor::ReadAccept(Expression const* ptr) {
 }
 void Visitor::visit(const ReturnStmt* stmt) {
 	if (stmt->expression() == nullptr) {
-		bd->Str() << "OpBranch "sv << func->GetReturnBranch().ToString() << '\n';
-		bd->inBlock = false;
+		func->Return();
 		block.Delete();
+	} else {
+		func->ReturnValue(ReadAccept(stmt->expression()));
 	}
 }
 void Visitor::visit(const ScopeStmt* stmt) {
@@ -211,7 +212,7 @@ void Visitor::RegistVariables(
 		LoadOrdinaryArgs();
 		Id dispatchCountVar = bd->NewId();
 		auto uint3Id = Id::VecId(Id::UIntId(), 3).ToString();
-		auto uint3UniformPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::Uniform).ToString();
+		auto uint3UniformPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::StorageBuffer).ToString();
 		bd->Str()
 			<< threadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupThreadId().ToString() << '\n'
 			<< groupId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupId().ToString() << '\n'
@@ -240,7 +241,7 @@ void Visitor::RegistVariables(
 						bd->Str()
 							<< newVar.ToString()
 							<< " = OpAccessChain "sv
-							<< bd->GetTypeId(i.type(), PointerUsage::Uniform).ToString() << ' '// arg type
+							<< bd->GetTypeId(i.type(), PointerUsage::StorageBuffer).ToString() << ' '// arg type
 							<< bd->CBufferVar().ToString() << ' '							   // buffer
 							<< Id::ZeroId().ToString() << ' '								   // first buffer
 							<< Id::ZeroId().ToString() << ' '								   // first element
@@ -679,7 +680,10 @@ void Visitor::CullRedundentThread(ScopeStmt const* scope) {
 		Block trueBlock(bd, branch.trueBranch, branch.mergeBlock);
 		scope->accept(*this);
 	}
-	Block falseBlock(bd, branch.falseBranch, branch.mergeBlock);
+	{
+		Block falseBlock(bd, branch.falseBranch, branch.mergeBlock);
+		func->Return();
+	}
 }
 
 ExprValue Visitor::visit(const CastExpr* expr) {

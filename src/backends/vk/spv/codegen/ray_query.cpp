@@ -63,9 +63,10 @@ void RayQuery::PrintFunc(Builder* bd) {
 		auto rayPayloadVar = bd->NewId().ToString();
 		auto rqVar = bd->NewId().ToString();
 		auto hitResult = GetHitResult(rqVar, rayPayloadVar, traceAnyFunc.argValues, ANY_HIT_RAY_FLAG);
-		auto returnBranch = traceAnyFunc.GetReturnTypeBranch(hitResult);
+		/*auto returnBranch = traceAnyFunc.GetReturnTypeBranch(hitResult);
 		bd->Str() << "OpBranch "sv << returnBranch.ToString() << '\n';
-		bd->inBlock = false;
+		bd->inBlock = false;*/
+		traceAnyFunc.ReturnValue(hitResult);
 	}
 	{
 		static constexpr uint CLOSEST_HIT_RAY_FLAG = 0;
@@ -110,20 +111,25 @@ void RayQuery::PrintFunc(Builder* bd) {
 					  << "OpStore "sv << accessUV.ToString() << ' ' << UV.ToString() << '\n';
 			auto loadId(bd->NewId());
 			bd->Str() << loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
+			/*
 			auto returnBranch = traceClosestFunc.GetReturnTypeBranch(loadId);
 			bd->Str() << "OpBranch "sv << returnBranch.ToString() << '\n';
-			bd->inBlock = false;
+			bd->inBlock = false;*/
+			traceClosestFunc.ReturnValue(loadId);
 		}
 		{
 			auto falseBranch = Block(bd, hitBranch.falseBranch, hitBranch.mergeBlock);
 			auto accessInstId(bd->NewId());
 			BuildAccessChain(accessInstId, uintPtr, 0);
 			auto loadId(bd->NewId());
-			bd->Str() << "OpStore "sv << accessInstId.ToString() << ' ' << maxUInt << '\n'
-					  << loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
+			bd->Str()
+				<< "OpStore "sv << accessInstId.ToString() << ' ' << maxUInt << '\n'
+				<< loadId.ToString() << " = OpLoad "sv << rayPayload.ToString() << ' ' << rayPayloadVar << '\n';
+			traceClosestFunc.ReturnValue(loadId);
+			/*
 			auto returnBranch = traceClosestFunc.GetReturnTypeBranch(loadId);
 			bd->Str() << "OpBranch "sv << returnBranch.ToString() << '\n';
-			bd->inBlock = false;
+			bd->inBlock = false;*/
 		}
 	}
 }

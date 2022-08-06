@@ -84,10 +84,10 @@ after_build(function(target)
     local build_path = nil
     if is_mode("release") then
         build_path = "$(buildir)/windows/x64/release/"
-        os.cp("../../../out/build/x64-Clang-Release/bin/*.dll", build_path)
+        os.cp("../../../out/build/x64-Release/bin/*.dll", build_path)
     else
         build_path = "$(buildir)/windows/x64/debug/"
-        os.cp("../../../out/build/x64-Clang-Debug/bin/*.dll", build_path)
+        os.cp("../../../out/build/x64-Debug/bin/*.dll", build_path)
     end
 end)
 IncludePath = {"./", "../../", "../../ext/abseil-cpp/", "../../ext/EASTL/include/",
@@ -100,7 +100,7 @@ Defines = {"VENGINE_VULKAN_PROJECT", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", 
 VulkanLib = "C:/VulkanSDK/1.3.216.0/"
 BuildProject({
     projectName = "luisa-compute-backend-vk",
-    projectType = "shared",
+    projectType = "binary",
     event = function()
         add_files("**.cpp|build/**.cpp")
         add_defines(Defines)
@@ -110,16 +110,16 @@ BuildProject({
 
     end,
     debugEvent = function()
-        add_links("../../../out/build/x64-Clang-Debug/lib/*", "lib/debug/*")
+        add_links("../../../out/build/x64-Debug/lib/*", "lib/debug/*")
         add_defines("_DEBUG", "DEBUG")
     end,
     releaseEvent = function()
-        add_links("../../../out/build/x64-Clang-Release/lib/*", "lib/release/*")
+        add_links("../../../out/build/x64-Release/lib/*", "lib/release/*")
         add_defines("NDEBUG")
     end,
     exception = true
 })
--- --[[
+--[[
 BuildProject({
     projectName = "lc_test",
     projectType = "binary",
@@ -129,11 +129,11 @@ BuildProject({
         add_includedirs(IncludePath)
     end,
     debugEvent = function()
-        add_links("../../../out/build/x64-Clang-Debug/lib/*", "lib/debug/*")
+        add_links("../../../out/build/x64-Debug/lib/*", "lib/debug/*")
         add_defines("_DEBUG", "DEBUG")
     end,
     releaseEvent = function()
-        add_links("../../../out/build/x64-Clang-Release/lib/*", "lib/release/*")
+        add_links("../../../out/build/x64-Release/lib/*", "lib/release/*")
         add_defines("NDEBUG")
     end,
     exception = true

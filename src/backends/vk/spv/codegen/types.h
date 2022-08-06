@@ -9,7 +9,7 @@ namespace toolhub::spv {
 class Builder;
 enum class PointerUsage : vbyte {
 	NotPointer = 0,
-	Uniform = 1,
+	StorageBuffer = 1,
 	Input = 2,
 	Output = 3,
 	Workgroup = 4,
@@ -87,6 +87,15 @@ struct Id : public vstd::IOperatorNewBase {
 	}
 	constexpr bool valid() const {
 		return id != std::numeric_limits<uint>::max();
+	}
+	constexpr bool operator==(Id id) const{
+		return this->id == id.id;
+	}
+	constexpr bool operator!=(Id id) const{
+		return this->id != id.id;
+	}
+	constexpr operator bool() const{
+		return valid();
 	}
 	constexpr explicit Id(uint id = std::numeric_limits<uint>::max()) : id(id) {}
 	static constexpr Id FloatId() { return Id(0); }

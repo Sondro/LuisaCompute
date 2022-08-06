@@ -245,7 +245,7 @@ Builder::TypeName& Builder::GetTypeName(InternalType const& type) {
 void Builder::GenBuffer(Id structId, TypeName& eleTypeName, uint arrayStride) {
 	vstd::StringBuilder(&decorateStr)
 		<< "OpMemberDecorate "sv << structId.ToString() << " 0 Offset 0\nOpDecorate "sv
-		<< structId.ToString() << " BufferBlock\n"sv;
+		<< structId.ToString() << " Block\n"sv;
 	vstd::StringBuilder(&typeStr)
 		<< structId.ToString() << " = OpTypeStruct "sv
 		<< GetRuntimeArrayType(eleTypeName, PointerUsage::NotPointer, arrayStride).ToString() << '\n';
@@ -573,8 +573,8 @@ Id Builder::GenConstId(ConstValue const& value) {
 }
 vstd::string_view Builder::UsageName(PointerUsage usage) {
 	switch (usage) {
-		case PointerUsage::Uniform: {
-			return "Uniform"sv;
+		case PointerUsage::StorageBuffer: {
+			return "StorageBuffer"sv;
 		} break;
 		case PointerUsage::Input: {
 			return "Input"sv;
@@ -656,8 +656,8 @@ void Builder::GenCBuffer(vstd::IRange<luisa::compute::Variable>& args) {
 	cbufferSize = structId.second;
 	cbufferVar = NewId();
 	Str() << cbufferVar.ToString()
-		  << " = OpVariable "sv << GetTypeNamePointer(*cbufferType, PointerUsage::Uniform).ToString()
-		  << ' ' << UsageName(PointerUsage::Uniform)
+		  << " = OpVariable "sv << GetTypeNamePointer(*cbufferType, PointerUsage::StorageBuffer).ToString()
+		  << ' ' << UsageName(PointerUsage::StorageBuffer)
 		  << '\n';
 }
 }// namespace toolhub::spv

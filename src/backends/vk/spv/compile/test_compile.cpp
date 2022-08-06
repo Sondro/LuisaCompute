@@ -26,7 +26,7 @@ void PrintHLSL() {
 			memcpy(spirv.data(), blob->GetBufferPtr(), spirv.size() * sizeof(uint32_t));
 			vstd::string disassembly;
 			if (!core.Disassemble(spirv, &disassembly)) return;
-			auto f = fopen("output.spvasm", "wb");
+			auto f = fopen("hlsl_output.spvasm", "wb");
 			if (f) {
 				fwrite(disassembly.data(), disassembly.size(), 1, f);
 				fclose(f);

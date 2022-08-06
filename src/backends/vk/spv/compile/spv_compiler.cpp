@@ -2,6 +2,7 @@
 #include <spirv-tools/libspirv.hpp>
 #include <spirv-tools/optimizer.hpp>
 #include <spv/codegen/ray_query.h>
+#include <vstl/BinaryReader.h>
 namespace toolhub::spv {
 SpvCompiler::SpvCompiler() {}
 SpvCompiler::CompileData SpvCompiler::AllocBuilder() {
@@ -22,7 +23,8 @@ SpvCompiler::CompileSpirV(luisa::compute::Function func, bool debug, bool optimi
 	auto&& builder = *compData.builder;
 	auto&& visitor = *compData.visitor;
 	auto disp = vstd::create_disposer([&] { DeAllocBuilder(std::move(compData)); });
-	builder.Reset(func.block_size(), func.raytracing());
+	const bool rayTracing = true;//func.raytracing();
+	builder.Reset(func.block_size(), rayTracing);
 	visitor.kernelGroupSize = func.block_size();
 	vstd::vector<std::pair<uint, Variable>> uniformVars;
 	uint bindPos = 1;
@@ -33,7 +35,7 @@ SpvCompiler::CompileSpirV(luisa::compute::Function func, bool debug, bool optimi
 			case Tag::BINDLESS_ARRAY:
 			case Tag::TEXTURE:
 			case Tag::BUFFER: {
-				auto usage = PointerUsage::Uniform;
+				auto usage = PointerUsage::StorageBuffer;
 				auto ite = uniformVars.emplace_back(
 					i.uid(),
 					vstd::LazyEval([&] {
@@ -48,9 +50,8 @@ SpvCompiler::CompileSpirV(luisa::compute::Function func, bool debug, bool optimi
 		}
 	}
 	Preprocess(func, builder);
-	if (func.raytracing()) {
+	if (rayTracing)
 		RayQuery::PrintFunc(&builder);
-	}
 
 	for (auto&& i : func.custom_callables()) {
 		auto func = luisa::compute::Function(i.get());
@@ -75,7 +76,17 @@ SpvCompiler::CompileSpirV(luisa::compute::Function func, bool debug, bool optimi
 		visitor.func = &kernelFunc;
 		Compile(func, visitor);
 	}
+//#define USE_CUSTOM_IR
+#ifdef USE_CUSTOM_IR
 	vstd::string strv(builder.Combine());
+#else
+	vstd::string strv;
+	{
+		BinaryReader reader("output.spvasm");
+		strv.resize(reader.GetLength());
+		reader.Read(strv.data(), strv.size());
+	}
+#endif
 	if (debug) {
 		auto f = fopen("output.spvasm", "wb");
 		////////////////////////// Debug output
@@ -84,8 +95,8 @@ SpvCompiler::CompileSpirV(luisa::compute::Function func, bool debug, bool optimi
 			fclose(f);
 		}
 	}
-	spvtools::SpirvTools core(SPV_ENV_UNIVERSAL_1_3);
-	spvtools::Optimizer opt(SPV_ENV_UNIVERSAL_1_3);
+	spvtools::SpirvTools core(SPV_ENV_UNIVERSAL_1_6);
+	spvtools::Optimizer opt(SPV_ENV_UNIVERSAL_1_6);
 	spvstd::vector<uint> spirv;
 	vstd::string errMsg;
 	auto print_msg_to_stderr = [&](spv_message_level_t, const char*,

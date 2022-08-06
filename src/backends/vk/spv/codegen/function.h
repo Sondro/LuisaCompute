@@ -4,9 +4,6 @@
 namespace toolhub::spv {
 class Builder;
 class Function : public Component {
-	vstd::small_vector<std::pair<Id, Id>> returnValues;
-	Id returnVoidCmd;
-
 public:
 	Id func;
 	Id funcType;
@@ -19,8 +16,9 @@ public:
 	Function(Builder* builder);
 	Function(Function const&) = delete;
 	Function(Function&&) = delete;
-	Id GetReturnTypeBranch(Id value);
-	Id GetReturnBranch();
+	void ReturnValue(Id returnValue);
+	void Return();
+	//Id GetReturnTypeBranch(Id value);
 	~Function();
 };
 }// namespace toolhub::spv

@@ -20,6 +20,7 @@ Function::Function(Builder* builder)
 	  funcType(bd->GetFuncReturnTypeId(Id::VoidId(), nullptr)), funcBlockId(builder->NewId()) {
 	bd->Str() << "%48 = OpFunction %22 None "sv << funcType.ToString() << '\n';
 }
+/*
 Id Function::GetReturnTypeBranch(Id value) {
 	auto id = returnValues.emplace_back(Id(bd->NewId()), value).first;
 	return id;
@@ -29,30 +30,45 @@ Id Function::GetReturnBranch() {
 		returnVoidCmd = bd->NewId();
 	return returnVoidCmd;
 }
+*/
+void Function::ReturnValue(Id returnValue) {
+	assert(bd->inBlock && returnType && returnType != Id::VoidId());
+	bd->inBlock = false;
+	bd->Str() << "OpReturnValue "sv << returnValue.ToString() << '\n';
+	//returnValues.emplace_back(bd->NewId(), returnValue);
+}
+void Function::Return() {
+	assert(bd->inBlock && (!returnType || returnType == Id::VoidId()));
+	bd->inBlock = false;
+	bd->Str() << "OpReturn\n"sv;
+}
 
 Function::~Function() {
-	if (returnValues.empty()) {
-		if (returnVoidCmd.valid()) {
-			if (bd->inBlock) {
-				bd->Str() << "OpBranch "sv << returnVoidCmd.ToString() << '\n';
-			}
-			bd->Str() << returnVoidCmd.ToString() << " = OpLabel\nOpReturn\n"sv;
+	auto builder = bd->Str();
+	if (bd->inBlock) {
+		if (!returnType || returnType == Id::VoidId()) {
+			builder << "OpReturn\n"sv;
 		} else {
+			Id retValue(bd->NewId());
+			builder
+				<< retValue.ToString() << " = OpUndef "sv << returnType.ToString()
+				<< "\nOpReturnValue "sv << retValue.ToString() << '\n';
+		}
+		bd->inBlock = false;
+	}
+	/*
+	if (returnValues.empty()) {
+		if (bd->inBlock) {
 			bd->Str() << "OpReturn\n"sv;
 		}
 	} else {
 		if (bd->inBlock) {
 			bd->Str() << "OpBranch "sv << returnValues[0].first.ToString() << '\n';
 		}
-		auto ite = [&](auto&& pair) {
+		for (auto&& pair : returnValues) {
 			bd->Str() << pair.first.ToString() << " = OpLabel\nOpReturnValue "sv << pair.second.ToString() << '\n';
-		};
-		ite(returnValues[0]);
-		for (auto i : vstd::range(1, returnValues.size())) {
-			ite(returnValues[1]);
 		}
-	}
-	bd->inBlock = false;
-	bd->Str() << "OpFunctionEnd\n"sv;
+	}*/
+	builder << "OpFunctionEnd\n"sv;
 }
 }// namespace toolhub::spv

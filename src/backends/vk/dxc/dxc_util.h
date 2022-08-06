@@ -35,7 +35,8 @@ public:
 	CompileResult CompileCompute(
 		vstd::string_view code,
 		bool optimize,
-		uint shaderModel = 63);
+		uint shaderModel = 63,
+		bool isRTPipeline = false);
 
 	/*CompileResult CompileRayTracing(
         vstd::string_view code,

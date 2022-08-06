@@ -81,13 +81,14 @@ CompileResult DXShaderCompiler::Compile(
 CompileResult DXShaderCompiler::CompileCompute(
 	vstd::string_view code,
 	bool optimize,
-	uint shaderModel) {
+	uint shaderModel,
+	bool isRTPipeline) {
 	if (shaderModel < 10) {
 		return "Illegal shader model!"sv;
 	}
 	vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
 	vstd::wstring smStr;
-	smStr << L"cs_" << GetSM(shaderModel);
+	smStr << (isRTPipeline ? L"cs_" : L"lib_") << GetSM(shaderModel);
 	args.push_back(L"/T");
 	args.push_back(smStr.c_str());
 	args.push_back_all(
