@@ -124,6 +124,7 @@ void ResourceStateTracker::RestoreState(CommandBufferBuilder const &cmdBuffer) {
             states.data());
         states.clear();
     }
+    writeStateMap.Clear();
 }
 
 void ResourceStateTracker::MarkWritable(Resource const *res, bool writable) {

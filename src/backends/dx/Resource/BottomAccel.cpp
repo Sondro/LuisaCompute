@@ -58,10 +58,16 @@ BottomAccel::BottomAccel(
     }
 }
 BottomAccel::~BottomAccel() {
+    for (auto &&i : handles) {
+        i->accel->allInstance[i->accelIndex].handle = nullptr;
+        MeshHandle::DestroyHandle(i);
+    }
 }
-void BottomAccel::SyncTopAccel() const {
-    for (auto &&k : *TopAccel::TopAccels()) {
-        k.first->UpdateMesh(this);
+void BottomAccel::SyncTopAccel() {
+    std::lock_guard lck(handleMtx);
+    for (auto &&i : handles) {
+        assert(i->mesh == this);
+        i->accel->UpdateMesh(i);
     }
 }
 
@@ -179,5 +185,41 @@ void BottomAccel::FinalCopy(
     alloc->ExecuteAfterComplete([readback, this] {
         static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(vbyte *)&compactSize, 8});
     });
+}
+MeshHandle *BottomAccel::AddAccelRef(TopAccel *accel, uint index) {
+    auto meshHandle = MeshHandle::AllocateHandle();
+    meshHandle->mesh = this;
+    meshHandle->accel = accel;
+    meshHandle->accelIndex = index;
+    {
+        std::lock_guard lck(handleMtx);
+        meshHandle->meshIndex = handles.size();
+        handles.emplace_back(meshHandle);
+    }
+    return meshHandle;
+}
+void BottomAccel::RemoveAccelRef(MeshHandle *handle) {
+    assert(handle->mesh == this);
+    {
+        std::lock_guard lck(handleMtx);
+        auto last = handles.erase_last();
+        if (last != handle) {
+            last->meshIndex = handle->meshIndex;
+            handles[handle->meshIndex] = last;
+        }
+    }
+    MeshHandle::DestroyHandle(handle);
+}
+namespace detail {
+static vstd::Pool<MeshHandle> meshHandlePool(32, false);
+static vstd::spin_mutex meshHandleMtx;
+}// namespace detail
+MeshHandle *MeshHandle::AllocateHandle() {
+    using namespace detail;
+    return meshHandlePool.New_Lock(meshHandleMtx);
+}
+void MeshHandle::DestroyHandle(MeshHandle *handle) {
+    using namespace detail;
+    meshHandlePool.Delete_Lock(meshHandleMtx, handle);
 }
 }// namespace toolhub::directx

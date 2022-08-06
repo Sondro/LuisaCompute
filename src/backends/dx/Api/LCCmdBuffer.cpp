@@ -542,9 +542,8 @@ void LCCmdBuffer::Execute(
         auto cmdBuilder = cmdBuffer->Build();
         visitor.bd = &cmdBuilder;
         ppVisitor.bd = &cmdBuilder;
-        ID3D12DescriptorHeap *h[2] = {
-            device->globalHeap->GetHeap(),
-            device->samplerHeap->GetHeap()};
+        
+
         auto commands = cmdList.steal_commands();
         for (auto command : commands) {
             command->accept(reorder);
@@ -557,10 +556,14 @@ void LCCmdBuffer::Execute(
             }
             reorder.clear();
         });
+        ID3D12DescriptorHeap *h[2] = {
+            device->globalHeap->GetHeap(),
+            device->samplerHeap->GetHeap()};
         for (auto &&lst : cmdLists) {
-            if (cmdListIsEmpty)
-                cmdBuilder.CmdList()->SetDescriptorHeaps(vstd::array_count(h), h);
             cmdListIsEmpty = cmdListIsEmpty && lst.empty();
+            if (!cmdListIsEmpty) {
+                cmdBuilder.CmdList()->SetDescriptorHeaps(vstd::array_count(h), h);
+            }
             // Clear caches
             ppVisitor.argVecs.clear();
             ppVisitor.argBuffer.clear();

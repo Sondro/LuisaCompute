@@ -18,6 +18,17 @@ struct BottomBuffer {
     BottomBuffer(Args &&...args)
         : defaultBuffer(std::forward<Args>(args)...) {}
 };
+
+class BottomAccel;
+class MeshHandle {
+public:
+    BottomAccel *mesh;
+    TopAccel *accel;
+    size_t accelIndex;
+    size_t meshIndex;
+    static MeshHandle *AllocateHandle();
+    static void DestroyHandle(MeshHandle *handle);
+};
 class BottomAccel : public vstd::IOperatorNewBase {
     friend class TopAccel;
     vstd::unique_ptr<DefaultBuffer> accelBuffer;
@@ -25,7 +36,11 @@ class BottomAccel : public vstd::IOperatorNewBase {
     Device *device;
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS hint;
     bool update = false;
-    void SyncTopAccel() const;
+    vstd::vector<MeshHandle *, VEngine_AllocType::VEngine, 2> handles;
+    vstd::spin_mutex handleMtx;
+    MeshHandle *AddAccelRef(TopAccel *accel, uint index);
+    void RemoveAccelRef(MeshHandle *handle);
+    void SyncTopAccel();
 
 public:
     bool RequireCompact() const;

@@ -6,10 +6,6 @@
 #include <DXRuntime/CommandBuffer.h>
 #include <Resource/BottomAccel.h>
 namespace toolhub::directx {
-vstd::HashMap<TopAccel *> *TopAccel::TopAccels() {
-    static vstd::HashMap<TopAccel *> topAccel;
-    return &topAccel;
-}
 
 namespace detail {
 void GetRayTransform(D3D12_RAYTRACING_INSTANCE_DESC &inst, float4x4 const &tr) {
@@ -49,34 +45,32 @@ TopAccel::TopAccel(Device *device, luisa::compute::AccelUsageHint hint,
     }
     topLevelInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
     topLevelBuildDesc.Inputs.NumDescs = 0;
-    TopAccels()->Emplace(this);
-}
-void TopAccel::UpdateMesh(
-    BottomAccel const *mesh) {
-    auto ite = meshMap.Find(mesh);
-    if (!ite) return;
-    for (auto &&kv : ite.Value()) {
-        auto &&ist = allInstance[kv.first];
-        ist.mesh = mesh->GetAccelBuffer()->GetAddress();
-        setMap.ForceEmplace(kv.first, ist);
-    }
-    requireBuild = true;
-}
-void TopAccel::RemoveMesh(BottomAccel const *mesh, uint64 index) {
-    auto idices = meshMap.Find(mesh);
-    if (!idices) return;
-    auto &&map = idices.Value();
-    auto ite = map.Find(index);
-    if (!ite) return;
-    map.Remove(ite);
-    if (map.size() == 0) meshMap.Remove(idices);
-}
-void TopAccel::AddMesh(BottomAccel const *mesh, uint64 index) {
-    meshMap.Emplace(mesh).Value().Emplace(index);
 }
 
+void TopAccel::UpdateMesh(
+    MeshHandle *handle) {
+    auto instIndex = handle->accelIndex;
+    auto &&ist = allInstance[instIndex].handle;
+    assert(ist == handle);
+    auto mesh = handle->mesh;
+    setMap.ForceEmplace(instIndex, handle);
+    requireBuild = true;
+}
+void TopAccel::SetMesh(BottomAccel *mesh, uint64 index) {
+    auto &&inst = allInstance[index].handle;
+    if (inst != nullptr) {
+        if (inst->mesh == mesh) return;
+        inst->mesh->RemoveAccelRef(inst);
+    }
+    inst = mesh->AddAccelRef(this, index);
+    inst->accelIndex = index;
+}
 TopAccel::~TopAccel() {
-    TopAccels()->Remove(this);
+    for (auto &&i : allInstance) {
+        auto mesh = i.handle;
+        if (mesh)
+            mesh->mesh->RemoveAccelRef(mesh);
+    }
 }
 size_t TopAccel::PreProcess(
     ResourceStateTracker &tracker,
@@ -91,25 +85,23 @@ size_t TopAccel::PreProcess(
     topLevelBuildDesc.Inputs.NumDescs = size;
     allInstance.resize(size);
     setDesc.clear();
+    setDesc.push_back_all(modifications);
 
-    if (!modifications.empty()) {
-        for (auto m : modifications) {
-            auto ite = setMap.Find(m.index);
-            if (ite) setMap.Remove(ite);
-            if (m.mesh != 0) {
-                auto mesh = reinterpret_cast<BottomAccel *>(m.mesh);
-                auto oldMesh = reinterpret_cast<BottomAccel *>(allInstance[m.index].mesh);
-                if (oldMesh != mesh) {
-                    RemoveMesh(oldMesh, m.index);
-                    AddMesh(mesh, m.index);
-                }
-                m.mesh = mesh->GetAccelBuffer()->GetAddress();
-                update = false;
-            } else {
-                m.mesh = allInstance[m.index].mesh;
+    for (auto &&m : setDesc) {
+        auto ite = setMap.Find(m.index);
+        bool updateMesh = (m.flags & m.flag_mesh);
+        if (ite) {
+            if (!updateMesh) {
+                m.mesh = ite.Value()->mesh->GetAccelBuffer()->GetAddress();
+                m.flags |= m.flag_mesh;
             }
-            allInstance[m.index] = m;
-            setDesc.emplace_back(m);
+            setMap.Remove(ite);
+        }
+        if (updateMesh) {
+            auto mesh = reinterpret_cast<BottomAccel *>(m.mesh);
+            SetMesh(mesh, m.index);
+            m.mesh = mesh->GetAccelBuffer()->GetAddress();
+            update = false;
         }
     }
     if (requireBuild) {
@@ -117,9 +109,12 @@ size_t TopAccel::PreProcess(
         update = false;
     }
     if (setMap.size() != 0) {
+        update = false;
         setDesc.reserve(setMap.size());
         for (auto &&i : setMap) {
-            setDesc.emplace_back(i.second);
+            auto& mod = setDesc.emplace_back(i.first);
+            mod.flags = mod.flag_mesh;
+            mod.mesh = i.second->mesh->GetAccelBuffer()->GetAddress();
         }
         setMap.Clear();
     }
@@ -213,10 +208,10 @@ void TopAccel::Build(
         CBuffer cbValue;
         cbValue.dsp = setDesc.size();
         cbValue.count = Length();
-        reinterpret_cast<UploadBuffer const *>(cbuffer.buffer)
+        static_cast<UploadBuffer const *>(cbuffer.buffer)
             ->CopyData(cbuffer.offset,
                        {reinterpret_cast<vbyte const *>(&cbValue), sizeof(CBuffer)});
-        reinterpret_cast<UploadBuffer const *>(setBuffer.buffer)
+        static_cast<UploadBuffer const *>(setBuffer.buffer)
             ->CopyData(setBuffer.offset,
                        {reinterpret_cast<vbyte const *>(setDesc.data()), setDesc.byte_size()});
         BindProperty properties[3];

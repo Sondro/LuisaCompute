@@ -12,7 +12,7 @@ class CommandBufferBuilder;
 class ResourceStateTracker;
 class Mesh;
 class BottomAccel;
-
+class MeshHandle;
 class TopAccel : public vstd::IOperatorNewBase {
 
     friend class BottomAccel;
@@ -22,24 +22,25 @@ class TopAccel : public vstd::IOperatorNewBase {
     Device *device;
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO topLevelPrebuildInfo;
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC topLevelBuildDesc;
-    vstd::vector<AccelBuildCommand::Modification> allInstance;
-    vstd::HashMap<uint64, AccelBuildCommand::Modification> setMap;
+    struct Instance {
+        MeshHandle *handle = nullptr;
+    };
+    vstd::vector<Instance> allInstance;
+    vstd::HashMap<uint64, MeshHandle*> setMap;
     vstd::vector<AccelBuildCommand::Modification> setDesc;
-    vstd::HashMap<BottomAccel const *, vstd::HashMap<uint64>> meshMap;
-    void RemoveMesh(BottomAccel const *mesh, uint64 index);
-    void AddMesh(BottomAccel const *mesh, uint64 index);
+    void SetMesh(BottomAccel *mesh, uint64 index);
     uint compactSize = 0;
     bool requireBuild = false;
     bool update = false;
+    void UpdateMesh(
+        MeshHandle *handle);
 
 public:
     bool RequireCompact() const;
-    static vstd::HashMap<TopAccel *> *TopAccels();
     TopAccel(Device *device, luisa::compute::AccelUsageHint hint,
              bool allow_compact, bool allow_update);
     uint Length() const { return topLevelBuildDesc.Inputs.NumDescs; }
-    void UpdateMesh(
-        BottomAccel const *mesh);
+
     DefaultBuffer const *GetAccelBuffer() const {
         return accelBuffer.get();
     }

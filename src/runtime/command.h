@@ -445,7 +445,6 @@ public:
 
 enum struct AccelUsageHint : uint32_t {
     FAST_TRACE, // build with best quality
-    FAST_UPDATE,// optimize for frequent update, usually with compaction
     FAST_BUILD  // optimize for frequent rebuild, maybe without compaction
 };
 
