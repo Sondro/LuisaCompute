@@ -88,7 +88,7 @@ CompileResult DXShaderCompiler::CompileCompute(
 	}
 	vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
 	vstd::wstring smStr;
-	smStr << (isRTPipeline ? L"cs_" : L"lib_") << GetSM(shaderModel);
+	smStr << (isRTPipeline ? L"lib_" : L"cs_") << GetSM(shaderModel);
 	args.push_back(L"/T");
 	args.push_back(smStr.c_str());
 	args.push_back_all(
@@ -96,7 +96,10 @@ CompileResult DXShaderCompiler::CompileCompute(
 		 L"/quiet",
 		 L"/q",
 		 L"-HV 2021",
-		 L"-spirv"});
+		 L"-spirv",
+		 L"-fspv-extension=SPV_KHR_ray_tracing",
+		 L"-fspv-extension=SPV_KHR_ray_query",
+		 L"-fspv-target-env=vulkan1.3"});
 	if (optimize) {
 		args.push_back(L"/O3");
 	}

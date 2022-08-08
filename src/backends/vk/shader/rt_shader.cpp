@@ -10,9 +10,14 @@ RTShader::RTShader(
 	vstd::span<uint const> closestHit,
 	PipelineCache const* cache,
 	vstd::span<VkDescriptorType> properties)
-	: Resource(device),
-	  pipeLayout(device, properties) {
+	: Resource(device) {
 	vstd::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+	vstd::vector<VkShaderModule> shaderModule;
+	auto disp = vstd::create_disposer([&] {
+		for (auto&& i : shaderModule) {
+			vkDestroyShaderModule(device->device, i, Device::Allocator());
+		}
+	});
 	vstd::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
 
 	auto loadShader = [&](VkShaderStageFlagBits stage, vstd::span<uint const> code) {
@@ -20,9 +25,11 @@ RTShader::RTShader(
 		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStage.stage = stage;
 		shaderStage.module = ShaderUtility::LoadShader(code, device->device);
+		shaderModule.push_back(shaderStage.module);
 		shaderStage.pName = "main";
 		return shaderStage;
 	};
+	VkShaderStageFlags bits = 0;
 	///////////////////////// Raygen group
 	if (!raygen.empty()) {
 		shaderStages.push_back(loadShader(VK_SHADER_STAGE_RAYGEN_BIT_KHR, raygen));
@@ -35,6 +42,7 @@ RTShader::RTShader(
 		shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
 		shaderGroups.push_back(shaderGroup);
 		sbtOffsets.emplace(VK_SHADER_STAGE_RAYGEN_BIT_KHR, sbtOffsets.size());
+		bits |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 	}
 
 	///////////////////////// Miss group
@@ -49,6 +57,7 @@ RTShader::RTShader(
 		shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
 		shaderGroups.push_back(shaderGroup);
 		sbtOffsets.emplace(VK_SHADER_STAGE_MISS_BIT_KHR, sbtOffsets.size());
+		bits |= VK_SHADER_STAGE_MISS_BIT_KHR;
 	}
 
 	///////////////////////// Closest hit group
@@ -63,8 +72,10 @@ RTShader::RTShader(
 		shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
 		shaderGroups.push_back(shaderGroup);
 		sbtOffsets.emplace(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, sbtOffsets.size());
+		bits |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 	}
 	///////////////////////// Create RT Pipeline
+	pipeLayout.New(device, bits, properties);
 	{
 		VkRayTracingPipelineCreateInfoKHR rayTracingPipelineCI{};
 		rayTracingPipelineCI.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
@@ -73,14 +84,15 @@ RTShader::RTShader(
 		rayTracingPipelineCI.groupCount = static_cast<uint32_t>(shaderGroups.size());
 		rayTracingPipelineCI.pGroups = shaderGroups.data();
 		rayTracingPipelineCI.maxPipelineRayRecursionDepth = 1;
-		rayTracingPipelineCI.layout = pipeLayout.Layout();
+		rayTracingPipelineCI.layout = pipeLayout->Layout();
 		ThrowIfFailed(device->vkCreateRayTracingPipelinesKHR(device->device, VK_NULL_HANDLE, cache ? cache->Cache() : nullptr, 1, &rayTracingPipelineCI, Device::Allocator(), &pipeline));
 	}
+
 	///////////////////////// Create SBT
 	{
 		auto&& rayTracingProperties = device->rayTracingProperties;
 		const uint handleSize = rayTracingProperties.shaderGroupHandleSize;
-		const uint handleSizeAligned = CalcAlign(rayTracingProperties.shaderGroupHandleSize, rayTracingProperties.shaderGroupHandleAlignment);
+		const uint handleSizeAligned = CalcAlign(rayTracingProperties.shaderGroupHandleSize, std::max(rayTracingProperties.shaderGroupHandleAlignment, rayTracingProperties.shaderGroupBaseAlignment));
 		const uint groupCount = static_cast<uint>(shaderGroups.size());
 		const uint sbtSize = groupCount * handleSizeAligned;
 		vstd::vector<vbyte> shaderHandleStorage(sbtSize);
@@ -93,6 +105,7 @@ RTShader::RTShader(
 RTShader::~RTShader() {
 	vkDestroyPipeline(device->device, pipeline, Device::Allocator());
 	sbtBuffer.Delete();
+	pipeLayout.Delete();
 }
 VkStridedDeviceAddressRegionKHR RTShader::GetSBTAddress(VkShaderStageFlags flag) const {
 	VkStridedDeviceAddressRegionKHR address;
@@ -102,7 +115,7 @@ VkStridedDeviceAddressRegionKHR RTShader::GetSBTAddress(VkShaderStageFlags flag)
 		return address;
 	};
 	auto&& rayTracingProperties = device->rayTracingProperties;
-	auto handleAlignedSize = CalcAlign(rayTracingProperties.shaderGroupHandleSize, rayTracingProperties.shaderGroupHandleAlignment);
+	auto handleAlignedSize = CalcAlign(rayTracingProperties.shaderGroupHandleSize, std::max(rayTracingProperties.shaderGroupHandleAlignment, rayTracingProperties.shaderGroupBaseAlignment));
 	address.deviceAddress = sbtBuffer->GetAddress(ite->second * handleAlignedSize);
 	address.size = handleAlignedSize;
 	address.stride = handleAlignedSize;

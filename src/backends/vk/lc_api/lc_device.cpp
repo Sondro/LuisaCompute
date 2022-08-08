@@ -8,6 +8,7 @@
 #include <vk_rtx/accel.h>
 #include <shader/pipeline_cache.h>
 #include <shader/compute_shader.h>
+#include <shader/rt_shader.h>
 namespace toolhub::vk {
 namespace detail {
 static VkInstance vkInstance = nullptr;
@@ -238,7 +239,6 @@ void LCDevice::present_display_in_stream(uint64_t stream_handle, uint64_t swapch
 // kernel
 uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options) noexcept {
 	//Debug now
-	auto compileResult = compiler.CompileSpirV(kernel, true, false);
 	vstd::small_vector<VkDescriptorType> types;
 	types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	for (auto&& i : kernel.arguments()) {
@@ -261,33 +261,64 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 				break;
 			case Tag::ACCEL:
 				if (isWrite) {
-					types.emplace_back(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+					types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 				} else {
-					types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+					types.emplace_back(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 				}
 				break;
 		}
 	}
-	auto value = compileResult.multi_visit_or(
-		uint64(0),
-		[&](spvstd::vector<uint> const& code) {
-			auto cs = new ComputeShader(
-				device,
-				code,
-				nullptr,
-				types,
-				kernel.block_size());
-			return reinterpret_cast<uint64>(cs);
-		},
-		[&](vstd::string const& errCode) {
-			std::cout << "compile error: " << errCode << '\n';
-			assert(false);
-			return 0;
-		});
-	return value;
+	auto printErrCode = [&](vstd::string const& errCode) {
+		std::cout << "compile error: " << errCode << '\n';
+		assert(false);
+		return nullptr;
+	};
+	//Test raytracing
+	//if(kernel.raytracing())
+	auto Cast = [](auto&& value) {
+		return reinterpret_cast<uint64>(static_cast<IShader*>(value));
+	};
+	if (true) {
+		auto raygenResult = compiler.CompileSpirV(kernel, true, false);
+		//auto raygenResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/raygen_output.spvasm");
+		auto missResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/miss_output.spvasm");
+		auto closestResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/closest_output.spvasm");
+		auto Check = [&](auto&& result) {
+			if (auto v = result.try_get<vstd::string>()) {
+				printErrCode(*v);
+				assert(false);
+			}
+		};
+		Check(raygenResult);
+		Check(missResult);
+		Check(closestResult);
+		auto value = new RTShader(
+			device,
+			raygenResult.get<0>(),
+			missResult.get<0>(),
+			closestResult.get<0>(),
+			nullptr,
+			types);
+		return Cast(value);
+	} else {
+		auto compileResult = compiler.CompileSpirV(kernel, true, false);
+		auto value = compileResult.multi_visit_or(
+			vstd::UndefEval<ComputeShader*>{},
+			[&](spvstd::vector<uint> const& code) {
+				auto cs = new ComputeShader(
+					device,
+					code,
+					nullptr,
+					types,
+					kernel.block_size());
+				return cs;
+			},
+			printErrCode);
+		return Cast(value);
+	}
 }
 void LCDevice::destroy_shader(uint64_t handle) noexcept {
-	delete reinterpret_cast<ComputeShader*>(handle);
+	delete reinterpret_cast<IShader*>(handle);
 }
 
 // event

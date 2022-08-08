@@ -1,6 +1,7 @@
 #include "lc_stream.h"
 #include <gpu_collection/bindless_array.h>
 #include <shader/compute_shader.h>
+#include <shader/rt_shader.h>
 namespace toolhub::vk {
 class LCCmdBase : public CommandVisitor {
 public:
@@ -242,7 +243,8 @@ public:
 	void visit(ShaderDispatchCommand const* cmd) override {
 		stream->bindVec.clear();
 		auto&& cbufferPos = stream->bindVec.emplace_back();
-		auto cs = reinterpret_cast<ComputeShader const*>(cmd->handle());
+		auto cs = reinterpret_cast<IShader const*>(cmd->handle());
+
 		func = cmd->kernel();
 		vars = func.arguments().data();
 		stream->uniformPack.Reset();
@@ -271,7 +273,7 @@ public:
 		cbufferPos = cbuffer;
 		stream->sets.emplace_back(
 			cb->PreprocessDispatch(
-				cs->Layout(),
+				cs->GetLayout(),
 				stream->bindVec),
 			cbuffer);
 	}
@@ -356,12 +358,18 @@ public:
 
 	///////////////////// build
 	void visit(ShaderDispatchCommand const* cmd) override {
-		auto cs = reinterpret_cast<ComputeShader const*>(cmd->handle());
-		func = cmd->kernel();
-		cb->Dispatch(
-			sets->set,
-			cs,
-			cmd->dispatch_size());
+		auto ishad = reinterpret_cast<IShader const*>(cmd->handle());
+		if (ishad->GetTag() == IShader::Tag::Compute) {
+			cb->Dispatch(
+				sets->set,
+				static_cast<ComputeShader const*>(ishad),
+				cmd->dispatch_size());
+		} else {
+			cb->Dispatch(
+				sets->set,
+				static_cast<RTShader const*>(ishad),
+				cmd->dispatch_size());
+		}
 		++sets;
 	}
 	BuildInfo& GetNextBuildInfo() {

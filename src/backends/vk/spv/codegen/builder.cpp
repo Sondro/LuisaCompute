@@ -74,13 +74,18 @@ struct VecInfo<Matrix<dim>> {
 	static constexpr size_t dimension = dim;
 };
 }// namespace Builder_detail
+void Builder::AddKernelResource(Id resource) {
+	entryStr << resource.ToString() << ' ';
+}
 void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 	// allocate 1m memory
 	cbufferType.Delete();
 	cbufferType.New();
 	kernelArgType.Delete();
 	kernelArgType.New();
-	header.clear();
+	beforeEntryHeader.clear();
+	entryStr.clear();
+	afterEntryHeader.clear();
 	decorateStr.clear();
 	typeStr.clear();
 	constValueStr.clear();
@@ -90,46 +95,68 @@ void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 	funcTypeMap.Clear();
 	inBlock = false;
 
-	header.reserve(8192);
+	afterEntryHeader.reserve(8192);
+	entryStr.reserve(512);
+	beforeEntryHeader.reserve(512);
 	decorateStr.reserve(1024);
 	typeStr.reserve(4096);
 	constValueStr.reserve(8192);
 	idCount = Id::StartId().id;
 	// init
-	header = "OpCapability Shader\nOpCapability RuntimeDescriptorArray\n"sv;
 	if (useRayTracing) {
-		header += "OpCapability RayQueryKHR\n"sv;
+		beforeEntryHeader << "OpCapability RayTracingKHR\n"sv;
+	} else {
+		beforeEntryHeader = "OpCapability Shader\n"sv;
 	}
-	header += R"(OpExtension "SPV_EXT_descriptor_indexing"
+	beforeEntryHeader << R"(OpCapability RuntimeDescriptorArray
+OpExtension "SPV_EXT_descriptor_indexing"
 )"sv;
+	// use rayquery
 	if (useRayTracing) {
-		header += R"(OpExtension "SPV_KHR_ray_query"
+		beforeEntryHeader << R"(OpExtension "SPV_KHR_ray_tracing"
 )"sv;
-		typeStr += R"(%23 = OpTypeRayQueryKHR
-%27 = OpTypePointer Function %23
-%28 = OpTypeAccelerationStructureKHR
+		// %23 = OpTypeRayQueryKHR
+		typeStr += R"(%28 = OpTypeAccelerationStructureKHR
 %29 = OpTypePointer UniformConstant %28
 %30 = OpTypePointer Function %28
 )"sv;
+		entryStr << R"(OpEntryPoint RayGenerationKHR %48 "main" %24 )"sv;
+	} else {
+		entryStr << R"(OpEntryPoint GLCompute %48 "main" %24 %25 %26 )"sv;
 	}
-	header += R"(%49 = OpExtInstImport "GLSL.std.450"
+	beforeEntryHeader << R"(%49 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %48 "main" %24 %25 %26
-OpExecutionMode %48 LocalSize )"sv;
-	vstd::to_string(groupSize.x, header);
-	header << ' ';
-	vstd::to_string(groupSize.y, header);
-	header << ' ';
-	vstd::to_string(groupSize.z, header);
-	header << R"(
-OpSource HLSL 630
+)"sv;
+	if (!useRayTracing) {
+		afterEntryHeader += "OpExecutionMode %48 LocalSize "sv;
+		vstd::to_string(groupSize.x, afterEntryHeader);
+		afterEntryHeader << ' ';
+		vstd::to_string(groupSize.y, afterEntryHeader);
+		afterEntryHeader << ' ';
+		vstd::to_string(groupSize.z, afterEntryHeader);
+	}
+	afterEntryHeader << R"(
+OpSource HLSL 640
 OpName %48 "main"
 )"sv;
-	decorateStr << R"(OpDecorate %24 BuiltIn GlobalInvocationId
+	// ray payload
+	Builder_detail::AddInternalTypeCode(typeStr);
+	if (useRayTracing) {
+		decorateStr << R"(OpMemberName %36 0 "bary"
+OpMemberName %36 1 "primitiveID"
+OpMemberName %36 2 "instanceID"
+OpDecorate %24 BuiltIn LaunchIdKHR
+)"sv;
+		typeStr << R"(%36 = OpTypeStruct %4 %2 %2
+%37 = OpTypePointer RayPayloadKHR %36
+)"sv;
+		Str() << "%38 = OpVariable %37 RayPayloadKHR\n"sv;
+	} else {
+		decorateStr << R"(OpDecorate %24 BuiltIn GlobalInvocationId
 OpDecorate %25 BuiltIn LocalInvocationId
 OpDecorate %26 BuiltIn WorkgroupId
 )"sv;
-	Builder_detail::AddInternalTypeCode(typeStr);
+	}
 	auto uint16 = NewId();
 	constMap.Emplace(16u, uint16);
 	typeStr << uint16.ToString() << " = OpConstant %2 16\n%32 = OpTypeArray %31 "sv << uint16.ToString() << R"(
@@ -140,11 +167,17 @@ OpDecorate %26 BuiltIn WorkgroupId
 	auto uint3InputPtr = GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::Input).ToString();
 	string inputStr;
 	inputStr << " = OpVariable "sv << uint3InputPtr << " Input\n"sv;
-	Str()
-		<< "%24"sv << inputStr
-		<< "%25"sv << inputStr
-		<< "%26"sv << inputStr
-		<< Id::SamplerVarId().ToString() << " = OpVariable "sv << Id::SamplerArrayPtrId().ToString() << " UniformConstant\n"sv;
+	{
+		auto builder = Str();
+		builder
+			<< "%24"sv << inputStr;
+		if (!useRayTracing) {
+			builder
+				<< "%25"sv << inputStr
+				<< "%26"sv << inputStr;
+		}
+		builder << Id::SamplerVarId().ToString() << " = OpVariable "sv << Id::SamplerArrayPtrId().ToString() << " UniformConstant\n"sv;
+	}
 	BindVariable(Id::SamplerVarId(), 4, 0);
 	InternalType float4Type = InternalType(InternalType::Tag::FLOAT, 4);
 
@@ -172,17 +205,23 @@ OpDecorate %26 BuiltIn WorkgroupId
 	//TODO: buffer b[] : 1;
 	//TODO: texture2d<float4> samp[] : 2;
 	//TODO: texture3d<float4> samp[] : 3;
+	if (useRayTracing) {
+	}
 }
 vstd::string Builder::Combine() {
 	vstd::string result;
+	*(entryStr.end() - 1) = '\n';
 	result.resize(
-		header.size() + decorateStr.size() + typeStr.size() + constValueStr.size() + bodyStr.size());
+		beforeEntryHeader.size() + entryStr.size() +
+		afterEntryHeader.size() + decorateStr.size() + typeStr.size() + constValueStr.size() + bodyStr.size());
 	char* ptr = result.data();
 	auto copy = [&](vstd::string& str) {
 		memcpy(ptr, str.data(), str.size());
 		ptr += str.size();
 	};
-	copy(header);
+	copy(beforeEntryHeader);
+	copy(entryStr);
+	copy(afterEntryHeader);
 	copy(decorateStr);
 	copy(typeStr);
 	copy(constValueStr);
@@ -655,6 +694,7 @@ void Builder::GenCBuffer(vstd::IRange<luisa::compute::Variable>& args) {
 	GenBuffer(cbufferType->typeId, *kernelArgType, structId.second);
 	cbufferSize = structId.second;
 	cbufferVar = NewId();
+	AddKernelResource(cbufferVar);
 	Str() << cbufferVar.ToString()
 		  << " = OpVariable "sv << GetTypeNamePointer(*cbufferType, PointerUsage::StorageBuffer).ToString()
 		  << ' ' << UsageName(PointerUsage::StorageBuffer)

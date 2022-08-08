@@ -4,12 +4,13 @@
 namespace toolhub::vk {
 PipelineLayout::PipelineLayout(
 	Device const* device,
+	VkShaderStageFlags shaderStage,
 	vstd::span<VkDescriptorType> properties)
 	: Resource(device),
 	  propertiesTypes(properties) {
 	vstd::small_vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
 	setLayoutBindings.push_back_func(properties.size(), [&](size_t i) {
-		return vks::initializers::descriptorSetLayoutBinding(properties[i], VK_SHADER_STAGE_COMPUTE_BIT, i);
+		return vks::initializers::descriptorSetLayoutBinding(properties[i], shaderStage, i);
 	});
 
 	VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
@@ -28,7 +29,7 @@ PipelineLayout::PipelineLayout(
 	ThrowIfFailed(vkCreatePipelineLayout(device->device, &pPipelineLayoutCreateInfo, Device::Allocator(), &pipelineLayout));
 }
 PipelineLayout::~PipelineLayout() {
-    DescriptorSetManager::DestroyPipelineLayout(descriptorSetLayout);
+	DescriptorSetManager::DestroyPipelineLayout(descriptorSetLayout);
 	vkDestroyPipelineLayout(device->device, pipelineLayout, Device::Allocator());
 	vkDestroyDescriptorSetLayout(device->device, descriptorSetLayout, Device::Allocator());
 }

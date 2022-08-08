@@ -5,12 +5,16 @@
 namespace toolhub::spv {
 class BuiltinFunc : public Component {
 	template<typename Ite>
-	requires(vstd::IterableType<Ite>)
+		requires(vstd::IterableType<Ite>)
 	Id FuncCall(Id type, vstd::string_view name, Ite&& args);
 	template<typename Ite>
-	requires(vstd::IterableType<Ite>)
+		requires(vstd::IterableType<Ite>)
 	Id OpCall(Id type, vstd::string_view name, Ite&& args);
 	Id OpCall(Id type, vstd::string_view name, Id arg);
+	Id GetPayload(
+		Variable& accel,
+		Variable& desc,
+		uint rayFlag);
 
 public:
 	BuiltinFunc(Builder* builder);

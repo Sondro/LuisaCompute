@@ -213,22 +213,28 @@ void Visitor::RegistVariables(
 		Id dispatchCountVar = bd->NewId();
 		auto uint3Id = Id::VecId(Id::UIntId(), 3).ToString();
 		auto uint3UniformPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::StorageBuffer).ToString();
-		bd->Str()
-			<< threadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupThreadId().ToString() << '\n'
-			<< groupId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupId().ToString() << '\n'
-			<< dispatchedThreadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::DispatchThreadId().ToString() << '\n'
-			<< dispatchCountVar.ToString()
-			<< " = OpAccessChain "sv
-			<< uint3UniformPtr << ' '			 // arg type
-			<< bd->CBufferVar().ToString() << ' '// buffer
-			<< Id::ZeroId().ToString() << ' '	 // first buffer
-			<< Id::ZeroId().ToString() << ' '	 // first element
-			<< Id::ZeroId().ToString() << '\n'	 // first member
-			<< dispatchedCountId.ToString()
-			<< " = OpLoad "sv
-			<< vstd::string_view(uint3Id) << ' '
-			<< dispatchCountVar.ToString() << '\n';
-
+		//TODO: no group in raytracing
+		{
+			auto builder = bd->Str();
+			if (!isRayTracing) {
+				builder
+					<< threadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupThreadId().ToString() << '\n'
+					<< groupId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupId().ToString() << '\n';
+			}
+			builder
+				<< dispatchedThreadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::DispatchThreadId().ToString() << '\n'
+				<< dispatchCountVar.ToString()
+				<< " = OpAccessChain "sv
+				<< uint3UniformPtr << ' '			 // arg type
+				<< bd->CBufferVar().ToString() << ' '// buffer
+				<< Id::ZeroId().ToString() << ' '	 // first buffer
+				<< Id::ZeroId().ToString() << ' '	 // first element
+				<< Id::ZeroId().ToString() << '\n'	 // first member
+				<< dispatchedCountId.ToString()
+				<< " = OpLoad "sv
+				<< vstd::string_view(uint3Id) << ' '
+				<< dispatchCountVar.ToString() << '\n';
+		}
 		uint cbufferIndex = 1;
 		for (auto&& i : kernel.arguments()) {
 			switch (i.tag()) {
@@ -242,9 +248,9 @@ void Visitor::RegistVariables(
 							<< newVar.ToString()
 							<< " = OpAccessChain "sv
 							<< bd->GetTypeId(i.type(), PointerUsage::StorageBuffer).ToString() << ' '// arg type
-							<< bd->CBufferVar().ToString() << ' '							   // buffer
-							<< Id::ZeroId().ToString() << ' '								   // first buffer
-							<< Id::ZeroId().ToString() << ' '								   // first element
+							<< bd->CBufferVar().ToString() << ' '									 // buffer
+							<< Id::ZeroId().ToString() << ' '										 // first buffer
+							<< Id::ZeroId().ToString() << ' '										 // first element
 							<< bd->GetConstId(cbufferIndex).ToString() << '\n'
 							<< newVarValue.ToString()
 							<< " = OpLoad "sv

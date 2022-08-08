@@ -16,6 +16,7 @@ struct ExprValue {
 };
 class Visitor : public Component, public StmtVisitor {
 public:
+	bool isRayTracing = false;
 	ExprValue Accept(Expression const* ptr);
 	Id ReadAccept(Expression const* ptr);
 	Id ReadAccept(Type const* type, Id valueId);

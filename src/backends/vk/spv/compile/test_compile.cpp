@@ -8,17 +8,17 @@ struct SetSpvCompilerAlloc {
 	}
 };
 static SetSpvCompilerAlloc gSetSpvCompilerAlloc;
-void PrintHLSL() {
+void PrintHLSL(vstd::string fileName, vstd::string outputPath, bool isRayTracing) {
 	spvtools::SpirvTools core(SPV_ENV_UNIVERSAL_1_3);
 	spvtools::Optimizer opt(SPV_ENV_UNIVERSAL_1_3);
 	toolhub::directx::DXShaderCompiler dxc;
 
-	BinaryReader reader("hlsl_example.hlsl");
+	BinaryReader reader(fileName);
 	vstd::string strv;
 	strv.resize(reader.GetLength());
 	reader.Read(strv.data(), strv.size());
 	auto result = dxc.CompileCompute(
-		strv, false);
+		strv, false, 64, isRayTracing);
 	result.multi_visit(
 		[&](vstd::unique_ptr<toolhub::directx::DXByteBlob> const& blob) {
 			spvstd::vector<uint32_t> spirv;
@@ -26,7 +26,7 @@ void PrintHLSL() {
 			memcpy(spirv.data(), blob->GetBufferPtr(), spirv.size() * sizeof(uint32_t));
 			vstd::string disassembly;
 			if (!core.Disassemble(spirv, &disassembly)) return;
-			auto f = fopen("hlsl_output.spvasm", "wb");
+			auto f = fopen(outputPath.data(), "wb");
 			if (f) {
 				fwrite(disassembly.data(), disassembly.size(), 1, f);
 				fclose(f);
@@ -40,21 +40,24 @@ void PrintHLSL() {
 
 int main() {
 	auto func = [&] {
-		std::cout << R"(0: hlsl to spv
-1: spv compile
-2: test print
+		std::cout << R"(
+0: compute to spv
+1: raytracing to spv
+2: spv compile
 3:exit
 )"sv;
 		vstd::string cmd;
 		std::cin >> cmd;
 		if (cmd == "3") return 2;
 		if (cmd == "0") {
-			PrintHLSL();
+			PrintHLSL("hlsl_example.hlsl", "hlsl_output.spvasm", false);
+			return 0;
+		} else if (cmd == "1") {
+			PrintHLSL("hlsl_raygen.hlsl", "rt_spvasm/raygen_output.spvasm", true);
+			PrintHLSL("hlsl_miss.hlsl", "rt_spvasm/miss_output.spvasm", true);
+			PrintHLSL("hlsl_closest.hlsl", "rt_spvasm/closest_output.spvasm", true);
 			return 0;
 		} else if (cmd == "2") {
-			TestCompile();
-			return 0;
-		} else {
 			BinaryReader reader("example.spvasm");
 
 			spvtools::SpirvTools core(SPV_ENV_UNIVERSAL_1_3);
@@ -82,7 +85,9 @@ int main() {
 			spvstd::string disassembly;
 			if (!core.Disassemble(spirv, &disassembly)) return 1;
 			std::cout << disassembly << "\n";
-
+			return 0;
+		} else {
+			TestCompile();
 			return 0;
 		}
 	};

@@ -36,5 +36,10 @@ public:
 	Id ReadMatrixValue(Id row, Id col) const;				 //return float
 	void WriteMatrixCol(Id index, Id result) const;		 // write Vector<float, dimension>
 	void WriteMatrixValue(Id row, Id col, Id result) const;//write float
+	Id AccessChain(Id typeId, vstd::IRange<Id>& chain);
+	Id AccessChain(Id typeId, std::initializer_list<Id> lst){
+		auto range = vstd::IRangeImpl(vstd::CacheEndRange(lst) | vstd::ValueRange{});
+		return AccessChain(typeId, range);
+	}
 };
 }// namespace toolhub::spv

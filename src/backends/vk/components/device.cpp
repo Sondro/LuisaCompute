@@ -225,17 +225,21 @@ void Device::Init() {
 	writeDesc.pImageInfo = imageInfos;
 	vkUpdateDescriptorSets(device, 1, &writeDesc, 0, nullptr);
 	InitBindless();
+	auto SafeCastFuncPtr = []<typename T>(PFN_vkVoidFunction num){
+		assert(num != 0);
+		return reinterpret_cast<T>(num);
+	};
 
-	vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureBuildSizesKHR"));
-	vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR"));
-	vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
-	vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR"));
-	vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
-	vkCmdWriteAccelerationStructuresPropertiesKHR = reinterpret_cast<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
-	vkCmdCopyAccelerationStructureKHR = reinterpret_cast<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCmdCopyAccelerationStructureKHR"));
-	vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
-	vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
-	vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
+	vkGetAccelerationStructureBuildSizesKHR = SafeCastFuncPtr.operator()<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureBuildSizesKHR"));
+	vkCreateAccelerationStructureKHR = SafeCastFuncPtr.operator()<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR"));
+	vkDestroyAccelerationStructureKHR = SafeCastFuncPtr.operator()<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
+	vkCmdBuildAccelerationStructuresKHR = SafeCastFuncPtr.operator()<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR"));
+	vkGetAccelerationStructureDeviceAddressKHR = SafeCastFuncPtr.operator()<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
+	vkCmdWriteAccelerationStructuresPropertiesKHR = SafeCastFuncPtr.operator()<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
+	vkCmdCopyAccelerationStructureKHR = SafeCastFuncPtr.operator()<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCmdCopyAccelerationStructureKHR"));
+	vkCmdTraceRaysKHR = SafeCastFuncPtr.operator()<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
+	vkGetRayTracingShaderGroupHandlesKHR = SafeCastFuncPtr.operator()<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
+	vkCreateRayTracingPipelinesKHR = SafeCastFuncPtr.operator()<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
 }
 void Device::InitBindless() {
 	VkDescriptorSetLayoutBinding setLayoutBinding{};
@@ -315,7 +319,7 @@ Device* Device::CreateDevice(
 		"VK_KHR_buffer_device_address",
 		"VK_KHR_deferred_host_operations",
 		"VK_KHR_acceleration_structure",
-		"VK_KHR_ray_query"};
+		"VK_KHR_ray_tracing_pipeline"};
 	auto checkDeviceExtensionSupport = [&](VkPhysicalDevice device) {
 		uint32_t extensionCount;
 		ThrowIfFailed(vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr));
@@ -436,13 +440,13 @@ Device* Device::CreateDevice(
 	enabledAccelerationStructureFeatures.accelerationStructure = VK_TRUE;
 	enabledAccelerationStructureFeatures.pNext = &enabledRayTracingPipelineFeatures;
 
-	VkPhysicalDeviceRayQueryFeaturesKHR enabledRayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
+/*	VkPhysicalDeviceRayQueryFeaturesKHR enabledRayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
 	enabledRayQueryFeatures.rayQuery = VK_TRUE;
 	enabledRayQueryFeatures.pNext = &enabledAccelerationStructureFeatures;
-
+*/
 	VkPhysicalDeviceHostQueryResetFeatures enableQueryReset{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES};
 	enableQueryReset.hostQueryReset = VK_TRUE;
-	enableQueryReset.pNext = &enabledRayQueryFeatures;
+	enableQueryReset.pNext = &enabledAccelerationStructureFeatures;
 
 	auto featureLinkQueue = &enableQueryReset;
 

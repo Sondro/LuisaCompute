@@ -1,20 +1,23 @@
 #pragma once
 #include "pipeline_layout.h"
 #include <gpu_collection/buffer.h>
+#include "i_shader.h"
 namespace toolhub::vk {
 class PipelineCache;
 class CommandBuffer;
 
-class RTShader : public Resource {
+class RTShader : public Resource, public IShader {
 	friend class CommandBuffer;
-	PipelineLayout pipeLayout;
+	vstd::StackObject<PipelineLayout> pipeLayout;
 	VkPipeline pipeline;
 	vstd::StackObject<Buffer> sbtBuffer;
-    luisa::unordered_map<VkShaderStageFlags, size_t> sbtOffsets;
+	luisa::unordered_map<VkShaderStageFlags, size_t> sbtOffsets;
 
 public:
-	PipelineLayout const& Layout() const { return pipeLayout; }
-    Buffer const* SBTBuffer() const{return sbtBuffer;}
+	PipelineLayout const& GetLayout() const override { return *pipeLayout; }
+	Tag GetTag() const override { return Tag::RayTracing; }
+	VkPipeline GetPipeline() const override { return pipeline; }
+	Buffer const* SBTBuffer() const { return sbtBuffer; }
 	RTShader(
 		Device const* device,
 		vstd::span<uint const> raygen,
@@ -23,6 +26,6 @@ public:
 		PipelineCache const* cache,
 		vstd::span<VkDescriptorType> properties);
 	~RTShader();
-    VkStridedDeviceAddressRegionKHR GetSBTAddress(VkShaderStageFlags flag) const;
+	VkStridedDeviceAddressRegionKHR GetSBTAddress(VkShaderStageFlags flag) const;
 };
 }// namespace toolhub::vk

@@ -14,6 +14,7 @@ public:
 	VkDescriptorSetLayout DescSetLayout() const { return descriptorSetLayout; }
 	PipelineLayout(
 		Device const* device,
+		VkShaderStageFlags shaderStage,
 		vstd::span<VkDescriptorType> properties);
 	~PipelineLayout();
 };

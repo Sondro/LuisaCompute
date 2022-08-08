@@ -180,7 +180,7 @@ public:
     void next(IRange<T> &range) override { ite.next(range); }
     T value(IRange<T> &range) override { return ite.value(range); }
 };
-class v_ValueRange : public detail::BuilderFlag {
+class ValueRange : public detail::BuilderFlag {
 public:
     template<typename Ite>
     void begin(Ite &&ite) { ite.begin(); }

@@ -76,7 +76,7 @@ void CommandBuffer::Dispatch(
 	vkCmdBindDescriptorSets(
 		cmdBuffer,
 		VK_PIPELINE_BIND_POINT_COMPUTE,
-		cs->Layout().Layout(),
+		cs->GetLayout().Layout(),
 		0, vstd::array_count(sets), sets,
 		0, nullptr);
 	vkCmdDispatch(
@@ -91,7 +91,7 @@ void CommandBuffer::Dispatch(
 	uint3 dispatchCount) {
 	vkCmdBindPipeline(
 		cmdBuffer,
-		VK_PIPELINE_BIND_POINT_COMPUTE,
+		VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
 		cs->pipeline);
 
 	VkDescriptorSet sets[] = {
@@ -102,8 +102,8 @@ void CommandBuffer::Dispatch(
 		device->samplerSet};
 	vkCmdBindDescriptorSets(
 		cmdBuffer,
-		VK_PIPELINE_BIND_POINT_COMPUTE,
-		cs->Layout().Layout(),
+		VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+		cs->GetLayout().Layout(),
 		0, vstd::array_count(sets), sets,
 		0, nullptr);
 	device->vkCmdTraceRaysKHR(

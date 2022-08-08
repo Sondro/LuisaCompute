@@ -35,6 +35,18 @@ Id Variable::AccessMember(uint index) const {
 	bd->Str() << acsChain.ToString() << " = OpAccessChain "sv << bd->GetTypeId(type->members()[index], usage).ToString() << ' ' << varId.ToString() << ' ' << bd->GetConstId(index).ToString() << '\n';
 	return acsChain;
 }
+Id Variable::AccessChain(Id typeId, vstd::IRange<Id>& chain) {
+	assert(usage != PointerUsage::NotPointer);
+	Id acsChain(bd->NewId());
+	auto builder = bd->Str();
+	builder << acsChain.ToString() << " = OpAccessChain "sv << typeId.ToString() << ' ' << varId.ToString();
+	for (auto&& i : chain) {
+		builder << ' ' << i.ToString();
+	}
+	builder << '\n';
+	return acsChain;
+}
+
 Id Variable::ReadMember(uint index) const {
 	auto loadId = AccessMember(index);
 	Id newId(bd->NewId());
@@ -45,7 +57,7 @@ void Variable::WriteMember(uint index, Id result) const {
 	auto chain = AccessMember(index);
 	bd->Str() << "OpStore "sv << chain.ToString() << ' ' << result.ToString() << '\n';
 }
-Id Variable::Load() const{
+Id Variable::Load() const {
 	if (usage == PointerUsage::NotPointer)
 		return varId;
 	Id newId(bd->NewId());
@@ -53,7 +65,7 @@ Id Variable::Load() const{
 	return newId;
 }
 
-void Variable::Store(Id value) const{
+void Variable::Store(Id value) const {
 	assert(usage != PointerUsage::NotPointer);
 	bd->Str() << "OpStore "sv << varId.ToString() << ' ' << value.ToString() << '\n';
 }

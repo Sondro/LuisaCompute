@@ -11,7 +11,7 @@ ComputeShader::ComputeShader(
 	vstd::span<VkDescriptorType> properties,
 	uint3 threadGroupSize)
 	: threadGroupSize(threadGroupSize),
-	  pipeLayout(device, properties),
+	  pipeLayout(device, VK_SHADER_STAGE_COMPUTE_BIT, properties),
 	  Resource(device) {
 
 	VkComputePipelineCreateInfo computePipelineCreateInfo =

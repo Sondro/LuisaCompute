@@ -7,7 +7,7 @@ namespace toolhub::vk {
 namespace detail {
 static constexpr VkAccessFlagBits GENERIC_READ_ACCESS = VkAccessFlagBits(VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT);
 static constexpr VkPipelineStageFlagBits GENERIC_READ_STAGE = VkPipelineStageFlagBits(
-	VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+	VK_PIPELINE_STAGE_TRANSFER_BIT | static_cast<VkPipelineStageFlagBits>(VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
 
 static VkAccessFlagBits GetReadAccessFlag(BufferReadState type) {
 	switch (type) {
@@ -59,7 +59,7 @@ static VkPipelineStageFlagBits GetBufferUsageStage(BufferWriteState usage) {
 static VkPipelineStageFlagBits GetBufferUsageStage(BufferReadState usage) {
 	switch (usage) {
 		case BufferReadState::UseAccel:
-			return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			return static_cast<VkPipelineStageFlagBits>(VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 		case BufferReadState::ComputeOrCopy:
 			return GENERIC_READ_STAGE;
 		case BufferReadState::IndirectArgs:
@@ -101,7 +101,7 @@ static VkPipelineStageFlagBits GetTextureUsageStage(VkImageLayout layout) {
 		case VK_IMAGE_LAYOUT_PREINITIALIZED:
 			return VK_PIPELINE_STAGE_NONE;
 		default:
-			return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			return static_cast<VkPipelineStageFlagBits>(VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 	}
 }
 }// namespace detail

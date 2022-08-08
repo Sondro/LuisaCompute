@@ -695,9 +695,96 @@ Id BuiltinFunc::CallFunc(
 			return result;*/
 		}
 		case CallOp::BINDLESS_TEXTURE2D_SAMPLE_LEVEL: {
-			
 		}
-			//TODO: other methods
+		case CallOp::TRACE_ANY: {
+			vstd::vector<Variable, VEngine_AllocType::VEngine, 2> args;
+			for (auto&& a : arg) {
+				args.emplace_back(a);
+			}
+			assert(args.size() == 2);
+			Variable& accel = args[0];
+			Variable& desc = args[1];
+
+			Id instId = bd->NewId();
+			Id resultId = bd->NewId();
+			auto uint_2 = bd->GetConstId(2u);
+			auto payloadValue = GetPayload(accel, desc, 12);
+			bd->Str()
+				<< instId.ToString() << " = OpCompositeExtract "sv << Id::UIntId().ToString() << ' ' << payloadValue.ToString() << ' ' << uint_2.ToString() << '\n'
+				<< resultId.ToString() << " = OpINotEqual "sv << Id::BoolId().ToString() << ' ' << instId.ToString() << ' ' << Id::ZeroId() << '\n';
+			return resultId;
+		}
+		case CallOp::TRACE_CLOSEST: {
+			vstd::vector<Variable, VEngine_AllocType::VEngine, 2> args;
+			for (auto&& a : arg) {
+				args.emplace_back(a);
+			}
+			assert(args.size() == 2);
+			Variable& accel = args[0];
+			Variable& desc = args[1];
+			//TODO: read desc
+		}
 	}
+}
+Id BuiltinFunc::GetPayload(
+	Variable& accel,
+	Variable& desc,
+	uint rayFlag) {
+	auto uint_1 = bd->GetConstId(1u);
+	auto uint_2 = bd->GetConstId(2u);
+	auto floatNum = InternalType(InternalType::Tag::FLOAT, 1);
+	auto float3Num = InternalType(InternalType::Tag::FLOAT, 3);
+	auto float3TypeId = bd->GetTypeId(float3Num, PointerUsage::NotPointer);
+	auto floatTypeId = bd->GetTypeId(floatNum, PointerUsage::NotPointer);
+	Id originVecIds[] = {
+		desc.AccessChain(
+			floatTypeId,
+			{Id::ZeroId(), Id::ZeroId()}),
+		desc.AccessChain(
+			floatTypeId,
+			{Id::ZeroId(), uint_1}),
+		desc.AccessChain(
+			floatTypeId,
+			{Id::ZeroId(), uint_2})};
+	Id dirVecIds[] = {
+		desc.AccessChain(
+			floatTypeId,
+			{uint_1, Id::ZeroId()}),
+		desc.AccessChain(
+			floatTypeId,
+			{uint_1, uint_1}),
+		desc.AccessChain(
+			floatTypeId,
+			{uint_1, uint_2})};
+	auto GetVec3 = [&](Id const* ids) {
+		Id originVec = bd->NewId();
+		auto builder = bd->Str();
+		builder << originVec.ToString() << " = OpCompositeConstruct "sv << float3TypeId.ToString();
+		for (auto&& i : vstd::ptr_range(ids, 3)) {
+			builder << ' ' << i.ToString();
+		}
+		builder << '\n';
+		return originVec;
+	};
+	Id originVec = GetVec3(originVecIds);
+	Id dirVec = GetVec3(dirVecIds);
+	Id uintMax = bd->GetConstId(std::numeric_limits<uint>::max());
+	auto builder = bd->Str();
+	builder
+		<< "OpTraceRayKHR "sv
+		<< accel.Load().ToString() << ' '
+		<< bd->GetConstId(rayFlag).ToString() << ' '
+		<< uintMax.ToString() << ' '
+		<< Id::ZeroId() << ' '
+		<< uint_1.ToString() << ' '
+		<< Id::ZeroId() << ' '
+		<< originVec.ToString() << ' '
+		<< desc.ReadMember(1).ToString() << ' '
+		<< dirVec.ToString() << ' '
+		<< desc.ReadMember(3).ToString() << ' '
+		<< Id::RayPayloadVarId() << '\n';
+	Id payloadValue = bd->NewId();
+	builder << payloadValue.ToString() << " = OpLoad "sv << Id::RayPayloadId().ToString() << ' ' << Id::RayPayloadVarId() << '\n';
+	return payloadValue;
 }
 }// namespace toolhub::spv

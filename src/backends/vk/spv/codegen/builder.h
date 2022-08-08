@@ -69,13 +69,16 @@ private:
 	Id GetSampledImageType(
 		TypeName& typeName);
 	vstd::string bodyStr;
-	vstd::string header;
+	vstd::string beforeEntryHeader;
+	vstd::string entryStr;
+	vstd::string afterEntryHeader;
 	vstd::string decorateStr;
 	vstd::string typeStr;
 	vstd::string constValueStr;
 	void GenBuffer(Id structId, TypeName& eleTypeName, uint arrayStride);
 
 public:
+	void AddKernelResource(Id resource);
 	Id CBufferVar() const { return cbufferVar; }
 	void GenCBuffer(vstd::IRange<luisa::compute::Variable>& args);
 	vstd::StringBuilder TypeStr() { return {&typeStr}; }
