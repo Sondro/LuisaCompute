@@ -6,7 +6,7 @@
 #include <vk_rtx/mesh.h>
 #include <vk_runtime/event.h>
 #include <vk_rtx/accel.h>
-#include <shader/shader_code.h>
+#include <shader/pipeline_cache.h>
 #include <shader/compute_shader.h>
 namespace toolhub::vk {
 namespace detail {
@@ -271,10 +271,10 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 	auto value = compileResult.multi_visit_or(
 		uint64(0),
 		[&](spvstd::vector<uint> const& code) {
-			ShaderCode shaderCode(device, code, {});
 			auto cs = new ComputeShader(
 				device,
-				shaderCode,
+				code,
+				nullptr,
 				types,
 				kernel.block_size());
 			return reinterpret_cast<uint64>(cs);

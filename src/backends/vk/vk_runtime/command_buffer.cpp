@@ -4,8 +4,10 @@
 #include <gpu_collection/buffer.h>
 #include <shader/descriptorset_manager.h>
 #include <shader/compute_shader.h>
+#include <shader/rt_shader.h>
 #include <vk_runtime/res_state_tracker.h>
 #include <vk_rtx/accel.h>
+#include <shader/pipeline_layout.h>
 namespace toolhub::vk {
 CommandBuffer::~CommandBuffer() {
 	if (cmdBuffer) {
@@ -49,11 +51,11 @@ void CommandBuffer::CopyBuffer(
 	vkCmdCopyBuffer(cmdBuffer, srcBuffer->GetResource(), dstBuffer->GetResource(), 1, &copyRegion);
 }
 VkDescriptorSet CommandBuffer::PreprocessDispatch(
-	ComputeShader const* cs,
+	PipelineLayout const& layout,
 	vstd::span<BindResource const> binds) {
 	return descManager->Allocate(
-		cs->descriptorSetLayout,
-		cs->propertiesTypes,
+		layout.DescSetLayout(),
+		layout.PropertiesTypes(),
 		binds);
 }
 void CommandBuffer::Dispatch(
@@ -74,7 +76,7 @@ void CommandBuffer::Dispatch(
 	vkCmdBindDescriptorSets(
 		cmdBuffer,
 		VK_PIPELINE_BIND_POINT_COMPUTE,
-		cs->pipelineLayout,
+		cs->Layout().Layout(),
 		0, vstd::array_count(sets), sets,
 		0, nullptr);
 	vkCmdDispatch(
@@ -82,5 +84,34 @@ void CommandBuffer::Dispatch(
 		(dispatchCount.x + (cs->threadGroupSize.x - 1)) / cs->threadGroupSize.x,
 		(dispatchCount.y + (cs->threadGroupSize.y - 1)) / cs->threadGroupSize.y,
 		(dispatchCount.z + (cs->threadGroupSize.z - 1)) / cs->threadGroupSize.z);
+}
+void CommandBuffer::Dispatch(
+	VkDescriptorSet set,
+	RTShader const* cs,
+	uint3 dispatchCount) {
+	vkCmdBindPipeline(
+		cmdBuffer,
+		VK_PIPELINE_BIND_POINT_COMPUTE,
+		cs->pipeline);
+
+	VkDescriptorSet sets[] = {
+		set,
+		device->bindlessBufferSet,
+		device->bindlessTex2DSet,
+		device->bindlessTex3DSet,
+		device->samplerSet};
+	vkCmdBindDescriptorSets(
+		cmdBuffer,
+		VK_PIPELINE_BIND_POINT_COMPUTE,
+		cs->Layout().Layout(),
+		0, vstd::array_count(sets), sets,
+		0, nullptr);
+	device->vkCmdTraceRaysKHR(
+		cmdBuffer,
+		vstd::get_rvalue_ptr(cs->GetSBTAddress(VK_SHADER_STAGE_RAYGEN_BIT_KHR)),
+		vstd::get_rvalue_ptr(cs->GetSBTAddress(VK_SHADER_STAGE_MISS_BIT_KHR)),
+		vstd::get_rvalue_ptr(cs->GetSBTAddress(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)),
+		vstd::get_rvalue_ptr(cs->GetSBTAddress(VK_SHADER_STAGE_CALLABLE_BIT_KHR)),
+		dispatchCount.x, dispatchCount.y, dispatchCount.z);
 }
 }// namespace toolhub::vk

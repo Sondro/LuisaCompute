@@ -4,7 +4,9 @@
 #include <vstl/StackAllocator.h>
 namespace toolhub::vk {
 class FrameResource;
+class PipelineLayout;
 class ComputeShader;
+class RTShader;
 class Buffer;
 class DescriptorSetManager;
 class ResStateTracker;
@@ -38,11 +40,15 @@ public:
 		size_t dstOffset,
 		size_t size);
 	VkDescriptorSet PreprocessDispatch(
-		ComputeShader const* cs,
+		PipelineLayout const& layout,
 		vstd::span<BindResource const> binds);
 	void Dispatch(
 		VkDescriptorSet set,
 		ComputeShader const* cs,
+		uint3 dispatchCount);
+	void Dispatch(
+		VkDescriptorSet set,
+		RTShader const* cs,
 		uint3 dispatchCount);
 };
 }// namespace toolhub::vk

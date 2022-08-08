@@ -1,25 +1,23 @@
 #pragma once
-#include <vk_types/bind_desriptor.h>
-#include <components/resource.h>
-#include <vstl/small_vector.h>
+#include "pipeline_layout.h"
 namespace toolhub::vk {
-class ShaderCode;
+class PipelineCache;
 class CommandBuffer;
 
 class ComputeShader : public Resource {
 	friend class CommandBuffer;
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkPipelineLayout pipelineLayout;
+	PipelineLayout pipeLayout;
 	VkPipeline pipeline;
-	vstd::small_vector<VkDescriptorType> propertiesTypes;
 	uint3 threadGroupSize;
 
 public:
+	PipelineLayout const& Layout() const { return pipeLayout; }
 	bool useConstBuffer = false;
 	uint3 ThreadGroupSize() const { return threadGroupSize; }
 	ComputeShader(
 		Device const* device,
-		ShaderCode const& code,
+		vstd::span<uint const> spirvCode,
+		PipelineCache const* cache,
 		vstd::span<VkDescriptorType> properties,
 		uint3 threadGroupSize);
 	~ComputeShader();

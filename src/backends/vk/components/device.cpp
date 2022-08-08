@@ -233,6 +233,9 @@ void Device::Init() {
 	vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
 	vkCmdWriteAccelerationStructuresPropertiesKHR = reinterpret_cast<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
 	vkCmdCopyAccelerationStructureKHR = reinterpret_cast<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCmdCopyAccelerationStructureKHR"));
+	vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
+	vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
+	vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
 }
 void Device::InitBindless() {
 	VkDescriptorSetLayoutBinding setLayoutBinding{};
@@ -331,13 +334,16 @@ Device* Device::CreateDevice(
 		}
 		return supportedExt == requiredExtensions.Size();
 	};
-	VkPhysicalDeviceProperties deviceProperties;
-	auto isDeviceSuitable = [&](VkPhysicalDevice device) {
-		VkPhysicalDeviceFeatures deviceFeatures;
-		vkGetPhysicalDeviceProperties(device, &deviceProperties);
-		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+	VkPhysicalDeviceProperties2 deviceProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+	VkPhysicalDeviceFeatures2 deviceFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+	VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
+	deviceProperties.pNext = &rayTracingProperties;
 
-		if (deviceProperties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+	auto isDeviceSuitable = [&](VkPhysicalDevice device) {
+		vkGetPhysicalDeviceProperties2(device, &deviceProperties);
+		vkGetPhysicalDeviceFeatures2(device, &deviceFeatures);
+
+		if (deviceProperties.properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 			return false;
 		bool extensionsSupported = checkDeviceExtensionSupport(device);
 		//TODO: probably need other checks, like swapchain, etc
@@ -409,8 +415,6 @@ Device* Device::CreateDevice(
 		return nullptr;
 	}*/
 
-	VkPhysicalDeviceFeatures deviceFeatures{};
-	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 	//bindless
 	VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT};
 	indexingFeatures.runtimeDescriptorArray = VK_TRUE;
@@ -446,7 +450,7 @@ Device* Device::CreateDevice(
 	createInfo.pNext = featureLinkQueue;
 	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 	createInfo.pQueueCreateInfos = queueCreateInfos.data();
-	createInfo.pEnabledFeatures = &deviceFeatures;
+	createInfo.pEnabledFeatures = &deviceFeatures.features;
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredFeatures.size());
 	createInfo.ppEnabledExtensionNames = requiredFeatures.begin();
 	if (detail::USE_VALIDATION) {
@@ -476,8 +480,9 @@ Device* Device::CreateDevice(
 	}
 	result->physicalDevice = physicalDevice;
 	result->device = device;
-	result->limits = deviceProperties.limits;
+	result->limits = deviceProperties.properties.limits;
 	result->instance = instance;
+	result->rayTracingProperties = rayTracingProperties;
 	vkGetPhysicalDeviceProperties(physicalDevice, &result->deviceProperties);
 	result->Init();
 	return result;

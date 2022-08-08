@@ -271,7 +271,7 @@ public:
 		cbufferPos = cbuffer;
 		stream->sets.emplace_back(
 			cb->PreprocessDispatch(
-				cs,
+				cs->Layout(),
 				stream->bindVec),
 			cbuffer);
 	}

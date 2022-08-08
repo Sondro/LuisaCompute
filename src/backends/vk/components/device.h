@@ -47,6 +47,7 @@ public:
 	VkPhysicalDevice physicalDevice;
 	VkDevice device;
 	VkPhysicalDeviceProperties deviceProperties;
+	VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties;
 	PipelineCachePrefixHeader psoHeader;
 	static VkAllocationCallbacks* Allocator();
 	static Device* CreateDevice(
@@ -63,6 +64,10 @@ public:
 	PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
 	PFN_vkCmdWriteAccelerationStructuresPropertiesKHR vkCmdWriteAccelerationStructuresPropertiesKHR;
 	PFN_vkCmdCopyAccelerationStructureKHR vkCmdCopyAccelerationStructureKHR;
+	PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
+	PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR;
+	PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR;
+
 	vstd::unique_ptr<DescriptorPool> pool;
 	VkDescriptorSetLayout samplerSetLayout;
 	VkDescriptorSet samplerSet;

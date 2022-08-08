@@ -1,4 +1,4 @@
--- set_policy("build.ccache", false)
+set_policy("build.ccache", false)
 add_rules("mode.release", "mode.debug")
 function GetValue(funcOrValue)
     if type(funcOrValue) == 'function' then
@@ -117,7 +117,8 @@ BuildProject({
         add_links("../../../out/build/x64-Release/lib/*", "lib/release/*")
         add_defines("NDEBUG")
     end,
-    exception = true
+    exception = true,
+    unityBuildBatch = 4
 })
 --[[
 BuildProject({

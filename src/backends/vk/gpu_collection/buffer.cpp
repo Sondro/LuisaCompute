@@ -7,11 +7,8 @@ Buffer::Buffer(
 	bool crossQueue,
 	RWState rwState,
 	size_t align)
-	: GPUCollection(device),
-	  byteSize(byteSize),
-	  vmaBuffer(
-		  *device->gpuAllocator,
-		  byteSize,
+	: Buffer(
+		  device, byteSize,
 		  [](RWState state) {
 			  switch (state) {
 				  case RWState::Upload:
@@ -27,6 +24,23 @@ Buffer::Buffer(
 		  crossQueue,
 		  rwState,
 		  align) {
+}
+Buffer::Buffer(
+	Device const* device,
+	size_t byteSize,
+	VkBufferUsageFlagBits bufferUsage,
+	bool crossQueue,
+	RWState rwState,
+	size_t alignment)
+	: GPUCollection(device),
+	  byteSize(byteSize),
+	  vmaBuffer(
+		  *device->gpuAllocator,
+		  byteSize,
+		  bufferUsage,
+		  crossQueue,
+		  rwState,
+		  alignment) {
 }
 void Buffer::CopyFrom(vstd::span<vbyte const> data, size_t offset) const {
 	memcpy(reinterpret_cast<vbyte*>(vmaBuffer.mappedPtr) + offset, data.data(), data.size());
@@ -60,8 +74,8 @@ VkDeviceAddress Buffer::GetAddress(size_t offset) const {
 	addressCreateInfo.buffer = vmaBuffer.buffer;
 	return vkGetBufferDeviceAddress(
 			   device->device,
-			   &addressCreateInfo)
-		   + offset;
+			   &addressCreateInfo) +
+		   offset;
 }
 
 }// namespace toolhub::vk

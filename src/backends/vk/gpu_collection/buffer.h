@@ -17,6 +17,14 @@ public:
 		bool crossQueue,
 		RWState rwState,
 		size_t alignment = 0);
+	Buffer(
+		Device const* device,
+		size_t byteSize,
+		VkBufferUsageFlagBits bufferUsage,
+		bool crossQueue,
+		RWState rwState,
+		size_t alignment = 0);
+		
 	void CopyTo(vstd::span<vbyte> data, size_t offset) const;
 	void CopyFrom(vstd::span<vbyte const> data, size_t offset) const;
 	template<typename T>

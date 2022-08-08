@@ -1,20 +1,17 @@
 #pragma once
 #include <components/resource.h>
 namespace toolhub::vk {
-class ShaderCode : public Resource {
-	vstd::span<uint const> spirvCode;
+class PipelineCache : public Resource {
 	VkPipelineCache pipelineCache;
 	bool cacheAvailable;
 
 public:
 	bool CacheAvailable() const { return cacheAvailable; }
-	vstd::span<uint const> SpirvCode() const { return spirvCode; }
-	VkPipelineCache PipelineCache() const { return pipelineCache; }
+	VkPipelineCache Cache() const { return pipelineCache; }
 	vstd::vector<vbyte> GetPSOData() const;
-	ShaderCode(
+	PipelineCache(
 		Device const* device,
-		vstd::span<uint const> spirvCode,
 		vstd::span<vbyte const> psoCache);
-	~ShaderCode();
+	~PipelineCache();
 };
 }// namespace toolhub::vk

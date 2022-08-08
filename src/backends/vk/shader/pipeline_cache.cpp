@@ -1,12 +1,10 @@
-#include <shader/shader_code.h>
+#include <shader/pipeline_cache.h>
 #include <vstl/MD5.h>
 namespace toolhub::vk {
-ShaderCode::ShaderCode(
+PipelineCache::PipelineCache(
 	Device const* device,
-	vstd::span<uint const> spirvCode,
 	vstd::span<vbyte const> psoCache)
-	: Resource(device),
-	  spirvCode(std::move(spirvCode)) {
+	: Resource(device) {
 	VkPipelineCacheCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	PipelineCachePrefixHeader const* ptr = reinterpret_cast<PipelineCachePrefixHeader const*>(psoCache.data());
@@ -21,7 +19,7 @@ ShaderCode::ShaderCode(
 	}
 	ThrowIfFailed(vkCreatePipelineCache(device->device, &createInfo, Device::Allocator(), &pipelineCache));
 }
-vstd::vector<vbyte> ShaderCode::GetPSOData() const {
+vstd::vector<vbyte> PipelineCache::GetPSOData() const {
 	vstd::vector<vbyte> data;
 	size_t dataSize;
 	vkGetPipelineCacheData(device->device, pipelineCache, &dataSize, nullptr);
@@ -30,7 +28,7 @@ vstd::vector<vbyte> ShaderCode::GetPSOData() const {
 	data.resize(dataSize);
 	return data;
 }
-ShaderCode::~ShaderCode() {
+PipelineCache::~PipelineCache() {
 	vkDestroyPipelineCache(device->device, pipelineCache, Device::Allocator());
 }
 }// namespace toolhub::vk
