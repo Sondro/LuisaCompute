@@ -25,7 +25,7 @@ void TestCompile() {
 			InternalType(InternalType::Tag::FLOAT, 3),
 			InternalType(InternalType::Tag::MATRIX, 3),
 			InternalType(InternalType::Tag::UINT, 4)};
-		auto range = vstd::IRangeImpl(vstd::CacheEndRange(typeIds) | vstd::RemoveCVRefRange());
+		auto range = vstd::RangeImpl(vstd::CacheEndRange(typeIds) | vstd::RemoveCVRefRange());
 		bd.GenStruct(range);
 	}
 	vstd::string disassembly = bd.Combine();

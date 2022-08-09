@@ -66,6 +66,20 @@ struct VecInfo<Vector<Ele, dim>> {
 	static constexpr bool isMatrix = false;
 	using elementType = Ele;
 	static constexpr size_t dimension = dim;
+	static constexpr Id VecId() {
+		if constexpr (std::is_same_v<Ele, float>) {
+			return Id::VecId(Id::FloatId(), dimension);
+		}
+		if constexpr (std::is_same_v<Ele, int32>) {
+			return Id::VecId(Id::IntId(), dimension);
+		}
+		if constexpr (std::is_same_v<Ele, uint>) {
+			return Id::VecId(Id::UIntId(), dimension);
+		}
+		if constexpr (std::is_same_v<Ele, bool>) {
+			return Id::VecId(Id::BoolId(), dimension);
+		}
+	}
 };
 template<size_t dim>
 struct VecInfo<Matrix<dim>> {
@@ -75,7 +89,7 @@ struct VecInfo<Matrix<dim>> {
 };
 }// namespace Builder_detail
 void Builder::AddKernelResource(Id resource) {
-	entryStr << resource.ToString() << ' ';
+	beforeEntryHeader << resource.ToString() << ' ';
 }
 void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 	// allocate 1m memory
@@ -84,23 +98,20 @@ void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 	kernelArgType.Delete();
 	kernelArgType.New();
 	beforeEntryHeader.clear();
-	entryStr.clear();
 	afterEntryHeader.clear();
 	decorateStr.clear();
 	typeStr.clear();
-	constValueStr.clear();
 	constArrMap.Clear();
 	types.Clear();
 	constMap.Clear();
 	funcTypeMap.Clear();
 	inBlock = false;
+	constMap.Emplace(0u, Id::ZeroId());
 
 	afterEntryHeader.reserve(8192);
-	entryStr.reserve(512);
-	beforeEntryHeader.reserve(512);
+	beforeEntryHeader.reserve(1024);
 	decorateStr.reserve(1024);
-	typeStr.reserve(4096);
-	constValueStr.reserve(8192);
+	typeStr.reserve(8192);
 	idCount = Id::StartId().id;
 	// init
 	if (useRayTracing) {
@@ -109,24 +120,27 @@ void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 		beforeEntryHeader = "OpCapability Shader\n"sv;
 	}
 	beforeEntryHeader << R"(OpCapability RuntimeDescriptorArray
-OpExtension "SPV_EXT_descriptor_indexing"
 )"sv;
-	// use rayquery
 	if (useRayTracing) {
 		beforeEntryHeader << R"(OpExtension "SPV_KHR_ray_tracing"
 )"sv;
+	}
+	beforeEntryHeader << R"(OpExtension "SPV_EXT_descriptor_indexing"
+%49 = OpExtInstImport "GLSL.std.450"
+)"sv;
+	// use rayquery
+	if (useRayTracing) {
 		// %23 = OpTypeRayQueryKHR
 		typeStr += R"(%28 = OpTypeAccelerationStructureKHR
 %29 = OpTypePointer UniformConstant %28
-%30 = OpTypePointer Function %28
-)"sv;
-		entryStr << R"(OpEntryPoint RayGenerationKHR %48 "main" %24 )"sv;
+%30 = OpTypePointer Function %28)"sv;
+		beforeEntryHeader << R"(OpMemoryModel Logical GLSL450
+OpEntryPoint RayGenerationKHR %48 "main" %24 %38 )"sv;
 	} else {
-		entryStr << R"(OpEntryPoint GLCompute %48 "main" %24 %25 %26 )"sv;
+		beforeEntryHeader << R"(OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %48 "main" %24 %25 %26 )"sv;
 	}
-	beforeEntryHeader << R"(%49 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
-)"sv;
+
 	if (!useRayTracing) {
 		afterEntryHeader += "OpExecutionMode %48 LocalSize "sv;
 		vstd::to_string(groupSize.x, afterEntryHeader);
@@ -157,7 +171,7 @@ OpDecorate %25 BuiltIn LocalInvocationId
 OpDecorate %26 BuiltIn WorkgroupId
 )"sv;
 	}
-	auto uint16 = NewId();
+	auto uint16{NewId()};
 	constMap.Emplace(16u, uint16);
 	typeStr << uint16.ToString() << " = OpConstant %2 16\n%32 = OpTypeArray %31 "sv << uint16.ToString() << R"(
 %35 = OpTypePointer UniformConstant %32
@@ -194,7 +208,7 @@ OpDecorate %26 BuiltIn WorkgroupId
 	//auto bufferUInt = GetTypeId(BufferTypeDescriptor(InternalType(InternalType::Tag::UINT, 1)), PointerUsage::Uniform);
 	bdlsTex2D = NewId();
 	bdlsTex3D = NewId();
-	//bdlsBuffer = NewId();
+	//bdlsBuffer{NewId()};
 	Str()
 		//<< bdlsBuffer.ToString() << " = OpVariable "sv << bufferUInt.ToString() << " Uniform\n"sv
 		<< bdlsTex2D.ToString() << " = OpVariable "sv << bindlessTex2DType.ToString() << " UniformConstant\n"sv
@@ -210,21 +224,19 @@ OpDecorate %26 BuiltIn WorkgroupId
 }
 vstd::string Builder::Combine() {
 	vstd::string result;
-	*(entryStr.end() - 1) = '\n';
+	*(beforeEntryHeader.end() - 1) = '\n';
 	result.resize(
-		beforeEntryHeader.size() + entryStr.size() +
-		afterEntryHeader.size() + decorateStr.size() + typeStr.size() + constValueStr.size() + bodyStr.size());
+		beforeEntryHeader.size() +
+		afterEntryHeader.size() + decorateStr.size() + typeStr.size() + bodyStr.size());
 	char* ptr = result.data();
 	auto copy = [&](vstd::string& str) {
 		memcpy(ptr, str.data(), str.size());
 		ptr += str.size();
 	};
 	copy(beforeEntryHeader);
-	copy(entryStr);
 	copy(afterEntryHeader);
 	copy(decorateStr);
 	copy(typeStr);
-	copy(constValueStr);
 	copy(bodyStr);
 	return result;
 }
@@ -307,8 +319,8 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 		auto ite = types.TryEmplace(type);
 		auto& result = ite.first.Value();
 		Id& typeName = result.typeId;
-		typeName = Id(idCount++);
 		if (!ite.second) return result;
+		typeName = Id(idCount++);
 		using Tag = Type::Tag;
 		switch (type->tag()) {
 			case Tag::BOOL:
@@ -334,7 +346,7 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 				vstd::StringBuilder(&typeStr)
 					<< typeName.ToString() << " = OpTypeArray "sv
 					<< func(func, type->element()).typeId.ToString()
-					<< ' ' << GetConstId((uint)type->size()).ToString() << '\n';
+					<< ' ' << GetConstId((uint)type->dimension()).ToString() << '\n';
 			} break;
 			case Tag::BUFFER: {
 				GenBuffer(typeName, func(func, type->element()), type->element()->size());
@@ -345,6 +357,8 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 			case Tag::ACCEL: {
 				typeName = Id::AccelId();
 			} break;
+			default:
+				assert(false);
 				//TODO: texture, accel
 		}
 		return result;
@@ -565,44 +579,45 @@ Id Builder::GenConstId(ConstValue const& value) {
 	luisa::visit([&]<typename T>(T const& v) {
 		using VIF = VecInfo<T>;
 		if constexpr (VIF::isVector) {
-			vstd::vector<Id, VEngine_AllocType::VEngine, 4> arr;
+			vstd::vector<Id, VEngine_AllocType::VEngine, VIF::dimension> arr;
 			auto elePtr = reinterpret_cast<VIF::elementType const*>(&v);
 			arr.push_back_func(
 				VIF::dimension,
 				[&](size_t index) {
 					return GetConstId(elePtr[index]);
 				});
-			vstd::StringBuilder builder(&constValueStr);
+			vstd::StringBuilder builder(&typeStr);
 			newId = NewId();
-			builder << newId.ToString() << " = OpConstantComposite "sv;
+			//TODO: add type
+			builder << newId.ToString() << " = OpConstantComposite "sv << VIF::VecId().ToString();
 			for (auto&& i : arr) {
-				builder << i.ToString() << ' ';
+				builder << ' ' << i.ToString();
 			}
 			builder << '\n';
 		} else if constexpr (VIF::isMatrix) {
-			vstd::vector<Id, VEngine_AllocType::VEngine, 4> arr;
+			vstd::vector<Id, VEngine_AllocType::VEngine, VIF::dimension> arr;
 			using EleType = decltype(v.cols[0]);
 			arr.push_back_func(
-				vstd::array_count(v.cols),
+				VIF::dimension,
 				[&](size_t i) {
 					return GetConstId(v.cols[i]);
 				});
-			vstd::StringBuilder builder(&constValueStr);
+			vstd::StringBuilder builder(&typeStr);
 			newId = NewId();
-			builder << newId.ToString() << " = OpConstantComposite "sv;
+			builder << newId.ToString() << " = OpConstantComposite "sv << Id::MatId(VIF::dimension).ToString();
 			for (auto&& i : arr) {
-				builder << i.ToString() << ' ';
+				builder << ' ' << i.ToString();
 			}
 			builder << '\n';
 		} else if constexpr (std::is_same_v<T, uint>) {
 			newId = NewId();
-			vstd::StringBuilder(&constValueStr) << newId.ToString() << " = OpConstant "sv << Id::UIntId().ToString() << ' ' << vstd::to_string(v) << '\n';
+			vstd::StringBuilder(&typeStr) << newId.ToString() << " = OpConstant "sv << Id::UIntId().ToString() << ' ' << vstd::to_string(v) << '\n';
 		} else if constexpr (std::is_same_v<T, int32>) {
 			newId = NewId();
-			vstd::StringBuilder(&constValueStr) << newId.ToString() << " = OpConstant "sv << Id::IntId().ToString() << ' ' << vstd::to_string(v) << '\n';
+			vstd::StringBuilder(&typeStr) << newId.ToString() << " = OpConstant "sv << Id::IntId().ToString() << ' ' << vstd::to_string(v) << '\n';
 		} else if constexpr (std::is_same_v<T, float>) {
 			newId = NewId();
-			vstd::StringBuilder(&constValueStr) << newId.ToString() << " = OpConstant "sv << Id::FloatId().ToString() << ' ' << vstd::to_string(v) << '\n';
+			vstd::StringBuilder(&typeStr) << newId.ToString() << " = OpConstant "sv << Id::FloatId().ToString() << ' ' << vstd::to_string(v) << '\n';
 		} else if constexpr (std::is_same_v<T, bool>) {
 			newId = v ? Id::TrueId() : Id::FalseId();
 		}
@@ -687,7 +702,7 @@ void Builder::GenCBuffer(vstd::IRange<luisa::compute::Variable>& args) {
 	auto addUInt3Range = vstd::CacheEndRange(internalTypes) | vstd::TransformRange([&](auto&& v) -> vstd::variant<Type const*, InternalType> {
 							 return std::move(v);
 						 });
-	auto rangeInterface = vstd::IRangeImpl(vstd::PairIterator(addUInt3Range, range));
+	auto rangeInterface = vstd::RangeImpl(vstd::PairIterator(addUInt3Range, range));
 	auto structId = GenStruct(rangeInterface);
 	kernelArgType->typeId = structId.first;
 	cbufferType->typeId = NewId();

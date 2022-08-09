@@ -18,7 +18,7 @@ void RayQuery::PrintFunc(Builder* bd) {
 			InternalType(InternalType::Tag::UINT, 1),
 			InternalType(InternalType::Tag::FLOAT, 2),
 		};
-		auto range = vstd::IRangeImpl(
+		auto range = vstd::RangeImpl(
 			vstd::CacheEndRange(types) | vstd::TransformRange([&](auto&& v) -> vstd::variant<Type const*, InternalType> {
 				return v;
 			}));
@@ -54,7 +54,7 @@ void RayQuery::PrintFunc(Builder* bd) {
 		Id::FloatId(),				//tmin
 		Id::FloatId()				//tmax
 	};
-	auto range = vstd::IRangeImpl(vstd::CacheEndRange(argTypes) | vstd::RemoveCVRefRange());
+	auto range = vstd::RangeImpl(vstd::CacheEndRange(argTypes) | vstd::RemoveCVRefRange());
 	{
 		static constexpr uint ANY_HIT_RAY_FLAG = 12;
 		Function traceAnyFunc(bd, Id::BoolId(), &range);

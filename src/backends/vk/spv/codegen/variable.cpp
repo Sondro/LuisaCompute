@@ -16,15 +16,17 @@ Variable::Variable(Builder* bd, Type const* type, Id varId, PointerUsage usage)
 
 Id Variable::Swizzle(vstd::IRange<uint>* swizzles) const {
 	Id newId(bd->NewId());
-	bd->Str() << newId.ToString() << " = OpVectorShuffle "sv << typeId.ToString() << ' ' << typeId.ToString() << ' ';
+	auto str = Load().ToString();
+
+	bd->Str() << newId.ToString() << " = OpVectorShuffle "sv << typeId.ToString() << ' ' << vstd::string_view(str) << ' ' << vstd::string_view(str);
 	for (auto i : *swizzles) {
-		bd->Str() << vstd::to_string(i) << ' ';
+		bd->Str() << ' ' << vstd::to_string(i);
 	}
 	bd->Str() << '\n';
 	return newId;
 }
 Id Variable::ReadVectorElement(uint index) const {
-	auto loadId = AccessVectorElement(index);
+	auto loadId = AccessVectorElement(bd->GetConstId(index));
 	Id newId(bd->NewId());
 	bd->Str() << newId.ToString() << " = OpLoad "sv << bd->GetTypeId(type->element(), PointerUsage::NotPointer).ToString() << ' ' << loadId.ToString() << '\n';
 	return newId;
@@ -69,14 +71,14 @@ void Variable::Store(Id value) const {
 	assert(usage != PointerUsage::NotPointer);
 	bd->Str() << "OpStore "sv << varId.ToString() << ' ' << value.ToString() << '\n';
 }
-Id Variable::AccessVectorElement(uint index) const {
+Id Variable::AccessVectorElement(Id index) const {
 	assert(usage != PointerUsage::NotPointer);
 	Id acsChain(bd->NewId());
-	bd->Str() << acsChain.ToString() << " = OpAccessChain "sv << bd->GetTypeId(type->element(), usage).ToString() << ' ' << varId.ToString() << ' ' << bd->GetConstId(index).ToString() << '\n';
+	bd->Str() << acsChain.ToString() << " = OpAccessChain "sv << bd->GetTypeId(type->element(), usage).ToString() << ' ' << varId.ToString() << ' ' << index.ToString() << '\n';
 	return acsChain;
 }
 
-void Variable::WriteVectorElement(uint index, Id result) const {
+void Variable::WriteVectorElement(Id index, Id result) const {
 	auto chain = AccessVectorElement(index);
 	bd->Str() << "OpStore "sv << chain.ToString() << ' ' << result.ToString() << '\n';
 }
@@ -121,7 +123,7 @@ Id Variable::AccessMatrixCol(Id index) const {
 Id Variable::AccessMatrixValue(Id row, Id col) const {
 	assert(usage != PointerUsage::NotPointer);
 	Id newId(bd->NewId());
-	bd->Str() << newId.ToString() << "OpAccessChain "sv << bd->GetTypeId(InternalType(InternalType::Tag::FLOAT, type->dimension()), usage).ToString() << ' ' << varId.ToString() << ' ' << row.ToString() << ' ' << col.ToString() << '\n';
+	bd->Str() << newId.ToString() << "OpAccessChain "sv << bd->GetTypeId(InternalType(InternalType::Tag::FLOAT, type->dimension()), usage).ToString() << ' ' << varId.ToString() << ' ' << col.ToString() << ' ' << row.ToString() << '\n';
 	return newId;
 }
 Id Variable::ReadMatrixCol(Id index) const {

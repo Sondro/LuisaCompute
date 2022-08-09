@@ -1,6 +1,8 @@
 #include "builtin_func.h"
 #include "builder.h"
 #include "type_caster.h"
+#include <vstl/small_vector.h>
+#include "access_lib.h"
 namespace toolhub::spv {
 BuiltinFunc::BuiltinFunc(Builder* builder)
 	: Component(builder) {}
@@ -66,38 +68,7 @@ Id BuiltinFunc::CallFunc(
 				type.tag = InternalType::Tag::FLOAT;
 			});
 	};
-	auto FuncFUSName =
-		[](InternalType const& type,
-		   vstd::string_view floatName,
-		   vstd::string_view intName,
-		   vstd::string_view uintName) {
-			switch (type.tag) {
-				case InternalType::Tag::FLOAT:
-				case InternalType::Tag::MATRIX:
-					return floatName;
-				case InternalType::Tag::INT:
-					return intName;
-				case InternalType::Tag::UINT:
-					return uintName;
-				default:
-					assert(false);
-			}
-		};
-	auto FuncFIName =
-		[](InternalType const& type,
-		   vstd::string_view floatName,
-		   vstd::string_view intName) {
-			switch (type.tag) {
-				case InternalType::Tag::FLOAT:
-				case InternalType::Tag::MATRIX:
-					return floatName;
-				case InternalType::Tag::INT:
-				case InternalType::Tag::UINT:
-					return intName;
-				default:
-					assert(false);
-			}
-		};
+
 	auto atomicOp = [&](vstd::string_view op) {
 		vstd::vector<Variable, VEngine_AllocType::VEngine, 3> args;
 		for (auto&& a : arg) {
@@ -696,6 +667,42 @@ Id BuiltinFunc::CallFunc(
 		}
 		case CallOp::BINDLESS_TEXTURE2D_SAMPLE_LEVEL: {
 		}
+		case CallOp::MAKE_BOOL2: {
+			return MakeVector(InternalType(InternalType::Tag::BOOL, 2), arg);
+		}
+		case CallOp::MAKE_BOOL3: {
+			return MakeVector(InternalType(InternalType::Tag::BOOL, 3), arg);
+		}
+		case CallOp::MAKE_BOOL4: {
+			return MakeVector(InternalType(InternalType::Tag::BOOL, 4), arg);
+		}
+		case CallOp::MAKE_FLOAT2: {
+			return MakeVector(InternalType(InternalType::Tag::FLOAT, 2), arg);
+		}
+		case CallOp::MAKE_FLOAT3: {
+			return MakeVector(InternalType(InternalType::Tag::FLOAT, 3), arg);
+		}
+		case CallOp::MAKE_FLOAT4: {
+			return MakeVector(InternalType(InternalType::Tag::FLOAT, 4), arg);
+		}
+		case CallOp::MAKE_INT2: {
+			return MakeVector(InternalType(InternalType::Tag::INT, 2), arg);
+		}
+		case CallOp::MAKE_INT3: {
+			return MakeVector(InternalType(InternalType::Tag::INT, 3), arg);
+		}
+		case CallOp::MAKE_INT4: {
+			return MakeVector(InternalType(InternalType::Tag::INT, 4), arg);
+		}
+		case CallOp::MAKE_UINT2: {
+			return MakeVector(InternalType(InternalType::Tag::UINT, 2), arg);
+		}
+		case CallOp::MAKE_UINT3: {
+			return MakeVector(InternalType(InternalType::Tag::UINT, 3), arg);
+		}
+		case CallOp::MAKE_UINT4: {
+			return MakeVector(InternalType(InternalType::Tag::UINT, 4), arg);
+		}
 		case CallOp::TRACE_ANY: {
 			vstd::vector<Variable, VEngine_AllocType::VEngine, 2> args;
 			for (auto&& a : arg) {
@@ -710,8 +717,8 @@ Id BuiltinFunc::CallFunc(
 			auto uint_2 = bd->GetConstId(2u);
 			auto payloadValue = GetPayload(accel, desc, 12);
 			bd->Str()
-				<< instId.ToString() << " = OpCompositeExtract "sv << Id::UIntId().ToString() << ' ' << payloadValue.ToString() << ' ' << uint_2.ToString() << '\n'
-				<< resultId.ToString() << " = OpINotEqual "sv << Id::BoolId().ToString() << ' ' << instId.ToString() << ' ' << Id::ZeroId() << '\n';
+				<< instId.ToString() << " = OpCompositeExtract "sv << Id::UIntId().ToString() << ' ' << payloadValue.ToString() << ' ' << vstd::to_string(2) << '\n'
+				<< resultId.ToString() << " = OpINotEqual "sv << Id::BoolId().ToString() << ' ' << instId.ToString() << ' ' << Id::ZeroId().ToString() << '\n';
 			return resultId;
 		}
 		case CallOp::TRACE_CLOSEST: {
@@ -722,7 +729,23 @@ Id BuiltinFunc::CallFunc(
 			assert(args.size() == 2);
 			Variable& accel = args[0];
 			Variable& desc = args[1];
+			auto payloadValue = GetPayload(accel, desc, 0);
 			//TODO: read desc
+			Id instId = bd->NewId();
+			Id primId = bd->NewId();
+			Id baryId = bd->NewId();
+			Id resultId = bd->NewId();
+			auto uint_1 = bd->GetConstId(1u);
+			bd->Str()
+				<< instId.ToString() << " = OpCompositeExtract "sv << Id::UIntId().ToString() << ' ' << payloadValue.ToString() << ' ' << vstd::to_string(2) << '\n'
+				<< primId.ToString() << " = OpCompositeExtract "sv << Id::UIntId().ToString() << ' ' << payloadValue.ToString() << ' ' << vstd::to_string(1) << '\n'
+				<< baryId.ToString() << " = OpCompositeExtract "sv
+				<< Id::VecId(Id::FloatId(), 2).ToString() << ' ' << payloadValue.ToString() << ' ' << vstd::to_string(0) << '\n'
+				<< resultId.ToString() << " = OpCompositeConstruct "sv << bd->GetTypeId(callType, PointerUsage::NotPointer).ToString() << ' '
+				<< instId.ToString() << ' '
+				<< primId.ToString() << ' '
+				<< baryId.ToString() << '\n';
+			return resultId;
 		}
 	}
 }
@@ -730,61 +753,208 @@ Id BuiltinFunc::GetPayload(
 	Variable& accel,
 	Variable& desc,
 	uint rayFlag) {
-	auto uint_1 = bd->GetConstId(1u);
-	auto uint_2 = bd->GetConstId(2u);
-	auto floatNum = InternalType(InternalType::Tag::FLOAT, 1);
-	auto float3Num = InternalType(InternalType::Tag::FLOAT, 3);
-	auto float3TypeId = bd->GetTypeId(float3Num, PointerUsage::NotPointer);
-	auto floatTypeId = bd->GetTypeId(floatNum, PointerUsage::NotPointer);
-	Id originVecIds[] = {
-		desc.AccessChain(
-			floatTypeId,
-			{Id::ZeroId(), Id::ZeroId()}),
-		desc.AccessChain(
-			floatTypeId,
-			{Id::ZeroId(), uint_1}),
-		desc.AccessChain(
-			floatTypeId,
-			{Id::ZeroId(), uint_2})};
-	Id dirVecIds[] = {
-		desc.AccessChain(
-			floatTypeId,
-			{uint_1, Id::ZeroId()}),
-		desc.AccessChain(
-			floatTypeId,
-			{uint_1, uint_1}),
-		desc.AccessChain(
-			floatTypeId,
-			{uint_1, uint_2})};
-	auto GetVec3 = [&](Id const* ids) {
-		Id originVec = bd->NewId();
-		auto builder = bd->Str();
-		builder << originVec.ToString() << " = OpCompositeConstruct "sv << float3TypeId.ToString();
-		for (auto&& i : vstd::ptr_range(ids, 3)) {
-			builder << ' ' << i.ToString();
-		}
-		builder << '\n';
-		return originVec;
-	};
-	Id originVec = GetVec3(originVecIds);
-	Id dirVec = GetVec3(dirVecIds);
-	Id uintMax = bd->GetConstId(std::numeric_limits<uint>::max());
 	auto builder = bd->Str();
-	builder
-		<< "OpTraceRayKHR "sv
-		<< accel.Load().ToString() << ' '
-		<< bd->GetConstId(rayFlag).ToString() << ' '
-		<< uintMax.ToString() << ' '
-		<< Id::ZeroId() << ' '
-		<< uint_1.ToString() << ' '
-		<< Id::ZeroId() << ' '
-		<< originVec.ToString() << ' '
-		<< desc.ReadMember(1).ToString() << ' '
-		<< dirVec.ToString() << ' '
-		<< desc.ReadMember(3).ToString() << ' '
-		<< Id::RayPayloadVarId() << '\n';
-	Id payloadValue = bd->NewId();
-	builder << payloadValue.ToString() << " = OpLoad "sv << Id::RayPayloadId().ToString() << ' ' << Id::RayPayloadVarId() << '\n';
+	// auto uint_1 = bd->GetConstId(1u);
+	// auto uint_2 = bd->GetConstId(2u);
+	// auto floatNum = InternalType(InternalType::Tag::FLOAT, 1);
+	// auto float3Num = InternalType(InternalType::Tag::FLOAT, 3);
+	// auto float3TypeId = bd->GetTypeId(float3Num, PointerUsage::NotPointer);
+	// auto floatTypeId = bd->GetTypeId(floatNum, PointerUsage::NotPointer);
+	// Id originVecIds[] = {
+	// 	desc.AccessChain(
+	// 		floatTypeId,
+	// 		{Id::ZeroId(), Id::ZeroId()}),
+	// 	desc.AccessChain(
+	// 		floatTypeId,
+	// 		{Id::ZeroId(), uint_1}),
+	// 	desc.AccessChain(
+	// 		floatTypeId,
+	// 		{Id::ZeroId(), uint_2})};
+	// Id dirVecIds[] = {
+	// 	desc.AccessChain(
+	// 		floatTypeId,
+	// 		{uint_1, Id::ZeroId()}),
+	// 	desc.AccessChain(
+	// 		floatTypeId,
+	// 		{uint_1, uint_1}),
+	// 	desc.AccessChain(
+	// 		floatTypeId,
+	// 		{uint_1, uint_2})};
+	// auto GetVec3 = [&](Id const* ids) {
+	// 	Id originVec = bd->NewId();
+	// 	auto builder = bd->Str();
+	// 	builder << originVec.ToString() << " = OpCompositeConstruct "sv << float3TypeId.ToString();
+	// 	for (auto&& i : vstd::ptr_range(ids, 3)) {
+	// 		builder << ' ' << i.ToString();
+	// 	}
+	// 	builder << '\n';
+	// 	return originVec;
+	// };
+	// Id originVec = GetVec3(originVecIds);
+	// Id dirVec = GetVec3(dirVecIds);
+	// Id uintMax = bd->GetConstId(std::numeric_limits<uint>::max());
+	// auto builder = bd->Str();
+	// builder
+	// 	<< "OpTraceRayKHR "sv
+	// 	<< accel.Load().ToString() << ' '
+	// 	<< bd->GetConstId(rayFlag).ToString() << ' '
+	// 	<< uintMax.ToString() << ' '
+	// 	<< Id::ZeroId().ToString() << ' '
+	// 	<< uint_1.ToString() << ' '
+	// 	<< Id::ZeroId().ToString() << ' '
+	// 	<< originVec.ToString() << ' '
+	// 	<< desc.ReadMember(1).ToString() << ' '
+	// 	<< dirVec.ToString() << ' '
+	// 	<< desc.ReadMember(3).ToString() << ' '
+	// 	<< Id::RayPayloadVarId().ToString() << '\n';
+	Id payloadValue{bd->NewId()};
+	builder << payloadValue.ToString() << " = OpLoad "sv << Id::RayPayloadId().ToString() << ' ' << Id::RayPayloadVarId().ToString() << '\n';
 	return payloadValue;
+}
+vstd::string_view BuiltinFunc::FuncFUSName(
+	InternalType const& type,
+	vstd::string_view floatName,
+	vstd::string_view intName,
+	vstd::string_view uintName) {
+	switch (type.tag) {
+		case InternalType::Tag::FLOAT:
+		case InternalType::Tag::MATRIX:
+			return floatName;
+		case InternalType::Tag::INT:
+			return intName;
+		case InternalType::Tag::UINT:
+			return uintName;
+		default:
+			assert(false);
+	}
+}
+vstd::string_view BuiltinFunc::FuncFIName(
+	InternalType const& type,
+	vstd::string_view floatName,
+	vstd::string_view intName) {
+	switch (type.tag) {
+		case InternalType::Tag::FLOAT:
+		case InternalType::Tag::MATRIX:
+			return floatName;
+		case InternalType::Tag::INT:
+		case InternalType::Tag::UINT:
+			return intName;
+		default:
+			assert(false);
+	}
+}
+Id BuiltinFunc::MakeVector(
+	InternalType tarType,
+	vstd::IRange<Variable>& arg) {
+	vstd::vector<Id, VEngine_AllocType::VEngine, 4> elements;
+	if (tarType.tag == InternalType::Tag::MATRIX) {
+		vstd::vector<Id, VEngine_AllocType::VEngine, 4> scalars;
+		auto clearScalar = [&] {
+			if (scalars.size() >= tarType.dimension) {
+				auto scalarRange = vstd::RangeImpl(vstd::CacheEndRange(scalars) | vstd::ValueRange{});
+				elements.emplace_back(
+					AccessLib::CompositeConstruct(
+						bd,
+						Id::VecId(Id::FloatId(), tarType.dimension),
+						scalarRange));
+				scalars.clear();
+			}
+		};
+		for (auto&& i : arg) {
+			auto eleType = InternalType::GetType(i.type);
+			assert(eleType);
+			if (eleType->tag == InternalType::Tag::MATRIX) {
+				if (eleType->dimension == tarType.dimension) {
+					return i.Load();
+				}
+				// make_float3x3(float4x4)
+				else if (eleType->dimension > tarType.dimension) {
+					Id srcEleTypeId = Id::VecId(Id::FloatId(), eleType->dimension);
+					Id dstEleTypeId = Id::VecId(Id::FloatId(), tarType.dimension);
+					auto getMatVecEle = vstd::RangeImpl(
+						vstd::range(tarType.dimension) |
+						vstd::TransformRange([&](uint col) {
+							Id colId = AccessLib::ReadMatrixCol(bd, srcEleTypeId, i.Load(), col);
+							auto swizzleRange = vstd::RangeImpl(
+								vstd::range(tarType.dimension) |
+								vstd::StaticCastRange<uint>{});
+							colId = AccessLib::Swizzle(bd, dstEleTypeId, colId, swizzleRange);
+							return colId;
+						}));
+					return AccessLib::CompositeConstruct(bd, bd->GetTypeId(tarType, PointerUsage::NotPointer), getMatVecEle);
+				}
+				// make_float4x4(float3x3)
+				else {
+					Id srcEleTypeId = Id::VecId(Id::FloatId(), eleType->dimension);
+					Id dstEleTypeId = Id::VecId(Id::FloatId(), tarType.dimension);
+					auto floatZero = bd->GetConstId(0.0f);
+					auto getMatVecEle = vstd::RangeImpl(
+						vstd::range(eleType->dimension) |
+						vstd::TransformRange([&](uint col) {
+							Id colId = AccessLib::ReadMatrixCol(bd, srcEleTypeId, i.Load(), col);
+							auto builder = bd->Str();
+							auto linkScalarAndZero = vstd::RangeImpl(vstd::PairIterator(
+								vstd::range(eleType->dimension) |
+									vstd::TransformRange([&](uint i) {
+										return AccessLib::ReadVectorElement(bd, Id::FloatId(), colId, i);
+									}),
+								vstd::range(tarType.dimension - eleType->dimension) |
+									vstd::TransformRange([&](uint i) {
+										return floatZero;
+									})));
+							return AccessLib::CompositeConstruct(bd, dstEleTypeId, linkScalarAndZero);
+						}));
+					return AccessLib::CompositeConstruct(bd, bd->GetTypeId(tarType, PointerUsage::NotPointer), getMatVecEle);
+				}
+			} else {
+
+				if (eleType->dimension == tarType.dimension) {
+					elements.emplace_back(TypeCaster::TryCast(
+						bd,
+						*eleType,
+						tarType,
+						i.Load()));
+					//elements.emplace_back(AccessLib::ReadMatrixCol(bd, Id::VecId(Id::FloatId(), tarType.dimension), i.Load(),))
+				} else {
+					auto dstScalarType = *eleType;
+					dstScalarType.tag = InternalType::Tag::FLOAT;
+					scalars.emplace_back(
+						TypeCaster::TryCast(
+							bd,
+							*eleType,
+							dstScalarType,
+							i.Load()));
+					clearScalar();
+				}
+			}
+		}
+		clearScalar();
+		auto eleRange = vstd::RangeImpl(vstd::CacheEndRange(elements) | vstd::ValueRange{});
+		return AccessLib::CompositeConstruct(bd, bd->GetTypeId(tarType, PointerUsage::NotPointer), eleRange);
+	} else {
+		size_t tarEleCount = 0;
+		for (auto&& i : arg) {
+			auto eleType = InternalType::GetType(i.type);
+			assert(eleType);
+			if (eleType->dimension > 1) {
+				if (eleType->dimension == tarType.dimension) {
+					return TypeCaster::TryCast(bd, *eleType, tarType, i.Load());
+				} else {
+					auto scalarType = *eleType;
+					scalarType.dimension = 1;
+					for (auto c : vstd::range(eleType->dimension)) {
+						elements.emplace_back(TypeCaster::TryCast(bd, scalarType, tarType, i.ReadVectorElement(c)));
+						if (elements.size() >= tarType.dimension) break;
+					}
+				}
+			} else {
+				elements.emplace_back(TypeCaster::TryCast(bd, *eleType, tarType, i.Load()));
+			}
+			tarEleCount += eleType->dimension;
+		}
+		auto builder = bd->Str();
+		auto scalarRange = vstd::RangeImpl(vstd::CacheEndRange(elements) | vstd::ValueRange{});
+		return AccessLib::CompositeConstruct(bd, bd->GetTypeId(tarType, PointerUsage::NotPointer), scalarRange);
+	}
 }
 }// namespace toolhub::spv

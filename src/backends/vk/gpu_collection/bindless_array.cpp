@@ -142,7 +142,7 @@ void BindlessArray::Preprocess(
 		upload.buffer->CopyValueFrom(inst.first, uploadOffset);
 		return opt;
 	};
-	auto iterateFunc = vstd::IRangeImpl(vstd::CacheEndRange(updateList) | vstd::TransformRange(std::move(getCopyBufferFunc)));
+	auto iterateFunc = vstd::RangeImpl(vstd::CacheEndRange(updateList) | vstd::TransformRange(std::move(getCopyBufferFunc)));
 	res->AddCopyCmd(
 		upload.buffer,
 		&instanceBuffer,

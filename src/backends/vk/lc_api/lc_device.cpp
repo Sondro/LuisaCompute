@@ -280,7 +280,7 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 	};
 	if (true) {
 		auto raygenResult = compiler.CompileSpirV(kernel, true, false);
-		//auto raygenResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/raygen_output.spvasm");
+		//auto raygenResult = compiler.CompileExistsFile(kernel, true, false, "output.spvasm");
 		auto missResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/miss_output.spvasm");
 		auto closestResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/closest_output.spvasm");
 		auto Check = [&](auto&& result) {

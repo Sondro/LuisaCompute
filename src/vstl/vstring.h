@@ -111,7 +111,6 @@ template<typename T>
 
 inline void to_string(float Val, string &str) noexcept {
     to_string((double)Val, str);
-    str += 'f';
 }
 inline string to_string(float Val) noexcept {
     string str;

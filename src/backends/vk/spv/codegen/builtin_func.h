@@ -3,6 +3,7 @@
 #include <ast/function.h>
 #include "variable.h"
 namespace toolhub::spv {
+class InternalType;
 class BuiltinFunc : public Component {
 	template<typename Ite>
 		requires(vstd::IterableType<Ite>)
@@ -15,6 +16,18 @@ class BuiltinFunc : public Component {
 		Variable& accel,
 		Variable& desc,
 		uint rayFlag);
+	vstd::string_view FuncFUSName(
+		InternalType const& type,
+		vstd::string_view floatName,
+		vstd::string_view intName,
+		vstd::string_view uintName);
+	vstd::string_view FuncFIName(
+		InternalType const& type,
+		vstd::string_view floatName,
+		vstd::string_view intName);
+	Id MakeVector(
+		InternalType tarType,
+		vstd::IRange<Variable>& arg);
 
 public:
 	BuiltinFunc(Builder* builder);

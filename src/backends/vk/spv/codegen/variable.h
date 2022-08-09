@@ -15,8 +15,8 @@ public:
 	///// Vector
 	Id ReadVectorElement(uint index) const;
 	Id Swizzle(vstd::IRange<uint>* swizzles) const;
-	Id AccessVectorElement(uint index) const;
-	void WriteVectorElement(uint index, Id result) const;
+	Id AccessVectorElement(Id index) const;
+	void WriteVectorElement(Id index, Id result) const;
 	///// Struct
 	Id AccessMember(uint index) const;
 	Id ReadMember(uint index) const;
@@ -38,7 +38,7 @@ public:
 	void WriteMatrixValue(Id row, Id col, Id result) const;//write float
 	Id AccessChain(Id typeId, vstd::IRange<Id>& chain);
 	Id AccessChain(Id typeId, std::initializer_list<Id> lst){
-		auto range = vstd::IRangeImpl(vstd::CacheEndRange(lst) | vstd::ValueRange{});
+		auto range = vstd::RangeImpl(vstd::CacheEndRange(lst) | vstd::ValueRange{});
 		return AccessChain(typeId, range);
 	}
 };

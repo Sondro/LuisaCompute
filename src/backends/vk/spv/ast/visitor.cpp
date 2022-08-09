@@ -65,12 +65,14 @@ void Visitor::visit(const IfStmt* stmt) {
 	auto cond = ReadAccept(stmt->condition());
 	IfBranch branch(bd, cond);
 	{
-		block.New(bd, branch.trueBranch, branch.mergeBlock);
+		block.ForceNew(bd, branch.trueBranch, branch.mergeBlock);
 		stmt->true_branch()->accept(*this);
+		block.Delete();
 	}
 	{
-		block.New(bd, branch.falseBranch, branch.mergeBlock);
+		block.ForceNew(bd, branch.falseBranch, branch.mergeBlock);
 		stmt->false_branch()->accept(*this);
+		block.Delete();
 	}
 }
 void Visitor::visit(const LoopStmt* stmt) {
@@ -108,13 +110,15 @@ void Visitor::visit(const SwitchStmt* stmt) {
 
 	for (auto&& i : cases) {
 		if (i->tag() == Statement::Tag::SWITCH_CASE) {
-			block.New(bd, *caseIds, switcher.mergeBlock);
+			block.ForceNew(bd, *caseIds, switcher.mergeBlock);
 			i->accept(*this);
 			++caseIds;
+			block.Delete();
 		} else {
-			block.New(bd, switcher.defaultBlock, switcher.mergeBlock);
+			block.ForceNew(bd, switcher.defaultBlock, switcher.mergeBlock);
 			i->accept(*this);
 			++caseIds;
+			block.Delete();
 		}
 	}
 }
@@ -130,10 +134,13 @@ void Visitor::visit(const ForStmt* stmt) {
 		return ReadAccept(stmt->condition());
 	});
 	this->loopBranch = &forLoop;
-	block.New(bd, forLoop.LoopBlock(), forLoop.afterLoopBlock);
+	block.ForceNew(bd, forLoop.LoopBlock(), forLoop.afterLoopBlock);
 	stmt->body()->accept(*this);
-	Block afterLoopBlock(bd, forLoop.afterLoopBlock, forLoop.MergeBlock());
-	Accept(stmt->step());
+	block.Delete();
+	{
+		Block afterLoopBlock(bd, forLoop.afterLoopBlock, forLoop.MergeBlock());
+		Accept(stmt->step());
+	}
 }
 void Visitor::visit(const AssignStmt* stmt) {
 	auto varValue = Accept(stmt->lhs());
@@ -296,7 +303,7 @@ void Visitor::RegistVariables(
 	}
 }
 void Visitor::visit(const MetaStmt* stmt) {
-	block.New(bd, func->funcBlockId);
+	block.ForceNew(bd, func->funcBlockId);
 	RegistVariables(stmt->variables(), kernel.builtin_variables());
 	CullRedundentThread(stmt->scope());
 }
@@ -441,6 +448,8 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 						return "OpSLessThan"sv;
 					case InternalType::Tag::UINT:
 						return "OpULessThan"sv;
+					default:
+						assert(false);
 				}
 			}());
 			//TODO
@@ -455,6 +464,8 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 						return "OpSGreaterThan"sv;
 					case InternalType::Tag::UINT:
 						return "OpUGreaterThan"sv;
+					default:
+						assert(false);
 				}
 			}());
 		} break;
@@ -468,6 +479,8 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 						return "OpSLessThanEqual"sv;
 					case InternalType::Tag::UINT:
 						return "OpULessThanEqual"sv;
+					default:
+						assert(false);
 				}
 			}());
 			//TODO
@@ -482,6 +495,8 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 						return "OpSGreaterThanEqual"sv;
 					case InternalType::Tag::UINT:
 						return "OpUGreaterThanEqual"sv;
+					default:
+						assert(false);
 				}
 			}());
 		} break;
@@ -494,6 +509,8 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					case InternalType::Tag::INT:
 					case InternalType::Tag::UINT:
 						return "OpIEqual"sv;
+					default:
+						return "OpLogicalEqual"sv;
 				}
 			}());
 		} break;
@@ -506,6 +523,8 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					case InternalType::Tag::INT:
 					case InternalType::Tag::UINT:
 						return "OpINotEqual"sv;
+					default:
+						return "OpLogicalNotEqual"sv;
 				}
 			}());
 		} break;
@@ -584,22 +603,22 @@ ExprValue Visitor::visit(const MemberExpr* expr) {
 	Variable var(bd, selfType, value.valueId, value.usage);
 	if (expr->is_swizzle()) {
 		if (expr->swizzle_size() > 1) {
-			auto swizzleRange = vstd::IRangeImpl(
+			auto swizzleRange = vstd::RangeImpl(
 				vstd::CacheEndRange(vstd::range(expr->swizzle_size())) |
 				vstd::TransformRange([&](size_t idx) -> uint { return expr->swizzle_index(idx); }));
 			return {var.Swizzle(&swizzleRange), PointerUsage::NotPointer};
 		} else {
-			auto id = var.AccessVectorElement(expr->swizzle_index(0));
+			auto id = var.AccessVectorElement(bd->GetConstId(static_cast<uint>(expr->swizzle_index(0))));
 			return {id, var.usage};
 		}
 	} else {
 		switch (selfType->tag()) {
 			case TypeTag::MATRIX:
-				return {var.AccessMatrixCol(bd->GetConstId((uint)expr->member_index())), value.usage};
+				return {var.AccessMatrixCol(bd->GetConstId(static_cast<uint>(expr->member_index()))), value.usage};
 			case TypeTag::STRUCTURE:
 				return {var.AccessMember(expr->member_index()), value.usage};
 			case TypeTag::VECTOR:
-				return {var.AccessVectorElement(expr->member_index()), value.usage};
+				return {var.AccessVectorElement(bd->GetConstId(static_cast<uint>(expr->member_index()))), value.usage};
 			default:
 				assert(false);
 		}
@@ -608,13 +627,19 @@ ExprValue Visitor::visit(const MemberExpr* expr) {
 ExprValue Visitor::visit(const AccessExpr* expr) {
 	auto value = Accept(expr->range());
 	auto num = ReadAccept(expr->index());
-	Variable var(bd, expr->type(), value.valueId, value.usage);
+	Variable var(bd, expr->range()->type(), value.valueId, value.usage);
 	auto newId = [&] {
-		switch (expr->type()->tag()) {
+		switch (expr->range()->type()->tag()) {
 			case Type::Tag::ARRAY:
 				return var.AccessArrayEle(num);
 			case Type::Tag::BUFFER:
 				return var.AccessBufferEle(Id::ZeroId(), num);
+			case Type::Tag::VECTOR:
+				return var.AccessVectorElement(num);
+			case Type::Tag::MATRIX:
+				return var.AccessMatrixCol(num);
+			default:
+				assert(false);
 		}
 	}();
 	return {newId, value.usage};
@@ -641,7 +666,7 @@ ExprValue Visitor::visit(const ConstantExpr* expr) {
 }
 ExprValue Visitor::visit(const CallExpr* expr) {
 	if (expr->is_builtin()) {
-		auto range = vstd::IRangeImpl(
+		auto range = vstd::RangeImpl(
 			vstd::CacheEndRange(expr->arguments()) |
 			vstd::TransformRange([&](Expression const* expr) -> Variable {
 				auto exprValue = Accept(expr);
@@ -681,14 +706,18 @@ void Visitor::CullRedundentThread(ScopeStmt const* scope) {
 		<< threadCompareScalar.ToString() << " = OpAll "sv
 		<< bd->GetTypeId(InternalType(InternalType::Tag::BOOL, 1), PointerUsage::NotPointer).ToString() << ' '
 		<< threadCompareVec.ToString() << '\n';
-	IfBranch branch(bd, threadCompareScalar);
-	{
-		Block trueBlock(bd, branch.trueBranch, branch.mergeBlock);
+	if (isRayTracing) {
 		scope->accept(*this);
-	}
-	{
-		Block falseBlock(bd, branch.falseBranch, branch.mergeBlock);
-		func->Return();
+	} else {
+		IfBranch branch(bd, threadCompareScalar);
+		{
+			Block trueBlock(bd, branch.trueBranch, branch.mergeBlock);
+			scope->accept(*this);
+		}
+		{
+			Block falseBlock(bd, branch.falseBranch, branch.mergeBlock);
+			func->Return();
+		}
 	}
 }
 
@@ -697,9 +726,6 @@ ExprValue Visitor::visit(const CastExpr* expr) {
 	auto srcType = InternalType::GetType(expr->expression()->type());
 	auto dstType = InternalType::GetType(expr->type());
 	assert(srcType && dstType);
-	if (srcType->tag == dstType->tag && srcType->dimension == dstType->dimension) {
-		return {value, PointerUsage::NotPointer};
-	}
 	return {TypeCaster::TryCast(bd, *srcType, *dstType, value), PointerUsage::NotPointer};
 	//TODO
 }

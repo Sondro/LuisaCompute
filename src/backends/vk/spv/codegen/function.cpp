@@ -32,13 +32,13 @@ Id Function::GetReturnBranch() {
 }
 */
 void Function::ReturnValue(Id returnValue) {
-	assert(bd->inBlock && returnType && returnType != Id::VoidId());
+	assert(bd->inBlock && returnType.valid() && returnType != Id::VoidId());
 	bd->inBlock = false;
 	bd->Str() << "OpReturnValue "sv << returnValue.ToString() << '\n';
 	//returnValues.emplace_back(bd->NewId(), returnValue);
 }
 void Function::Return() {
-	assert(bd->inBlock && (!returnType || returnType == Id::VoidId()));
+	assert(bd->inBlock && (!returnType.valid() || returnType == Id::VoidId()));
 	bd->inBlock = false;
 	bd->Str() << "OpReturn\n"sv;
 }
@@ -46,7 +46,7 @@ void Function::Return() {
 Function::~Function() {
 	auto builder = bd->Str();
 	if (bd->inBlock) {
-		if (!returnType || returnType == Id::VoidId()) {
+		if (!returnType.valid() || returnType == Id::VoidId()) {
 			builder << "OpReturn\n"sv;
 		} else {
 			Id retValue(bd->NewId());

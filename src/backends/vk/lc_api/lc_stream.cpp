@@ -192,7 +192,7 @@ public:
 			auto uploadBuffer = frameRes->AllocateUpload(
 				Accel::ACCEL_INST_SIZE * mod.size());
 			size_t uploadOffset = uploadBuffer.offset;
-			auto iterator = vstd::IRangeImpl(
+			auto iterator = vstd::RangeImpl(
 				vstd::CacheEndRange(mod) | vstd::TransformRange([&](AccelBuildCommand::Modification const& v) {
 					Accel::Visibility vis = Accel::Visibility::Unchange;
 					if (v.flags & AccelBuildCommand::Modification::flag_visibility_on)

@@ -177,6 +177,19 @@ public:
         return std::move(New(std::forward<Args>(args)...));
     }
 
+    template<typename... Args>
+    inline SelfType &ForceNew(Args &&...args) &noexcept {
+        if (initialized) { Delete(); }
+        initialized = true;
+        stackObj.New(std::forward<Args>(args)...);
+        return *this;
+    }
+
+    template<typename... Args>
+    inline SelfType &&ForceNew(Args &&...args) &&noexcept {
+        return std::move(ForceNew(std::forward<Args>(args)...));
+    }
+
     bool hash_value() const noexcept {
         return initialized;
     }
@@ -778,10 +791,10 @@ public:
 template<typename T>
 class UndefEval : public Evaluable {
 public:
-	using EvalType = T;
-	operator T() const {
-		assert(false);
-	}
+    using EvalType = T;
+    operator T() const {
+        assert(false);
+    }
 };
 
 template<class Func>

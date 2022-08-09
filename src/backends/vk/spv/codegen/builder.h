@@ -21,6 +21,12 @@ struct hash<luisa::compute::Type const*> {
 		return t->hash();
 	}
 };
+template<>
+struct compare<luisa::compute::Type const*> {
+	int32 operator()(luisa::compute::Type const* a, luisa::compute::Type const* b) const {
+		return compare<size_t>()(a->hash(), b->hash());
+	}
+};
 }// namespace vstd
 namespace toolhub::spv {
 class Builder : public vstd::IOperatorNewBase {
@@ -70,11 +76,9 @@ private:
 		TypeName& typeName);
 	vstd::string bodyStr;
 	vstd::string beforeEntryHeader;
-	vstd::string entryStr;
 	vstd::string afterEntryHeader;
 	vstd::string decorateStr;
 	vstd::string typeStr;
-	vstd::string constValueStr;
 	void GenBuffer(Id structId, TypeName& eleTypeName, uint arrayStride);
 
 public:

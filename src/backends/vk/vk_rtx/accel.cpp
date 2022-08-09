@@ -28,7 +28,7 @@ void Accel::AddUpdateMesh(uint index) {
 void Accel::UpdateMesh(FrameResource* frameRes) {
 	if (requireUpdateMesh.empty()) return;
 	auto bfView = frameRes->AllocateUpload(sizeof(uint64) * requireUpdateMesh.size());
-	auto iterator = vstd::IRangeImpl(
+	auto iterator = vstd::RangeImpl(
 		vstd::CacheEndRange(requireUpdateMesh) | vstd::TransformRange(
 			[&](uint index) {
 				auto newAddressValue = GetAccelAddress(device, accelInsts[index].second->mesh->GetAccel());

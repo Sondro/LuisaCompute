@@ -65,7 +65,7 @@ vstd::string SpvCompiler::Codegen(luisa::compute::Function func) {
 	for (auto&& i : func.custom_callables()) {
 		auto func = luisa::compute::Function(i.get());
 		Id retValue = builder.GetTypeId(func.return_type(), PointerUsage::NotPointer);
-		auto range = vstd::IRangeImpl(
+		auto range = vstd::RangeImpl(
 			vstd::CacheEndRange(func.arguments()) |
 			vstd::TransformRange([&](luisa::compute::Variable const& var) {
 				auto usage = var.tag() == luisa::compute::Variable::Tag::REFERENCE ? PointerUsage::Function : PointerUsage::NotPointer;
@@ -154,7 +154,7 @@ void SpvCompiler::Preprocess(luisa::compute::Function func, Builder& bd) {
 			return var.tag() == Tag::LOCAL || var.tag() == Tag::REFERENCE;
 		}) |
 		vstd::RemoveCVRefRange{};
-	auto irange = vstd::IRangeImpl(range);
+	auto irange = vstd::RangeImpl(range);
 	bd.GenCBuffer(irange);
 	bd.BindCBuffer(0);
 }

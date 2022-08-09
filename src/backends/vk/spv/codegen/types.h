@@ -94,9 +94,6 @@ struct Id : public vstd::IOperatorNewBase {
 	constexpr bool operator!=(Id id) const{
 		return this->id != id.id;
 	}
-	constexpr operator bool() const{
-		return valid();
-	}
 	constexpr explicit Id(uint id = std::numeric_limits<uint>::max()) : id(id) {}
 	static constexpr Id FloatId() { return Id(0); }
 	static constexpr Id IntId() { return Id(1); }

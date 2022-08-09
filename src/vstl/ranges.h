@@ -140,12 +140,12 @@ public:
     IteEndTag end() const { return {}; }
 };
 template<typename Ite>
-class v_IRangeImpl : public IRange<decltype(*std::declval<Ite>())> {
+class v_RangeImpl : public IRange<decltype(*std::declval<Ite>())> {
     using Value = decltype(*std::declval<Ite>());
     Ite ptr;
 
 public:
-    v_IRangeImpl(Ite &&ptr) : ptr(std::forward<Ite>(ptr)) {}
+    v_RangeImpl(Ite &&ptr) : ptr(std::forward<Ite>(ptr)) {}
     IteRef<IRange<Value>> begin() override {
         ptr.begin();
         return {this};
@@ -157,8 +157,8 @@ public:
     Value operator*() override {
         return *ptr;
     }
-    v_IRangeImpl(v_IRangeImpl const &) = delete;
-    v_IRangeImpl(v_IRangeImpl &&) = default;
+    v_RangeImpl(v_RangeImpl const &) = delete;
+    v_RangeImpl(v_RangeImpl &&) = default;
 };
 template<typename T>
 class IRangePipeline : public detail::BuilderFlag {
@@ -265,7 +265,7 @@ public:
     RemoveCVRefRange() {}
 };
 template<typename Dst>
-class v_StaticCastRange : public detail::BuilderFlag {
+class StaticCastRange : public detail::BuilderFlag {
 public:
     template<typename Ite>
     void begin(Ite &&ite) { ite.begin(); }
@@ -275,10 +275,10 @@ public:
     void next(Ite &&ite) { ++ite; }
     template<typename Ite>
     Dst value(Ite &&ite) { return static_cast<Dst>(*ite); }
-    v_StaticCastRange() {}
+    StaticCastRange() {}
 };
 template<typename Dst>
-class v_ReinterpretCastRange : public detail::BuilderFlag {
+class ReinterpretCastRange : public detail::BuilderFlag {
 public:
     template<typename Ite>
     void begin(Ite &&ite) { ite.begin(); }
@@ -288,10 +288,10 @@ public:
     void next(Ite &&ite) { ++ite; }
     template<typename Ite>
     Dst value(Ite &&ite) { return reinterpret_cast<Dst>(*ite); }
-    v_ReinterpretCastRange() {}
+    ReinterpretCastRange() {}
 };
 template<typename Dst>
-class v_ConstCastRange : public detail::BuilderFlag {
+class ConstCastRange : public detail::BuilderFlag {
 public:
     template<typename Ite>
     void begin(Ite &&ite) { ite.begin(); }
@@ -301,7 +301,7 @@ public:
     void next(Ite &&ite) { ++ite; }
     template<typename Ite>
     Dst value(Ite &&ite) { return const_cast<Dst>(*ite); }
-    v_ConstCastRange() {}
+    ConstCastRange() {}
 };
 
 template<typename Map>
@@ -490,21 +490,16 @@ v_CacheEndRange<Map> CacheEndRange(Map &&map) {
 }
 template<typename Map>
     requires(IterableType<Map>)
-v_IRangeImpl<Map> IRangeImpl(Map &&map) {
+v_RangeImpl<Map> RangeImpl(Map &&map) {
     return {std::forward<Map>(map)};
 }
 template<typename Map>
     requires(IterableType<Map>)
-v_IRangeImpl<Map>
-*NewIRangeImpl(Map &&map) {
-    return new v_IRangeImpl<Map>{std::forward<Map>(map)};
+v_RangeImpl<Map>
+*NewRangeImpl(Map &&map) {
+    return new v_RangeImpl<Map>{std::forward<Map>(map)};
 }
-template<typename Dst>
-v_StaticCastRange<Dst> StaticCastRange() { return {}; };
-template<typename Dst>
-v_ReinterpretCastRange<Dst> ReinterpretCastRange() { return {}; };
-template<typename Dst>
-v_ConstCastRange<Dst> ConstCastRange() { return {}; }
+
 template<typename Dst>
 auto IRangePipelineImpl(auto &&func) -> v_IRangePipelineImpl<Dst, decltype(func)> {
     return {std::forward<decltype(func)>(func)};
