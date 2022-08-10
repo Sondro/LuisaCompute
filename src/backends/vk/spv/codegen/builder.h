@@ -4,6 +4,7 @@
 #include <spirv-tools/spv_include.h>
 #include "tex_descriptor.h"
 #include <vstl/string_builder.h>
+#include <vstl/MD5.h>
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::spv {
@@ -56,7 +57,7 @@ private:
 	vstd::HashMap<TypeDescriptor, TypeName> types;
 	ConstValueMap<Id> constMap;
 	vstd::HashMap<uint64, Id> constArrMap;
-	vstd::HashMap<Id, Id> funcTypeMap;
+	vstd::HashMap<vstd::MD5, Id> funcTypeMap;
 	uint idCount = 0;
 	Id GenStruct(Type const* type);
 	Id GenConstId(ConstValue const& value);

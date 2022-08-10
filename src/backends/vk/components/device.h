@@ -9,18 +9,6 @@ class DescriptorPool;
 class GPUAllocator;
 class TexView;
 class BufferView;
-
-struct PipelineCachePrefixHeader {
-	uint magic;				 // an arbitrary magic header to make sure this is actually our file
-	uint vendorID;			 // equal to VkPhysicalDeviceProperties::vendorID
-	uint deviceID;			 // equal to VkPhysicalDeviceProperties::deviceID
-	uint driverVersion;		 // equal to VkPhysicalDeviceProperties::driverVersion
-	vbyte uuid[VK_UUID_SIZE];// equal to VkPhysicalDeviceProperties::pipelineCacheUUID
-	void Init(Device const* device);
-	bool operator==(PipelineCachePrefixHeader const& v) const;
-	bool operator!=(PipelineCachePrefixHeader const& v) { return !operator==(v); }
-};
-
 class Device : public vstd::IOperatorNewBase {
 	Device();
 	void Init();
@@ -32,6 +20,7 @@ class Device : public vstd::IOperatorNewBase {
 	mutable vstd::StackAllocator bindlessStackAlloc;
 
 public:
+	VkPipelineCacheHeaderVersionOne psoCache;
 	VkPhysicalDeviceLimits limits;
 	static VkInstance InitVkInstance();
 	uint AllocateBindlessIdx() const;
@@ -48,7 +37,6 @@ public:
 	VkDevice device;
 	VkPhysicalDeviceProperties deviceProperties;
 	VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties;
-	PipelineCachePrefixHeader psoHeader;
 	static VkAllocationCallbacks* Allocator();
 	static Device* CreateDevice(
 		VkInstance instance,

@@ -37,23 +37,45 @@ void PrintHLSL(vstd::string fileName, vstd::string outputPath, bool isRayTracing
 			std::cout << str << '\n';
 		});
 }
+vstd::optional<vstd::vector<uint>> PrintOptimizedSPV(vstd::string fileName, bool isRayTracing) {
+	toolhub::directx::DXShaderCompiler dxc;
 
+	BinaryReader reader(fileName);
+	vstd::string strv;
+	strv.resize(reader.GetLength());
+	reader.Read(strv.data(), strv.size());
+	auto result = dxc.CompileCompute(
+		strv, true, 64, isRayTracing);
+	return result.multi_visit_or(
+		vstd::UndefEval<vstd::optional<vstd::vector<uint>>>{},
+		[&](vstd::unique_ptr<toolhub::directx::DXByteBlob> const& blob) {
+			vstd::vector<uint> spirv;
+			spirv.resize(blob->GetBufferSize() / sizeof(uint32_t));
+			memcpy(spirv.data(), blob->GetBufferPtr(), spirv.byte_size());
+			return spirv;
+		},
+		[&](vstd::string const& str) -> vstd::optional<vstd::vector<uint>> {
+			std::cout << str << '\n';
+			return {};
+		});
+}
 int main() {
 	auto func = [&] {
 		std::cout << R"(
 0: compute to spv
 1: raytracing to spv
 2: spv compile
-3:exit
+3: output raytracing pipeline
+4:exit
 )"sv;
 		vstd::string cmd;
 		std::cin >> cmd;
-		if (cmd == "3") return 2;
+		if (cmd == "4") return 2;
 		if (cmd == "0") {
 			PrintHLSL("hlsl_example.hlsl", "hlsl_output.spvasm", false);
 			return 0;
 		} else if (cmd == "1") {
-			PrintHLSL("hlsl_raygen.hlsl", "rt_spvasm/raygen_output.spvasm", true);
+			//PrintHLSL("hlsl_raygen.hlsl", "rt_spvasm/raygen_output.spvasm", true);
 			PrintHLSL("hlsl_miss.hlsl", "rt_spvasm/miss_output.spvasm", true);
 			PrintHLSL("hlsl_closest.hlsl", "rt_spvasm/closest_output.spvasm", true);
 			return 0;
@@ -85,6 +107,19 @@ int main() {
 			spvstd::string disassembly;
 			if (!core.Disassemble(spirv, &disassembly)) return 1;
 			std::cout << disassembly << "\n";
+			return 0;
+		} else if (cmd == "3") {
+			auto missVec = PrintOptimizedSPV("hlsl_miss.hlsl", true);
+			auto closestVec = PrintOptimizedSPV("hlsl_closest.hlsl", true);
+			if (!missVec || !closestVec) return 2;
+			auto f = fopen("rt_miss_closest", "wb");
+			if (f) {
+				auto disp = vstd::create_disposer([&] { fclose(f); });
+				fwrite(vstd::get_rvalue_ptr(size_t(missVec->size())), sizeof(size_t), 1, f);
+				fwrite(vstd::get_rvalue_ptr(size_t(closestVec->size())), sizeof(size_t), 1, f);
+				fwrite(missVec->data(), missVec->byte_size(), 1, f);
+				fwrite(closestVec->data(), closestVec->byte_size(), 1, f);
+			}
 			return 0;
 		} else {
 			TestCompile();

@@ -11,6 +11,7 @@ Variable::Variable(Builder* bd, Type const* type, PointerUsage usage)
 }
 Variable::Variable(Builder* bd, Type const* type, Id varId, PointerUsage usage)
 	: Component(bd), type(type), usage(usage), varId(varId) {
+	assert(varId.valid());
 	typeId = bd->GetTypeId(type, PointerUsage::NotPointer);
 }
 

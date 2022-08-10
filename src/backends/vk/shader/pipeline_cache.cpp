@@ -5,12 +5,11 @@ PipelineCache::PipelineCache(
 	Device const* device,
 	vstd::span<vbyte const> psoCache)
 	: Resource(device) {
-	VkPipelineCacheCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	PipelineCachePrefixHeader const* ptr = reinterpret_cast<PipelineCachePrefixHeader const*>(psoCache.data());
-	if (ptr && (psoCache.size() > sizeof(PipelineCachePrefixHeader)) && (*ptr == device->psoHeader)) {
-		createInfo.initialDataSize = psoCache.size() - sizeof(PipelineCachePrefixHeader);
-		createInfo.pInitialData = psoCache.data() + sizeof(PipelineCachePrefixHeader);
+	VkPipelineCacheCreateInfo createInfo{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
+	auto ptr = reinterpret_cast<VkPipelineCacheHeaderVersionOne const*>(psoCache.data());
+	if (ptr && (memcmp(ptr, &device->psoCache, sizeof(VkPipelineCacheHeaderVersionOne)) == 0)) {
+		createInfo.initialDataSize = psoCache.size();
+		createInfo.pInitialData = psoCache.data();
 		cacheAvailable = true;
 		createInfo.flags = VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT;
 	} else {

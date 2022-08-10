@@ -104,7 +104,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type);
 			return OpCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				"OpSelect"sv,
 				arg | CastFunctor(*type));
 		}
@@ -112,7 +112,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type);
 			return FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				FuncFUSName(*type, "FClamp"sv, "SClamp"sv, "UClamp"sv),
 				arg | CastFunctor(*type));
 		}
@@ -122,7 +122,7 @@ Id BuiltinFunc::CallFunc(
 			// require type transform
 			auto disp = ReturnTypeCastToFloat(*type);
 			auto result = FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				"FMix"sv,
 				arg | CastFunctor(*type));
 			disp(result);
@@ -133,7 +133,7 @@ Id BuiltinFunc::CallFunc(
 			assert(type);
 			auto disp = ReturnTypeCastToFloat(*type);
 			auto result = FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				"Step"sv,
 				arg | CastFunctor(*type));
 			disp(result);
@@ -147,7 +147,7 @@ Id BuiltinFunc::CallFunc(
 				"FAbs"sv,
 				"SAbs"sv);
 			return FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				name,
 				arg | getFirst);
 		}
@@ -155,7 +155,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type);
 			return FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				FuncFUSName(*type, "FMin"sv, "SMin"sv, "UMin"sv),
 				arg | CastFunctor(*type));
 		}
@@ -163,7 +163,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type);
 			return FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				FuncFUSName(*type, "FMax"sv, "SMax"sv, "UMax"sv),
 				arg | CastFunctor(*type));
 		}
@@ -171,7 +171,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type && (type->tag == InternalType::Tag::INT || type->tag == InternalType::Tag::UINT));
 			return FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				(type->tag == InternalType::Tag::INT) ? "FindSMsb"sv : "FindUMsb"sv,
 				arg | getFirst);
 		}
@@ -179,7 +179,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type && (type->tag == InternalType::Tag::INT || type->tag == InternalType::Tag::UINT));
 			return FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				"FindILsb"sv,
 				arg | getFirst);
 		}
@@ -187,7 +187,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type && (type->tag == InternalType::Tag::INT || type->tag == InternalType::Tag::UINT));
 			return OpCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				"OpBitCount"sv,
 				arg | getFirst);
 		}
@@ -195,7 +195,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type && (type->tag == InternalType::Tag::INT || type->tag == InternalType::Tag::UINT));
 			return OpCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				"OpBitReverse"sv,
 				arg | getFirst);
 		}
@@ -308,7 +308,7 @@ Id BuiltinFunc::CallFunc(
 			vstd::string name;
 			name << "Pow "sv << float10.ToString();
 			return FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				name,
 				arg | getFirst);
 		}
@@ -386,7 +386,7 @@ Id BuiltinFunc::CallFunc(
 			auto type = InternalType::GetType(callType);
 			assert(type);
 			return FuncCall(
-				bd->GetTypeId(*type, PointerUsage::NotPointer),
+				type->TypeId(),
 				"Fma"sv,
 				arg | CastFunctor(*type));
 		}
@@ -395,8 +395,8 @@ Id BuiltinFunc::CallFunc(
 			assert(type && type->tag == InternalType::Tag::FLOAT);
 			auto uintType = *type;
 			uintType.tag = InternalType::Tag::UINT;
-			auto uintTypeId = bd->GetTypeId(uintType, PointerUsage::NotPointer);
-			auto floatTypeId = bd->GetTypeId(*type, PointerUsage::NotPointer);
+			auto uintTypeId = uintType.TypeId();
+			auto floatTypeId = type->TypeId();
 			Id args[2];
 			{
 				size_t idx = 0;
@@ -661,7 +661,7 @@ Id BuiltinFunc::CallFunc(
 			Id sampleImg(bd->NewId());
 			auto builder = bd->Str();
 			builder << sampleImg.ToString() << " = OpSampledImage "sv << sampleImgType.ToString() << ' ' << texLoad.ToString() << ' ' << resIdx.ToString() << '\n'
-					<< result.ToString() << " = OpImageSampleExplicitLod "sv << bd->GetTypeId(*type, PointerUsage::NotPointer).ToString() << ' '
+					<< result.ToString() << " = OpImageSampleExplicitLod "sv << type->TypeId().ToString() << ' '
 					<< sampleImg.ToString() << ' ' << args[2].Load().ToString() << " Lod "sv << bd->GetConstId(float(0)).ToString() << '\n';
 			return result;*/
 		}
@@ -881,7 +881,7 @@ Id BuiltinFunc::MakeVector(
 							colId = AccessLib::Swizzle(bd, dstEleTypeId, colId, swizzleRange);
 							return colId;
 						}));
-					return AccessLib::CompositeConstruct(bd, bd->GetTypeId(tarType, PointerUsage::NotPointer), getMatVecEle);
+					return AccessLib::CompositeConstruct(bd, tarType.TypeId(), getMatVecEle);
 				}
 				// make_float4x4(float3x3)
 				else {
@@ -904,7 +904,7 @@ Id BuiltinFunc::MakeVector(
 									})));
 							return AccessLib::CompositeConstruct(bd, dstEleTypeId, linkScalarAndZero);
 						}));
-					return AccessLib::CompositeConstruct(bd, bd->GetTypeId(tarType, PointerUsage::NotPointer), getMatVecEle);
+					return AccessLib::CompositeConstruct(bd, tarType.TypeId(), getMatVecEle);
 				}
 			} else {
 
@@ -930,9 +930,11 @@ Id BuiltinFunc::MakeVector(
 		}
 		clearScalar();
 		auto eleRange = vstd::RangeImpl(vstd::CacheEndRange(elements) | vstd::ValueRange{});
-		return AccessLib::CompositeConstruct(bd, bd->GetTypeId(tarType, PointerUsage::NotPointer), eleRange);
+		return AccessLib::CompositeConstruct(bd, tarType.TypeId(), eleRange);
 	} else {
 		size_t tarEleCount = 0;
+		auto tarScalarType = tarType;
+		tarScalarType.dimension = 1;
 		for (auto&& i : arg) {
 			auto eleType = InternalType::GetType(i.type);
 			assert(eleType);
@@ -943,18 +945,28 @@ Id BuiltinFunc::MakeVector(
 					auto scalarType = *eleType;
 					scalarType.dimension = 1;
 					for (auto c : vstd::range(eleType->dimension)) {
-						elements.emplace_back(TypeCaster::TryCast(bd, scalarType, tarType, i.ReadVectorElement(c)));
-						if (elements.size() >= tarType.dimension) break;
+						elements.emplace_back(TypeCaster::TryCast(bd, scalarType, tarScalarType, i.ReadVectorElement(c)));
+						if (elements.size() >= tarScalarType.dimension) break;
 					}
 				}
 			} else {
-				elements.emplace_back(TypeCaster::TryCast(bd, *eleType, tarType, i.Load()));
+				elements.emplace_back(TypeCaster::TryCast(bd, *eleType, tarScalarType, i.Load()));
 			}
 			tarEleCount += eleType->dimension;
 		}
 		auto builder = bd->Str();
-		auto scalarRange = vstd::RangeImpl(vstd::CacheEndRange(elements) | vstd::ValueRange{});
-		return AccessLib::CompositeConstruct(bd, bd->GetTypeId(tarType, PointerUsage::NotPointer), scalarRange);
+		if (tarEleCount == tarType.dimension) {
+			auto scalarRange = vstd::RangeImpl(vstd::CacheEndRange(elements) | vstd::ValueRange{});
+			return AccessLib::CompositeConstruct(bd, tarType.TypeId(), scalarRange);
+		} else if (tarEleCount == 1) {
+			auto scalarRange = vstd::RangeImpl(vstd::range(tarType.dimension) | vstd::TransformRange([&](auto&&){
+				return elements[0];
+			}));
+			return AccessLib::CompositeConstruct(bd, tarType.TypeId(), scalarRange);
+
+		} else{
+			assert(false);
+		}
 	}
 }
 }// namespace toolhub::spv

@@ -1041,7 +1041,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
+            if (switcher >= argSize) return std::forward<Ret>(r).operator EvalType();
             return detail::Visitor<EvalType, PackedFunctors<Funcs...>, void, AA &...>(
                 switcher,
                 GetPlaceHolder(),
@@ -1060,7 +1060,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
+            if (switcher >= argSize) return std::forward<Ret>(r).operator EvalType();
             return detail::Visitor<EvalType, PackedFunctors<Funcs...>, void, AA...>(
                 switcher,
                 GetPlaceHolder(),
@@ -1079,7 +1079,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
+            if (switcher >= argSize) return std::forward<Ret>(r).operator EvalType();
             return detail::Visitor<EvalType, PackedFunctors<Funcs...>, void const, AA const &...>(
                 switcher,
                 GetPlaceHolder(),
@@ -1098,7 +1098,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
+            if (switcher >= argSize) return std::forward<Ret>(r).operator EvalType();
             return detail::Visitor<EvalType, Func, void, AA &...>(switcher, GetPlaceHolder(), std::forward<Func>(func));
         } else {
             if (switcher >= argSize) return Ret{std::forward<Ret>(r)};
@@ -1110,7 +1110,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
+            if (switcher >= argSize) return std::forward<Ret>(r).operator EvalType();
             return detail::Visitor<EvalType, Func, void, AA...>(switcher, GetPlaceHolder(), std::forward<Func>(func));
         } else {
             if (switcher >= argSize) return Ret{std::forward<Ret>(r)};
@@ -1122,7 +1122,7 @@ public:
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
-            if (switcher >= argSize) return static_cast<EvalType>(std::forward<Ret>(r));
+            if (switcher >= argSize) return std::forward<Ret>(r).operator EvalType();
             return detail::Visitor<EvalType, Func, void const, AA const &...>(switcher, GetPlaceHolder(), std::forward<Func>(func));
         } else {
             if (switcher >= argSize) return Ret{std::forward<Ret>(r)};
@@ -1324,5 +1324,10 @@ auto erase_last(Vec &&vec) {
     bool operator<(T const &a) const {           \
         return memcmp(this, &a, sizeof(T)) < 0;  \
     }
-
+template<typename T, typename... Args>
+	requires(!std::is_const_v<T> && std::is_constructible_v<T, Args&&...>)
+void reset(T& v, Args&&... args) {
+	v.~T();
+	new (&v) T(std::forward<Args>(args)...);
+}
 }// namespace vstd

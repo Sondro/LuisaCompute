@@ -16,17 +16,19 @@ struct ExprValue {
 };
 class Visitor : public Component, public StmtVisitor {
 public:
+	luisa::unordered_map<uint64, Id>* callableMap;
 	bool isRayTracing = false;
 	ExprValue Accept(Expression const* ptr);
 	Id ReadAccept(Expression const* ptr);
 	Id ReadAccept(Type const* type, Id valueId);
 	/////////////////// function cache
-	vstd::HashMap<uint, vstd::variant<Variable, Id>> varId;
+	vstd::HashMap<uint, Variable> varId;
 	/////////////////// statement cache
 	WhileLoop* loopBranch;
 	Function* func;
 	luisa::compute::Function kernel;
-	vstd::optional<Block> block;
+	vstd::vector<Block> blockStacks;
+
 	vstd::small_vector<int32> switchIndices;
 	Id threadId;
 	Id groupId;
@@ -37,6 +39,8 @@ public:
 	BuiltinFunc builtinFunc;
 
 	Visitor(Builder* bd);
+	void AddBlock(Block&& b);
+	void RemoveBlock();
 	void Reset(
 		luisa::compute::Function kernel);
 	~Visitor();

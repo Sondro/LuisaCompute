@@ -7,11 +7,19 @@ namespace toolhub::spv {
 
 Visitor::Visitor(Builder* bd)
 	: Component(bd), builtinFunc(bd) {}
+void Visitor::AddBlock(Block&& b) {
+	blockStacks.emplace_back(std::move(b));
+}
+void Visitor::RemoveBlock() {
+	assert(!blockStacks.empty());
+	blockStacks.erase_last();
+}
 void Visitor::Reset(
 	luisa::compute::Function kernel) {
 	this->kernel = kernel;
 	loopBranch = nullptr;
-	block.Delete();
+	bd->inBlock = false;
+	blockStacks.clear();
 	switchIndices.clear();
 	varId.Clear();
 }
@@ -19,12 +27,10 @@ Visitor::~Visitor() {}
 void Visitor::visit(const BreakStmt* stmt) {
 	bd->Str() << "OpBranch "sv << loopBranch->MergeBlock().ToString() << '\n';
 	bd->inBlock = false;
-	block.Delete();
 }
 void Visitor::visit(const ContinueStmt* stmt) {
 	bd->Str() << "OpBranch "sv << loopBranch->ContinueBlock().ToString() << '\n';
 	bd->inBlock = false;
-	block.Delete();
 }
 ExprValue Visitor::Accept(Expression const* ptr) {
 	ExprVisitorWrapper wrapper;
@@ -49,7 +55,6 @@ Id Visitor::ReadAccept(Expression const* ptr) {
 void Visitor::visit(const ReturnStmt* stmt) {
 	if (stmt->expression() == nullptr) {
 		func->Return();
-		block.Delete();
 	} else {
 		func->ReturnValue(ReadAccept(stmt->expression()));
 	}
@@ -59,20 +64,18 @@ void Visitor::visit(const ScopeStmt* stmt) {
 		if (!bd->inBlock) break;
 		i->accept(*this);
 	}
-	block.Delete();
+	RemoveBlock();
 }
 void Visitor::visit(const IfStmt* stmt) {
 	auto cond = ReadAccept(stmt->condition());
 	IfBranch branch(bd, cond);
 	{
-		block.ForceNew(bd, branch.trueBranch, branch.mergeBlock);
+		AddBlock(Block(bd, branch.trueBranch, branch.mergeBlock));
 		stmt->true_branch()->accept(*this);
-		block.Delete();
 	}
 	{
-		block.ForceNew(bd, branch.falseBranch, branch.mergeBlock);
+		AddBlock(Block(bd, branch.falseBranch, branch.mergeBlock));
 		stmt->false_branch()->accept(*this);
-		block.Delete();
 	}
 }
 void Visitor::visit(const LoopStmt* stmt) {
@@ -110,15 +113,13 @@ void Visitor::visit(const SwitchStmt* stmt) {
 
 	for (auto&& i : cases) {
 		if (i->tag() == Statement::Tag::SWITCH_CASE) {
-			block.ForceNew(bd, *caseIds, switcher.mergeBlock);
+			AddBlock(Block(bd, *caseIds, switcher.mergeBlock));
 			i->accept(*this);
 			++caseIds;
-			block.Delete();
 		} else {
-			block.ForceNew(bd, switcher.defaultBlock, switcher.mergeBlock);
+			AddBlock(Block(bd, switcher.defaultBlock, switcher.mergeBlock));
 			i->accept(*this);
 			++caseIds;
-			block.Delete();
 		}
 	}
 }
@@ -134,9 +135,8 @@ void Visitor::visit(const ForStmt* stmt) {
 		return ReadAccept(stmt->condition());
 	});
 	this->loopBranch = &forLoop;
-	block.ForceNew(bd, forLoop.LoopBlock(), forLoop.afterLoopBlock);
+	AddBlock(Block(bd, forLoop.LoopBlock(), forLoop.afterLoopBlock));
 	stmt->body()->accept(*this);
-	block.Delete();
 	{
 		Block afterLoopBlock(bd, forLoop.afterLoopBlock, forLoop.MergeBlock());
 		Accept(stmt->step());
@@ -151,8 +151,16 @@ void Visitor::visit(const CommentStmt* stmt) {}
 void Visitor::RegistVariables(
 	vstd::span<luisa::compute::Variable const> variables,
 	vstd::span<luisa::compute::Variable const> builtinVariables) {
+	auto uint3Id = Id::VecId(Id::UIntId(), 3).ToString();
+	threadId = bd->NewId();
+	groupId = bd->NewId();
+	dispatchedThreadId = bd->NewId();
+	dispatchedCountId = bd->NewId();
+	auto uint3UniformPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::StorageBuffer).ToString();
+	Id dispatchCountVar = bd->NewId();
+
 	using Tag = luisa::compute::Variable::Tag;
-	auto LoadOrdinaryArgs = [&] {
+	auto LoadOrdinaryArgs = [&]() {
 		for (auto&& i : variables) {
 			PointerUsage usage;
 			switch (i.tag()) {
@@ -179,69 +187,60 @@ void Visitor::RegistVariables(
 		for (auto&& i : builtinVariables) {
 			switch (i.tag()) {
 				case Tag::DISPATCH_ID:
-					varId.Emplace(i.uid(), dispatchedThreadId);
+					varId.Emplace(i.uid(), Variable(bd, i.type(), dispatchedThreadId, PointerUsage::NotPointer));
 					return;
 				case Tag::THREAD_ID:
-					varId.Emplace(i.uid(), threadId);
+					varId.Emplace(i.uid(), Variable(bd, i.type(), threadId, PointerUsage::NotPointer));
 					return;
 				case Tag::BLOCK_ID:
-					varId.Emplace(i.uid(), groupId);
+					varId.Emplace(i.uid(), Variable(bd, i.type(), groupId, PointerUsage::NotPointer));
 					return;
 				case Tag::DISPATCH_SIZE:
-					varId.Emplace(i.uid(), dispatchedCountId);
+					varId.Emplace(i.uid(), Variable(bd, i.type(), dispatchedCountId, PointerUsage::NotPointer));
 					return;
 			}
 		}
+	};
+
+	auto LoadBuiltinVariables = [&] {
+		auto builder = bd->Str();
+		if (!isRayTracing) {
+			builder
+				<< threadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupThreadId().ToString() << '\n'
+				<< groupId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupId().ToString() << '\n';
+		}
+		builder
+			<< dispatchedThreadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::DispatchThreadId().ToString() << '\n'
+			<< dispatchCountVar.ToString()
+			<< " = OpAccessChain "sv
+			<< uint3UniformPtr << ' '			 // arg type
+			<< bd->CBufferVar().ToString() << ' '// buffer
+			<< Id::ZeroId().ToString() << ' '	 // first buffer
+			<< Id::ZeroId().ToString() << ' '	 // first element
+			<< Id::ZeroId().ToString() << '\n'	 // first member
+			<< dispatchedCountId.ToString()
+			<< " = OpLoad "sv
+			<< vstd::string_view(uint3Id) << ' '
+			<< dispatchCountVar.ToString() << '\n';
 	};
 	if (kernel.tag() == luisa::compute::Function::Tag::KERNEL) {
 		for (auto&& i : kernel.arguments()) {
 			switch (i.tag()) {
 				case Tag::LOCAL:
 				case Tag::REFERENCE: {
-					if ((static_cast<uint>(kernel.variable_usage(i.uid())) & static_cast<uint>(Usage::WRITE)) == 0) {
-						Id newVarValue = bd->NewId();
-						varId.Emplace(i.uid(), newVarValue);
-					} else {
-						varId.Emplace(
-							i.uid(),
-							vstd::LazyEval([&] {
-								return Variable(bd, i.type(), PointerUsage::Function);
-							}));
-					}
+					varId.Emplace(
+						i.uid(),
+						vstd::LazyEval([&] {
+							return Variable(bd, i.type(), PointerUsage::Function);
+						}));
 					break;
 				}
 			}
 		}
-		threadId = bd->NewId();
-		groupId = bd->NewId();
-		dispatchedThreadId = bd->NewId();
-		dispatchedCountId = bd->NewId();
 		LoadOrdinaryArgs();
-		Id dispatchCountVar = bd->NewId();
-		auto uint3Id = Id::VecId(Id::UIntId(), 3).ToString();
-		auto uint3UniformPtr = bd->GetTypeId(InternalType(InternalType::Tag::UINT, 3), PointerUsage::StorageBuffer).ToString();
 		//TODO: no group in raytracing
-		{
-			auto builder = bd->Str();
-			if (!isRayTracing) {
-				builder
-					<< threadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupThreadId().ToString() << '\n'
-					<< groupId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::GroupId().ToString() << '\n';
-			}
-			builder
-				<< dispatchedThreadId.ToString() << " = OpLoad "sv << vstd::string_view(uint3Id) << ' ' << Id::DispatchThreadId().ToString() << '\n'
-				<< dispatchCountVar.ToString()
-				<< " = OpAccessChain "sv
-				<< uint3UniformPtr << ' '			 // arg type
-				<< bd->CBufferVar().ToString() << ' '// buffer
-				<< Id::ZeroId().ToString() << ' '	 // first buffer
-				<< Id::ZeroId().ToString() << ' '	 // first element
-				<< Id::ZeroId().ToString() << '\n'	 // first member
-				<< dispatchedCountId.ToString()
-				<< " = OpLoad "sv
-				<< vstd::string_view(uint3Id) << ' '
-				<< dispatchCountVar.ToString() << '\n';
-		}
+		LoadBuiltinVariables();
+
 		uint cbufferIndex = 1;
 		for (auto&& i : kernel.arguments()) {
 			switch (i.tag()) {
@@ -265,45 +264,63 @@ void Visitor::RegistVariables(
 							<< newVar.ToString() << '\n';
 						++cbufferIndex;
 					};
-					ite.Value().multi_visit(
-						[&](Variable const& var) {
-							Id loadId(bd->NewId());
-							LoadVar(loadId);
-							var.Store(loadId);
-						},
-						[&](Id id) {
-							LoadVar(id);
-						});
+					auto&& var = ite.Value();
+					Id loadId(bd->NewId());
+					LoadVar(loadId);
+					var.Store(loadId);
 				} break;
 			}
 		}
 	} else {
 		size_t argIndex = 0;
+		auto InputSpecialArg = [&](PointerUsage usage, luisa::compute::Variable const& i) {
+			varId.Emplace(
+				i.uid(),
+				vstd::LazyEval([&] {
+					auto paramVar = Variable(bd, i.type(), func->argValues[argIndex], usage);
+					// auto newVar = Variable(bd, i.type(), PointerUsage::Function);
+					// newVar.Store(paramVar.varId);
+					// return newVar;
+					return paramVar;
+				}));
+		};
+		vstd::vector<std::pair<Variable, Id>> storeCmds;
 		for (auto&& i : kernel.arguments()) {
 			switch (i.tag()) {
-				case Tag::LOCAL:
-				case Tag::REFERENCE: {
-					if ((static_cast<uint>(kernel.variable_usage(i.uid())) & static_cast<uint>(Usage::WRITE)) == 0) {
-						varId.Emplace(i.uid(), func->argValues[argIndex]);
-					} else {
-						varId.Emplace(
-							i.uid(),
-							vstd::LazyEval([&] {
-								auto var = Variable(bd, i.type(), PointerUsage::Function);
-								var.Store(func->argValues[argIndex]);
-								return var;
-							}));
-					}
+
+				case Tag::LOCAL: {
+					varId.Emplace(
+						i.uid(),
+						vstd::LazyEval([&] {
+							auto var = Variable(bd, i.type(), PointerUsage::Function);
+							storeCmds.emplace_back(var, func->argValues[argIndex]);
+							return var;
+						}));
+				} break;
+				case Tag::TEXTURE:
+				case Tag::BINDLESS_ARRAY:
+				case Tag::ACCEL: {
+					InputSpecialArg(PointerUsage::UniformConstant, i);
+				} break;
+				case Tag::BUFFER:
+					InputSpecialArg(PointerUsage::StorageBuffer, i);
 					break;
-				}
+				case Tag::REFERENCE: {
+					InputSpecialArg(PointerUsage::Function, i);
+
+				} break;
 			}
 			++argIndex;
 		}
 		LoadOrdinaryArgs();
+		LoadBuiltinVariables();
+		for (auto&& i : storeCmds) {
+			i.first.Store(i.second);
+		}
 	}
 }
 void Visitor::visit(const MetaStmt* stmt) {
-	block.ForceNew(bd, func->funcBlockId);
+	AddBlock(Block(bd, func->funcBlockId));
 	RegistVariables(stmt->variables(), kernel.builtin_variables());
 	CullRedundentThread(stmt->scope());
 }
@@ -356,7 +373,7 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 	auto dstType = bd->GetTypeId(expr->type(), PointerUsage::NotPointer);
 	auto tarType = InternalType::GetType(expr->type());
 	auto printOp = [&](InternalType dstType, Id leftValue, Id rightValue, vstd::string_view opName) {
-		bd->Str() << dstNewId.ToString() << " = "sv << opName << ' ' << bd->GetTypeId(dstType, PointerUsage::NotPointer).ToString() << ' ' << leftValue.ToString() << ' ' << rightValue.ToString() << '\n';
+		bd->Str() << dstNewId.ToString() << " = "sv << opName << ' ' << dstType.TypeId().ToString() << ' ' << leftValue.ToString() << ' ' << rightValue.ToString() << '\n';
 	};
 	auto PrintSameTypeOp = [&](vstd::string_view op) {
 		auto leftType = InternalType::GetType(expr->lhs()->type());
@@ -653,10 +670,7 @@ ExprValue Visitor::visit(const RefExpr* expr) {
 	auto ite = varId.Find(var.uid());
 	assert(ite);
 	auto& v = ite.Value();
-	return v.multi_visit_or(
-		vstd::UndefEval<ExprValue>{},
-		[&](Variable const& v) -> ExprValue { return {v.varId, v.usage}; },
-		[&](Id v) -> ExprValue { return {v, PointerUsage::NotPointer}; });
+	return {v.varId, v.usage};
 }
 ExprValue Visitor::visit(const ConstantExpr* expr) {
 	Id arrValueId = bd->GetConstArrayId(expr->data(), expr->type());
@@ -682,16 +696,20 @@ ExprValue Visitor::visit(const CallExpr* expr) {
 		} else {
 			builder << "OpFunctionCall "sv << Id::VoidId().ToString();
 		}
+		auto ite = callableMap->find(expr->custom().hash());
+		assert(ite != callableMap->end());
+		builder << ' ' << ite->second.ToString();
 		auto argRefl = expr->custom().arguments();
 		auto args = expr->arguments();
 		for (auto i : vstd::range(argRefl.size())) {
 			auto exprValue = Accept(args[i]);
-			if (argRefl[i].tag() != luisa::compute::Variable::Tag::REFERENCE &&
+			if (argRefl[i].tag() == luisa::compute::Variable::Tag::LOCAL &&
 				exprValue.usage != PointerUsage::NotPointer) {
 				exprValue.valueId = ReadAccept(argRefl[i].type(), exprValue.valueId);
 			}
 			builder << ' ' << exprValue.valueId.ToString();
 		}
+		builder << '\n';
 		return {newId, PointerUsage::NotPointer};
 	}
 }
@@ -700,11 +718,11 @@ void Visitor::CullRedundentThread(ScopeStmt const* scope) {
 	Id threadCompareScalar(bd->NewId());
 	bd->Str()
 		<< threadCompareVec.ToString() << " = OpULessThan "sv
-		<< bd->GetTypeId(InternalType(InternalType::Tag::BOOL, 3), PointerUsage::NotPointer).ToString() << ' '
+		<< InternalType(InternalType::Tag::BOOL, 3).TypeId().ToString() << ' '
 		<< dispatchedThreadId.ToString() << ' '
 		<< dispatchedCountId.ToString() << '\n'
 		<< threadCompareScalar.ToString() << " = OpAll "sv
-		<< bd->GetTypeId(InternalType(InternalType::Tag::BOOL, 1), PointerUsage::NotPointer).ToString() << ' '
+		<< InternalType(InternalType::Tag::BOOL, 1).TypeId().ToString() << ' '
 		<< threadCompareVec.ToString() << '\n';
 	if (isRayTracing) {
 		scope->accept(*this);
@@ -719,6 +737,7 @@ void Visitor::CullRedundentThread(ScopeStmt const* scope) {
 			func->Return();
 		}
 	}
+	assert(blockStacks.empty());
 }
 
 ExprValue Visitor::visit(const CastExpr* expr) {

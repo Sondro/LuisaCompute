@@ -25,7 +25,15 @@ ComputeShader::ComputeShader(
 	auto d = vstd::create_disposer([&] {
 		vkDestroyShaderModule(device->device, shaderStage.module, Device::Allocator());
 	});
-	ThrowIfFailed(vkCreateComputePipelines(device->device, cache ? cache->Cache() : nullptr, 1, &computePipelineCreateInfo, Device::Allocator(), &pipeline));
+	auto CreatePipeline = [&](VkPipelineCache cache) {
+		ThrowIfFailed(vkCreateComputePipelines(device->device, cache, 1, &computePipelineCreateInfo, Device::Allocator(), &pipeline));
+	};
+	if (cache) {
+		auto lck = cache->lock();
+		CreatePipeline(cache->Cache());
+	} else {
+		CreatePipeline(nullptr);
+	}
 }
 
 ComputeShader::~ComputeShader() {

@@ -120,12 +120,15 @@ void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 		beforeEntryHeader = "OpCapability Shader\n"sv;
 	}
 	beforeEntryHeader << R"(OpCapability RuntimeDescriptorArray
+OpCapability Matrix
+OpCapability VariablePointers
 )"sv;
 	if (useRayTracing) {
 		beforeEntryHeader << R"(OpExtension "SPV_KHR_ray_tracing"
 )"sv;
 	}
 	beforeEntryHeader << R"(OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_variable_pointers"
 %49 = OpExtInstImport "GLSL.std.450"
 )"sv;
 	// use rayquery
@@ -464,9 +467,19 @@ Id Builder::GetSampledImageTypeId(
 }
 
 Id Builder::GetFuncReturnTypeId(Id returnType, vstd::IRange<Id>* argType) {
+	vstd::vector<uint> values;
+	values.emplace_back(returnType.id);
+	if (argType) {
+		for (auto&& i : *argType) {
+			values.emplace_back(i.id);
+		}
+	}
+	auto md5 = vstd::MD5(
+		{reinterpret_cast<vbyte const*>(values.data()),
+		 values.byte_size()});
 	return funcTypeMap
 		.Emplace(
-			returnType,
+			md5,
 			vstd::LazyEval([&] {
 				Id newId(idCount++);
 				vstd::StringBuilder builder(&typeStr);

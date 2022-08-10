@@ -61,21 +61,51 @@ vstd::string SpvCompiler::Codegen(luisa::compute::Function func) {
 	/*
 	if (rayTracing)
 		RayQuery::PrintFunc(&builder);*/
+	luisa::unordered_map<uint64, Id> callableId;
+	visitor.callableMap = &callableId;
+	luisa::unordered_set<uint64> customCallableMap;
+	vstd::vector<luisa::compute::Function> customCallables;
+	auto RecurrentCallable = [&](auto&& RecurrentCallable, luisa::compute::Function const& func) -> void {
+		for (auto&& i : func.custom_callables()) {
+			auto subFunc = luisa::compute::Function(i.get());
+			if (customCallableMap.emplace(subFunc.hash()).second) {
+				customCallables.emplace_back(subFunc);
+				RecurrentCallable(RecurrentCallable, subFunc);
+			}
+		}
+	};
+	RecurrentCallable(RecurrentCallable, func);
 
-	for (auto&& i : func.custom_callables()) {
-		auto func = luisa::compute::Function(i.get());
+	for (auto&& func : vstd::ptr_range(customCallables.data() + customCallables.size() - 1, customCallables.data() - 1, -1)) {
 		Id retValue = builder.GetTypeId(func.return_type(), PointerUsage::NotPointer);
 		auto range = vstd::RangeImpl(
 			vstd::CacheEndRange(func.arguments()) |
 			vstd::TransformRange([&](luisa::compute::Variable const& var) {
-				auto usage = var.tag() == luisa::compute::Variable::Tag::REFERENCE ? PointerUsage::Function : PointerUsage::NotPointer;
+				auto usage = [&] {
+					using Tag = luisa::compute::Variable::Tag;
+					switch (var.tag()) {
+						case Tag::LOCAL:
+							return PointerUsage::NotPointer;
+						case Tag::REFERENCE:
+							return PointerUsage::Function;
+						case Tag::BINDLESS_ARRAY:
+						case Tag::BUFFER:
+							return PointerUsage::StorageBuffer;
+						case Tag::TEXTURE:
+						case Tag::ACCEL:
+							return PointerUsage::UniformConstant;
+					}
+				}();
 				return builder.GetTypeId(var.type(), usage);
 			}));
 		Function localFunc(&builder, retValue, &range);
 		visitor.Reset(func);
 		visitor.func = &localFunc;
 		Compile(func, visitor);
+		callableId.emplace(func.hash(), localFunc.func);
 	}
+
+	//for (auto&& i : func.custom_callables()) {	}
 	{
 		visitor.Reset(func);
 		for (auto&& i : uniformVars) {

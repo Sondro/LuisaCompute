@@ -165,7 +165,11 @@ Device::Device()
 	: bindlessStackAlloc(4096, &mallocVisitor) {
 }
 void Device::Init() {
-	psoHeader.Init(this);
+	psoCache.headerSize = sizeof(VkPipelineCacheHeaderVersionOne);
+	psoCache.headerVersion = VK_PIPELINE_CACHE_HEADER_VERSION_ONE;
+	psoCache.vendorID = deviceProperties.vendorID;
+	psoCache.deviceID = deviceProperties.deviceID;
+	memcpy(psoCache.pipelineCacheUUID, deviceProperties.pipelineCacheUUID, VK_UUID_SIZE);
 	gpuAllocator = vstd::create_unique(new GPUAllocator(this));
 	manager = vstd::create_unique(new DescriptorSetManager(this));
 	// create sampler desc-set layout
@@ -225,7 +229,7 @@ void Device::Init() {
 	writeDesc.pImageInfo = imageInfos;
 	vkUpdateDescriptorSets(device, 1, &writeDesc, 0, nullptr);
 	InitBindless();
-	auto SafeCastFuncPtr = []<typename T>(PFN_vkVoidFunction num){
+	auto SafeCastFuncPtr = []<typename T>(PFN_vkVoidFunction num) {
 		assert(num != 0);
 		return reinterpret_cast<T>(num);
 	};
@@ -319,6 +323,7 @@ Device* Device::CreateDevice(
 		"VK_KHR_buffer_device_address",
 		"VK_KHR_deferred_host_operations",
 		"VK_KHR_acceleration_structure",
+		"VK_KHR_variable_pointers",
 		"VK_KHR_ray_tracing_pipeline"};
 	auto checkDeviceExtensionSupport = [&](VkPhysicalDevice device) {
 		uint32_t extensionCount;
@@ -440,13 +445,17 @@ Device* Device::CreateDevice(
 	enabledAccelerationStructureFeatures.accelerationStructure = VK_TRUE;
 	enabledAccelerationStructureFeatures.pNext = &enabledRayTracingPipelineFeatures;
 
-/*	VkPhysicalDeviceRayQueryFeaturesKHR enabledRayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
+	/*	VkPhysicalDeviceRayQueryFeaturesKHR enabledRayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
 	enabledRayQueryFeatures.rayQuery = VK_TRUE;
 	enabledRayQueryFeatures.pNext = &enabledAccelerationStructureFeatures;
 */
+	VkPhysicalDeviceVariablePointersFeatures variablePointerFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES};
+	variablePointerFeatures.variablePointers = VK_TRUE;
+	variablePointerFeatures.variablePointersStorageBuffer = VK_TRUE;
+	variablePointerFeatures.pNext = &enabledAccelerationStructureFeatures;
 	VkPhysicalDeviceHostQueryResetFeatures enableQueryReset{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES};
 	enableQueryReset.hostQueryReset = VK_TRUE;
-	enableQueryReset.pNext = &enabledAccelerationStructureFeatures;
+	enableQueryReset.pNext = &variablePointerFeatures;
 
 	auto featureLinkQueue = &enableQueryReset;
 
@@ -487,20 +496,11 @@ Device* Device::CreateDevice(
 	result->limits = deviceProperties.properties.limits;
 	result->instance = instance;
 	result->rayTracingProperties = rayTracingProperties;
-	vkGetPhysicalDeviceProperties(physicalDevice, &result->deviceProperties);
+	result->deviceProperties = deviceProperties.properties;
 	result->Init();
 	return result;
 }
-void PipelineCachePrefixHeader::Init(Device const* device) {
-	magic = PSO_MAGIC_NUM;
-	vendorID = device->deviceProperties.vendorID;
-	deviceID = device->deviceProperties.deviceID;
-	driverVersion = device->deviceProperties.driverVersion;
-	memcpy(uuid, device->deviceProperties.pipelineCacheUUID, VK_UUID_SIZE);
-}
-bool PipelineCachePrefixHeader::operator==(PipelineCachePrefixHeader const& v) const {
-	return memcmp(this, &v, sizeof(PipelineCachePrefixHeader)) == 0;
-}
+
 void Device::AddBindlessBufferUpdateCmd(size_t index, BufferView const& buffer) const {
 	std::lock_guard lck(updateBindlessMtx);
 	auto&& writeDesc = bindlessWriteRes.emplace_back();

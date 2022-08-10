@@ -85,7 +85,15 @@ RTShader::RTShader(
 		rayTracingPipelineCI.pGroups = shaderGroups.data();
 		rayTracingPipelineCI.maxPipelineRayRecursionDepth = 1;
 		rayTracingPipelineCI.layout = pipeLayout->Layout();
-		ThrowIfFailed(device->vkCreateRayTracingPipelinesKHR(device->device, VK_NULL_HANDLE, cache ? cache->Cache() : nullptr, 1, &rayTracingPipelineCI, Device::Allocator(), &pipeline));
+		auto CreatePipeline = [&](VkPipelineCache cache) {
+			ThrowIfFailed(device->vkCreateRayTracingPipelinesKHR(device->device, VK_NULL_HANDLE, cache, 1, &rayTracingPipelineCI, Device::Allocator(), &pipeline));
+		};
+		if (cache) {
+			auto lck = cache->lock();
+			CreatePipeline(cache->Cache());
+		} else {
+			CreatePipeline(nullptr);
+		}
 	}
 
 	///////////////////////// Create SBT

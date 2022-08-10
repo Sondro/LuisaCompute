@@ -1,5 +1,6 @@
 #include "type_caster.h"
 #include "builder.h"
+#include "access_lib.h"
 namespace toolhub::spv {
 TypeCaster::CompareResult TypeCaster::Compare(
 	InternalType const& srcType,
@@ -61,8 +62,7 @@ Id TypeCaster::TryCast(
 	InternalType const& dstType,
 	Id value) {
 	if (srcType == dstType) return value;
-	Id newId(bd->NewId());
-	bd->Str() << newId.ToString();
+
 	auto GetConst = [&](InternalType const& tp, int32 value) {
 		if (tp.dimension <= 1) {
 			switch (tp.tag) {
@@ -94,12 +94,48 @@ Id TypeCaster::TryCast(
 	if (srcType.tag == InternalType::Tag::BOOL) {
 		auto constZero = GetConst(dstType, 0);
 		auto constOne = GetConst(dstType, 1);
-		bd->Str() << " = OpSelect "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << ' ' << constOne.ToString() << '\n';
+		Id newId(bd->NewId());
+		bd->Str()
+			<< newId.ToString()
+			<< " = OpSelect "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << ' ' << constOne.ToString() << '\n';
+		return newId;
 	} else if (dstType.tag == InternalType::Tag::BOOL) {
 		auto constZero = GetConst(dstType, 0);
-		bd->Str() << " = OpINotEqual "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << '\n';
+		Id newId(bd->NewId());
+		bd->Str()
+			<< newId.ToString() << " = OpINotEqual "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << '\n';
+		return newId;
+	} else if (srcType.dimension == 1 && dstType.dimension != 1) {
+		auto dstScalarType = dstType;
+		dstScalarType.dimension = 1;
+		if (dstType.tag == InternalType::Tag::MATRIX) {
+			dstScalarType.tag = InternalType::Tag::FLOAT;
+			Id element = TryCast(bd, srcType, dstScalarType, value);
+			auto dstVecType = dstType;
+			dstVecType.tag = InternalType::Tag::FLOAT;
+			auto vecRange = vstd::RangeImpl(
+				vstd::range(dstType.dimension) |
+				vstd::TransformRange([&](auto&&) { return element; }));
+			auto vecId = AccessLib::CompositeConstruct(bd, dstVecType.TypeId(), vecRange);
+
+			auto range = vstd::RangeImpl(
+				vstd::range(dstType.dimension) |
+				vstd::TransformRange([&](auto&&) {
+					return vecId;
+				}));
+			return AccessLib::CompositeConstruct(bd, dstType.TypeId(), range);
+		} else {
+			Id element = TryCast(bd, srcType, dstScalarType, value);
+			auto range = vstd::RangeImpl(
+				vstd::range(dstType.dimension) |
+				vstd::TransformRange([&](auto&&) { return element; }));
+			return AccessLib::CompositeConstruct(bd, dstType.TypeId(), range);
+		}
 	} else {
+		Id newId(bd->NewId());
+		bd->Str() << newId.ToString();
 		auto builder = bd->Str();
+		//TODO: scalar to vector
 		switch (srcType.tag) {
 			case InternalType::Tag::FLOAT:
 			case InternalType::Tag::MATRIX:
@@ -142,7 +178,7 @@ Id TypeCaster::TryCast(
 				break;
 		}
 		builder << dstType.TypeId().ToString() << ' ' << value.ToString() << '\n';
+		return newId;
 	}
-	return newId;
 }
 }// namespace toolhub::spv
