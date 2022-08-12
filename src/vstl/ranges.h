@@ -347,7 +347,7 @@ public:
         return num == e;
     }
     void operator++() { num += inc; }
-    int64 operator*() {
+    int64& operator*() {
         return num;
     }
 

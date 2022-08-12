@@ -100,7 +100,7 @@ Defines = {"VENGINE_VULKAN_PROJECT", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", 
 VulkanLib = "C:/VulkanSDK/1.3.216.0/"
 BuildProject({
     projectName = "luisa-compute-backend-vk",
-    projectType = "binary",
+    projectType = "shared",
     event = function()
         add_files("**.cpp|build/**.cpp")
         add_defines(Defines)
@@ -120,7 +120,7 @@ BuildProject({
     exception = true,
     unityBuildBatch = 4
 })
---[[
+----[[
 BuildProject({
     projectName = "lc_test",
     projectType = "binary",
@@ -139,4 +139,4 @@ BuildProject({
     end,
     exception = true
 })
--- ]]
+--]]

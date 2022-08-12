@@ -3,12 +3,13 @@
 #include <ast/statement.h>
 #include <ast/expression.h>
 #include <spv/codegen/if_branch.h>
-#include <spv/codegen/for_loop.h>
+#include <spv/codegen/while_loop.h>
 #include <spv/codegen/switch_case.h>
 #include <spv/codegen/function.h>
 #include <spv/codegen/variable.h>
 #include <spv/codegen/internal_type.h>
 #include <spv/codegen/builtin_func.h>
+#include <spv/codegen/i_breakable.h>
 namespace toolhub::spv {
 struct ExprValue {
 	Id valueId;
@@ -23,8 +24,9 @@ public:
 	Id ReadAccept(Type const* type, Id valueId);
 	/////////////////// function cache
 	vstd::HashMap<uint, Variable> varId;
+	vstd::HashMap<uint64, Variable> constVarId;
 	/////////////////// statement cache
-	WhileLoop* loopBranch;
+	vstd::vector<IBreakable const*> breakableStack;
 	Function* func;
 	luisa::compute::Function kernel;
 	vstd::vector<Block> blockStacks;
@@ -34,6 +36,7 @@ public:
 	Id groupId;
 	Id dispatchedThreadId;
 	Id dispatchedCountId;
+	size_t globalVarIdx;
 	/////////////////// return values
 	uint3 kernelGroupSize;
 	BuiltinFunc builtinFunc;
@@ -59,7 +62,6 @@ public:
 	void visit(const CommentStmt* stmt) override;
 	void visit(const MetaStmt* stmt) override;
 	void RegistVariables(
-		vstd::span<luisa::compute::Variable const> variables,
 		vstd::span<luisa::compute::Variable const> builtinVariables);
 	void CullRedundentThread(ScopeStmt const* scope);
 

@@ -278,7 +278,8 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 	auto Cast = [](auto&& value) {
 		return reinterpret_cast<uint64>(static_cast<IShader*>(value));
 	};
-	if (true) {
+	// if (kernel.raytracing())
+	if (false) {
 		auto raygenResult = compiler.CompileSpirV(kernel, true, false);
 		//auto raygenResult = compiler.CompileExistsFile(kernel, true, false, "output.spvasm");
 		auto missResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/miss_output.spvasm");
@@ -301,7 +302,8 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 			types);
 		return Cast(value);
 	} else {
-		auto compileResult = compiler.CompileSpirV(kernel, true, false);
+		//auto compileResult = compiler.CompileExistsFile(kernel, true, false, "output.spvasm");
+		auto compileResult = compiler.CompileSpirV(kernel, true, true);
 		auto value = compileResult.multi_visit_or(
 			vstd::UndefEval<ComputeShader*>{},
 			[&](spvstd::vector<uint> const& code) {

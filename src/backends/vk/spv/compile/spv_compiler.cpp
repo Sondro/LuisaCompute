@@ -17,12 +17,12 @@ void SpvCompiler::DeAllocBuilder(CompileData&& builder) {
 	std::lock_guard lck(builderMtx);
 	builders.emplace_back(std::move(builder));
 }
-vstd::string SpvCompiler::Codegen(luisa::compute::Function func) {
+vstd::string const& SpvCompiler::Codegen(luisa::compute::Function func) {
 	auto compData = AllocBuilder();
 	auto&& builder = *compData.builder;
 	auto&& visitor = *compData.visitor;
 	auto disp = vstd::create_disposer([&] { DeAllocBuilder(std::move(compData)); });
-	const bool rayTracing = true;//func.raytracing();
+	const bool rayTracing = func.raytracing();
 	builder.Reset(func.block_size(), rayTracing);
 	visitor.kernelGroupSize = func.block_size();
 	visitor.isRayTracing = rayTracing;
@@ -58,6 +58,8 @@ vstd::string SpvCompiler::Codegen(luisa::compute::Function func) {
 		}
 	}
 	Preprocess(func, builder);
+	visitor.globalVarIdx = builder.AddString() - 1;
+
 	/*
 	if (rayTracing)
 		RayQuery::PrintFunc(&builder);*/
@@ -75,7 +77,6 @@ vstd::string SpvCompiler::Codegen(luisa::compute::Function func) {
 		}
 	};
 	RecurrentCallable(RecurrentCallable, func);
-
 	for (auto&& func : vstd::ptr_range(customCallables.data() + customCallables.size() - 1, customCallables.data() - 1, -1)) {
 		Id retValue = builder.GetTypeId(func.return_type(), PointerUsage::NotPointer);
 		auto range = vstd::RangeImpl(
@@ -131,7 +132,7 @@ SpvCompiler::CompileCode(vstd::string const& strv, bool debug, bool optimize) {
 	core.SetMessageConsumer(print_msg_to_stderr);
 	opt.SetMessageConsumer(print_msg_to_stderr);
 	if (optimize) {
-		opt.RegisterPerformancePasses();
+		opt.RegisterSizePasses().RegisterPerformancePasses();
 	} else {
 		opt.RegisterPass(spvtools::CreateFreezeSpecConstantValuePass())
 			.RegisterPass(spvtools::CreateUnifyConstantPass())
@@ -161,7 +162,7 @@ vstd::variant<
 	vstd::string>
 SpvCompiler::CompileSpirV(luisa::compute::Function func, bool debug, bool optimize) {
 
-	vstd::string strv(Codegen(func));
+	vstd::string const& strv(Codegen(func));
 
 	if (debug) {
 		auto f = fopen("output.spvasm", "wb");

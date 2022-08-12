@@ -15,7 +15,7 @@ class SpvCompiler {
 	void DeAllocBuilder(CompileData&& builder);
 	void Compile(luisa::compute::Function func, Visitor& vis);
 	void Preprocess(luisa::compute::Function func, Builder& bd);
-	vstd::string Codegen(luisa::compute::Function func);
+	vstd::string const& Codegen(luisa::compute::Function func);
 	vstd::variant<
 		spvstd::vector<uint>,
 		vstd::string>

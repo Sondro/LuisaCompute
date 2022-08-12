@@ -17,19 +17,22 @@ void Visitor::RemoveBlock() {
 void Visitor::Reset(
 	luisa::compute::Function kernel) {
 	this->kernel = kernel;
-	loopBranch = nullptr;
+	breakableStack.clear();
 	bd->inBlock = false;
 	blockStacks.clear();
 	switchIndices.clear();
 	varId.Clear();
+	constVarId.Clear();
 }
 Visitor::~Visitor() {}
 void Visitor::visit(const BreakStmt* stmt) {
-	bd->Str() << "OpBranch "sv << loopBranch->MergeBlock().ToString() << '\n';
+	assert(!breakableStack.empty());
+	bd->Str() << "OpBranch "sv << (*breakableStack.last())->BreakBranch().ToString() << '\n';
 	bd->inBlock = false;
 }
 void Visitor::visit(const ContinueStmt* stmt) {
-	bd->Str() << "OpBranch "sv << loopBranch->ContinueBlock().ToString() << '\n';
+	assert(!breakableStack.empty());
+	bd->Str() << "OpBranch "sv << (*breakableStack.last())->ContinueBranch().ToString() << '\n';
 	bd->inBlock = false;
 }
 ExprValue Visitor::Accept(Expression const* ptr) {
@@ -79,7 +82,12 @@ void Visitor::visit(const IfStmt* stmt) {
 	}
 }
 void Visitor::visit(const LoopStmt* stmt) {
+	WhileLoop whileLoop(
+		bd, [] {}, [] { return Id::TrueId(); });
+	AddBlock(Block(bd, whileLoop.loopBranch, whileLoop.continueBranch));
+	breakableStack.emplace_back(&whileLoop);
 	stmt->body()->accept(*this);
+	breakableStack.erase_last();
 }
 void Visitor::visit(const ExprStmt* stmt) {
 	Accept(stmt->expression());
@@ -109,6 +117,7 @@ void Visitor::visit(const SwitchStmt* stmt) {
 		}
 	}
 	SwitchCase switcher(bd, cond, switchIndices, useDefault);
+	breakableStack.emplace_back(&switcher);
 	Id const* caseIds = switcher.caseId.data();
 
 	for (auto&& i : cases) {
@@ -122,6 +131,7 @@ void Visitor::visit(const SwitchStmt* stmt) {
 			++caseIds;
 		}
 	}
+	breakableStack.erase_last();
 }
 void Visitor::visit(const SwitchCaseStmt* stmt) {
 	stmt->body()->accept(*this);
@@ -130,17 +140,13 @@ void Visitor::visit(const SwitchDefaultStmt* stmt) {
 	stmt->body()->accept(*this);
 }
 void Visitor::visit(const ForStmt* stmt) {
-	Accept(stmt->variable());
-	ForLoop forLoop(bd, [&] {
-		return ReadAccept(stmt->condition());
-	});
-	this->loopBranch = &forLoop;
-	AddBlock(Block(bd, forLoop.LoopBlock(), forLoop.afterLoopBlock));
+	WhileLoop whileLoop(
+		bd, [&] { Accept(stmt->step()); },
+		[&] { return ReadAccept(stmt->condition()); });
+	breakableStack.emplace_back(&whileLoop);
+	AddBlock(Block(bd, whileLoop.loopBranch, whileLoop.continueBranch));
 	stmt->body()->accept(*this);
-	{
-		Block afterLoopBlock(bd, forLoop.afterLoopBlock, forLoop.MergeBlock());
-		Accept(stmt->step());
-	}
+	breakableStack.erase_last();
 }
 void Visitor::visit(const AssignStmt* stmt) {
 	auto varValue = Accept(stmt->lhs());
@@ -149,7 +155,6 @@ void Visitor::visit(const AssignStmt* stmt) {
 }
 void Visitor::visit(const CommentStmt* stmt) {}
 void Visitor::RegistVariables(
-	vstd::span<luisa::compute::Variable const> variables,
 	vstd::span<luisa::compute::Variable const> builtinVariables) {
 	auto uint3Id = Id::VecId(Id::UIntId(), 3).ToString();
 	threadId = bd->NewId();
@@ -161,29 +166,13 @@ void Visitor::RegistVariables(
 
 	using Tag = luisa::compute::Variable::Tag;
 	auto LoadOrdinaryArgs = [&]() {
+		//////////////// Local variables
+		/*
 		for (auto&& i : variables) {
-			PointerUsage usage;
-			switch (i.tag()) {
-				case Tag::LOCAL:
-				case Tag::BUFFER:
-				case Tag::TEXTURE:
-				case Tag::BINDLESS_ARRAY:
-				case Tag::ACCEL:
-				case Tag::REFERENCE:
-					usage = PointerUsage::Function;
-					break;
-				case Tag::SHARED:
-					usage = PointerUsage::Workgroup;
-					break;
-				default:
-					return;
-			}
-			varId.Emplace(
-				i.uid(),
-				vstd::LazyEval([&] {
-					return Variable(bd, i.type(), usage);
-				}));
+			
 		}
+		*/
+		//////////////// builtin variables
 		for (auto&& i : builtinVariables) {
 			switch (i.tag()) {
 				case Tag::DISPATCH_ID:
@@ -200,6 +189,21 @@ void Visitor::RegistVariables(
 					return;
 			}
 		}
+		//////////////// constant variables
+		/*	auto kernelConstantsSize = kernel.constants().size();
+		for (auto&& i : kernel.constants()) {
+			constVarId.Emplace(
+				i.data.hash(),
+				vstd::LazyEval([&] {
+					auto var = Variable(
+						bd,
+						i.type,
+						PointerUsage::Function);
+					Id arrValueId = bd->GetConstArrayId(i.data, i.type);
+					storeCmds.emplace_back(var, arrValueId);
+					return var;
+				}));
+		}*/
 	};
 
 	auto LoadBuiltinVariables = [&] {
@@ -284,7 +288,6 @@ void Visitor::RegistVariables(
 					return paramVar;
 				}));
 		};
-		vstd::vector<std::pair<Variable, Id>> storeCmds;
 		for (auto&& i : kernel.arguments()) {
 			switch (i.tag()) {
 
@@ -293,7 +296,7 @@ void Visitor::RegistVariables(
 						i.uid(),
 						vstd::LazyEval([&] {
 							auto var = Variable(bd, i.type(), PointerUsage::Function);
-							storeCmds.emplace_back(var, func->argValues[argIndex]);
+							var.Store(func->argValues[argIndex]);
 							return var;
 						}));
 				} break;
@@ -314,15 +317,14 @@ void Visitor::RegistVariables(
 		}
 		LoadOrdinaryArgs();
 		LoadBuiltinVariables();
-		for (auto&& i : storeCmds) {
-			i.first.Store(i.second);
-		}
 	}
 }
 void Visitor::visit(const MetaStmt* stmt) {
 	AddBlock(Block(bd, func->funcBlockId));
-	RegistVariables(stmt->variables(), kernel.builtin_variables());
+	bd->BeginFunc();
+	RegistVariables(kernel.builtin_variables());
 	CullRedundentThread(stmt->scope());
+	bd->EndFunc();
 }
 
 ExprValue Visitor::visit(const UnaryExpr* expr) {
@@ -375,16 +377,38 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 	auto printOp = [&](InternalType dstType, Id leftValue, Id rightValue, vstd::string_view opName) {
 		bd->Str() << dstNewId.ToString() << " = "sv << opName << ' ' << dstType.TypeId().ToString() << ' ' << leftValue.ToString() << ' ' << rightValue.ToString() << '\n';
 	};
-	auto PrintSameTypeOp = [&](vstd::string_view op) {
+	auto PrintSameTypeOp = [&](auto&& op) {
+		using Type = std::remove_cvref_t<decltype(op)>;
+
 		auto leftType = InternalType::GetType(expr->lhs()->type());
 		auto rightType = InternalType::GetType(expr->rhs()->type());
 		assert(leftType && rightType && tarType);
 		auto rightTransform = *rightType != *tarType;
+		auto compResult = TypeCaster::Compare(
+			*leftType,
+			*rightType);
 
-		auto TryCast = [&](InternalType type, Expression const* expr) {
-			return TypeCaster::TryCast(bd, type, *tarType, ReadAccept(expr));
+		auto TryCast = [&](InternalType leftType, InternalType rightType, Expression const* expr) {
+			return TypeCaster::TryCast(bd, leftType, rightType, ReadAccept(expr));
 		};
-		printOp(*tarType, TryCast(*leftType, expr->lhs()), TryCast(*rightType, expr->rhs()), op);
+		auto GetOp = [&](InternalType dstType) -> vstd::string_view {
+			if constexpr (std::is_same_v<vstd::string_view, Type>) {
+				return op;
+			} else {
+				return op(dstType);
+			}
+		};
+		switch (compResult) {
+			case TypeCaster::CompareResult::ToLeft: {
+				printOp(*tarType, ReadAccept(expr->lhs()), TryCast(*rightType, *leftType, expr->rhs()), GetOp(*leftType));
+			} break;
+			case TypeCaster::CompareResult::ToRight: {
+				printOp(*tarType, TryCast(*leftType, *rightType, expr->lhs()), ReadAccept(expr->rhs()), GetOp(*rightType));
+			} break;
+			default: {
+				printOp(*tarType, ReadAccept(expr->lhs()), ReadAccept(expr->rhs()), GetOp(*leftType));
+			} break;
+		}
 	};
 	auto FloatOrInt = [&](InternalType type, vstd::string_view floatOp, vstd::string_view intOp) -> vstd::string_view {
 		switch (type.tag) {
@@ -456,8 +480,8 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 			PrintSameTypeOp("OpLogicalOr"sv);
 		} break;
 		case BinaryOp::LESS: {
-			PrintSameTypeOp([&] {
-				switch (tarType->tag) {
+			PrintSameTypeOp([&](InternalType type) {
+				switch (type.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
 						return "OpFUnordLessThan"sv;
@@ -468,12 +492,12 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					default:
 						assert(false);
 				}
-			}());
+			});
 			//TODO
 		} break;
 		case BinaryOp::GREATER: {
-			PrintSameTypeOp([&] {
-				switch (tarType->tag) {
+			PrintSameTypeOp([&](InternalType type) {
+				switch (type.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
 						return "OpFUnordGreaterThan"sv;
@@ -484,11 +508,11 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					default:
 						assert(false);
 				}
-			}());
+			});
 		} break;
 		case BinaryOp::LESS_EQUAL: {
-			PrintSameTypeOp([&] {
-				switch (tarType->tag) {
+			PrintSameTypeOp([&](InternalType type) {
+				switch (type.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
 						return "OpFUnordLessThanEqual"sv;
@@ -499,12 +523,12 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					default:
 						assert(false);
 				}
-			}());
+			});
 			//TODO
 		} break;
 		case BinaryOp::GREATER_EQUAL: {
-			PrintSameTypeOp([&] {
-				switch (tarType->tag) {
+			PrintSameTypeOp([&](InternalType type) {
+				switch (type.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
 						return "OpFUnordGreaterThanEqual"sv;
@@ -515,11 +539,11 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					default:
 						assert(false);
 				}
-			}());
+			});
 		} break;
 		case BinaryOp::EQUAL: {
-			PrintSameTypeOp([&] {
-				switch (tarType->tag) {
+			PrintSameTypeOp([&](InternalType type) {
+				switch (type.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
 						return "OpFUnordEqual"sv;
@@ -529,11 +553,11 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					default:
 						return "OpLogicalEqual"sv;
 				}
-			}());
+			});
 		} break;
 		case BinaryOp::NOT_EQUAL: {
-			PrintSameTypeOp([&] {
-				switch (tarType->tag) {
+			PrintSameTypeOp([&](InternalType type) {
+				switch (type.tag) {
 					case InternalType::Tag::FLOAT:
 					case InternalType::Tag::MATRIX:
 						return "OpFUnordNotEqual"sv;
@@ -543,7 +567,7 @@ ExprValue Visitor::visit(const BinaryExpr* expr) {
 					default:
 						return "OpLogicalNotEqual"sv;
 				}
-			}());
+			});
 		} break;
 		case BinaryOp::MUL: {
 			// OpVectorTimesScalar
@@ -667,16 +691,54 @@ ExprValue Visitor::visit(const LiteralExpr* expr) {
 ExprValue Visitor::visit(const RefExpr* expr) {
 	using VarTag = luisa::compute::Variable::Tag;
 	auto var = expr->variable();
-	auto ite = varId.Find(var.uid());
-	assert(ite);
-	auto& v = ite.Value();
-	return {v.varId, v.usage};
+	auto GetOrLazyEval = [&](auto&& lazyEvalFunc) -> ExprValue {
+		auto& v = varId.Emplace(var.uid(), vstd::LazyEval(std::move(lazyEvalFunc))).Value();
+		return {v.varId, v.usage};
+	};
+	auto GetOrAdd = [&](PointerUsage usage) -> ExprValue {
+		return GetOrLazyEval([&] { return Variable(bd, var.type(), usage); });
+	};
+	auto Get = [&] -> ExprValue {
+		auto ite = varId.Find(var.uid());
+		assert(ite);
+		auto& v = ite.Value();
+		return {v.varId, v.usage};
+	};
+	switch (var.tag()) {
+		case VarTag::LOCAL:
+		case VarTag::BUFFER:
+		case VarTag::TEXTURE:
+		case VarTag::BINDLESS_ARRAY:
+		case VarTag::ACCEL:
+			return GetOrAdd(PointerUsage::Function);
+
+		case VarTag::SHARED: {
+			return GetOrLazyEval([&] {
+				auto builder = bd->Str(globalVarIdx);
+				Id varId{bd->NewId()};
+				bd->AddKernelResource(varId);
+				Id typeId{bd->GetTypeId(var.type(), PointerUsage::Workgroup)};
+				builder << varId.ToString() << " = OpVariable "sv << typeId.ToString() << ' ' << bd->UsageName(PointerUsage::Workgroup) << '\n';
+				return Variable(bd, var.type(), varId, PointerUsage::Workgroup);
+			});
+		} break;
+			// case VarTag::REFERENCE:
+		default:
+			return Get();
+	}
 }
 ExprValue Visitor::visit(const ConstantExpr* expr) {
-	Id arrValueId = bd->GetConstArrayId(expr->data(), expr->type());
-	return {
-		arrValueId,
-		PointerUsage::UniformConstant};
+	auto hash = expr->data().hash();
+	auto ite = constVarId.Emplace(
+		hash,
+		vstd::LazyEval(
+			[&] {
+				auto var = Variable(bd, expr->type(), PointerUsage::Function);
+				auto idValue = bd->GetConstArrayId(expr->data(), expr->type(), hash);
+				var.Store(idValue);
+				return var;
+			}));
+	return {ite.Value().varId, ite.Value().usage};
 }
 ExprValue Visitor::visit(const CallExpr* expr) {
 	if (expr->is_builtin()) {
@@ -714,19 +776,20 @@ ExprValue Visitor::visit(const CallExpr* expr) {
 	}
 }
 void Visitor::CullRedundentThread(ScopeStmt const* scope) {
-	Id threadCompareVec(bd->NewId());
-	Id threadCompareScalar(bd->NewId());
-	bd->Str()
-		<< threadCompareVec.ToString() << " = OpULessThan "sv
-		<< InternalType(InternalType::Tag::BOOL, 3).TypeId().ToString() << ' '
-		<< dispatchedThreadId.ToString() << ' '
-		<< dispatchedCountId.ToString() << '\n'
-		<< threadCompareScalar.ToString() << " = OpAll "sv
-		<< InternalType(InternalType::Tag::BOOL, 1).TypeId().ToString() << ' '
-		<< threadCompareVec.ToString() << '\n';
-	if (isRayTracing) {
+	if (isRayTracing || kernel.tag() != luisa::compute::Function::Tag::KERNEL) {
 		scope->accept(*this);
 	} else {
+		Id threadCompareVec(bd->NewId());
+		Id threadCompareScalar(bd->NewId());
+		bd->Str()
+			<< threadCompareVec.ToString() << " = OpULessThan "sv
+			<< InternalType(InternalType::Tag::BOOL, 3).TypeId().ToString() << ' '
+			<< dispatchedThreadId.ToString() << ' '
+			<< dispatchedCountId.ToString() << '\n'
+			<< threadCompareScalar.ToString() << " = OpAll "sv
+			<< InternalType(InternalType::Tag::BOOL, 1).TypeId().ToString() << ' '
+			<< threadCompareVec.ToString() << '\n';
+
 		IfBranch branch(bd, threadCompareScalar);
 		{
 			Block trueBlock(bd, branch.trueBranch, branch.mergeBlock);

@@ -101,8 +101,32 @@ Id BuiltinFunc::CallFunc(
 				arg | getFirst);
 		}
 		case CallOp::SELECT: {
+			vstd::vector<Variable, VEngine_AllocType::VEngine, 3> vec;
 			auto type = InternalType::GetType(callType);
 			assert(type);
+			for (auto&& i : arg) {
+				vec.emplace_back(i);
+			}
+			assert(vec.size() == 3);
+			auto firstType = InternalType::GetType(vec[0].type);
+			assert(firstType);
+			auto dstFirstType = *firstType;
+			dstFirstType.tag = InternalType::Tag::BOOL;
+			Id newId(bd->NewId());
+			auto builder = bd->Str();
+			builder
+				<< newId.ToString() << " = OpSelect"sv
+				<< ' ' << type->TypeId().ToString() << ' ' << TypeCaster::TryCast(bd, *firstType, dstFirstType, vec[0].Load()).ToString();
+			for (auto&& i : vstd::ptr_range(vec.data() + 1, vec.size() - 1)) {
+				auto argType = InternalType::GetType(i.type);
+				assert(argType);
+				builder
+					<< ' '
+					<< TypeCaster::TryCast(bd, *argType, *type, i.Load()).ToString();
+			}
+			builder << '\n';
+			return newId;
+
 			return OpCall(
 				type->TypeId(),
 				"OpSelect"sv,
@@ -959,12 +983,12 @@ Id BuiltinFunc::MakeVector(
 			auto scalarRange = vstd::RangeImpl(vstd::CacheEndRange(elements) | vstd::ValueRange{});
 			return AccessLib::CompositeConstruct(bd, tarType.TypeId(), scalarRange);
 		} else if (tarEleCount == 1) {
-			auto scalarRange = vstd::RangeImpl(vstd::range(tarType.dimension) | vstd::TransformRange([&](auto&&){
-				return elements[0];
-			}));
+			auto scalarRange = vstd::RangeImpl(vstd::range(tarType.dimension) | vstd::TransformRange([&](auto&&) {
+												   return elements[0];
+											   }));
 			return AccessLib::CompositeConstruct(bd, tarType.TypeId(), scalarRange);
 
-		} else{
+		} else {
 			assert(false);
 		}
 	}

@@ -428,6 +428,13 @@ public:
         mSize--;
     }
 
+    T const* last() const noexcept {
+		return vec.arr + mSize - 1;
+	}
+	T* last() noexcept {
+		return vec.arr + mSize - 1;
+	}
+
     T erase_last() noexcept {
         mSize--;
         if constexpr (!(std::is_trivially_destructible_v<T>)) {

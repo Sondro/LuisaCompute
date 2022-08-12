@@ -100,7 +100,7 @@ Id TypeCaster::TryCast(
 			<< " = OpSelect "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << ' ' << constOne.ToString() << '\n';
 		return newId;
 	} else if (dstType.tag == InternalType::Tag::BOOL) {
-		auto constZero = GetConst(dstType, 0);
+		auto constZero = GetConst(srcType, 0);
 		Id newId(bd->NewId());
 		bd->Str()
 			<< newId.ToString() << " = OpINotEqual "sv << dstType.TypeId().ToString() << ' ' << value.ToString() << ' ' << constZero.ToString() << '\n';

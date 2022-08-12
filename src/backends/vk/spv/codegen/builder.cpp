@@ -2,6 +2,10 @@
 #include <vulkan_include.h>
 #include "variable.h"
 namespace toolhub::spv {
+Builder::Builder() {
+	strings.reserve(64);
+}
+Builder::~Builder() {}
 namespace Builder_detail {
 // float: 0
 // int: 1
@@ -10,7 +14,7 @@ namespace Builder_detail {
 // vec: 4 + 3 * ele_type + (dim - 2)
 // mat: 16 + dim - 2
 // void: 19
-static void AddInternalTypeCode(vstd::string& str) {
+static void AddInternalTypeCode(vstd::StringBuilder&& str) {
 	str << R"(
 %0 = OpTypeFloat 32
 %1 = OpTypeInt 32 1
@@ -88,19 +92,32 @@ struct VecInfo<Matrix<dim>> {
 	static constexpr size_t dimension = dim;
 };
 }// namespace Builder_detail
+size_t Builder::AddString() {
+	while (strings.size() <= stringCount) {
+		strings.emplace_back();
+	}
+	lastStr = &strings[stringCount];
+	return stringCount++;
+}
+
 void Builder::AddKernelResource(Id resource) {
-	beforeEntryHeader << resource.ToString() << ' ';
+	BeforeEntryHeader() << resource.ToString() << ' ';
 }
 void Builder::Reset(uint3 groupSize, bool useRayTracing) {
+	for (auto&& i : strings) {
+		i.clear();
+	}
+	stringCount = 0;
+	beforeEntryHeaderIdx = AddString();
+	afterEntryHeaderIdx = AddString();
+	decorateStrIdx = AddString();
+	typeStrIdx = AddString();
+	AddString();
 	// allocate 1m memory
 	cbufferType.Delete();
 	cbufferType.New();
 	kernelArgType.Delete();
 	kernelArgType.New();
-	beforeEntryHeader.clear();
-	afterEntryHeader.clear();
-	decorateStr.clear();
-	typeStr.clear();
 	constArrMap.Clear();
 	types.Clear();
 	constMap.Clear();
@@ -108,75 +125,71 @@ void Builder::Reset(uint3 groupSize, bool useRayTracing) {
 	inBlock = false;
 	constMap.Emplace(0u, Id::ZeroId());
 
-	afterEntryHeader.reserve(8192);
-	beforeEntryHeader.reserve(1024);
-	decorateStr.reserve(1024);
-	typeStr.reserve(8192);
 	idCount = Id::StartId().id;
 	// init
 	if (useRayTracing) {
-		beforeEntryHeader << "OpCapability RayTracingKHR\n"sv;
+		BeforeEntryHeader() << "OpCapability RayTracingKHR\n"sv;
 	} else {
-		beforeEntryHeader = "OpCapability Shader\n"sv;
+		BeforeEntryHeader() = "OpCapability Shader\n"sv;
 	}
-	beforeEntryHeader << R"(OpCapability RuntimeDescriptorArray
+	BeforeEntryHeader() << R"(OpCapability RuntimeDescriptorArray
 OpCapability Matrix
 OpCapability VariablePointers
 )"sv;
 	if (useRayTracing) {
-		beforeEntryHeader << R"(OpExtension "SPV_KHR_ray_tracing"
+		BeforeEntryHeader() << R"(OpExtension "SPV_KHR_ray_tracing"
 )"sv;
 	}
-	beforeEntryHeader << R"(OpExtension "SPV_EXT_descriptor_indexing"
+	BeforeEntryHeader() << R"(OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_variable_pointers"
 %49 = OpExtInstImport "GLSL.std.450"
 )"sv;
 	// use rayquery
 	if (useRayTracing) {
 		// %23 = OpTypeRayQueryKHR
-		typeStr += R"(%28 = OpTypeAccelerationStructureKHR
+		TypeStr() << R"(%28 = OpTypeAccelerationStructureKHR
 %29 = OpTypePointer UniformConstant %28
 %30 = OpTypePointer Function %28)"sv;
-		beforeEntryHeader << R"(OpMemoryModel Logical GLSL450
+		BeforeEntryHeader() << R"(OpMemoryModel Logical GLSL450
 OpEntryPoint RayGenerationKHR %48 "main" %24 %38 )"sv;
 	} else {
-		beforeEntryHeader << R"(OpMemoryModel Logical GLSL450
+		BeforeEntryHeader() << R"(OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %48 "main" %24 %25 %26 )"sv;
 	}
 
 	if (!useRayTracing) {
-		afterEntryHeader += "OpExecutionMode %48 LocalSize "sv;
-		vstd::to_string(groupSize.x, afterEntryHeader);
-		afterEntryHeader << ' ';
-		vstd::to_string(groupSize.y, afterEntryHeader);
-		afterEntryHeader << ' ';
-		vstd::to_string(groupSize.z, afterEntryHeader);
+		AfterEntryHeader() += "OpExecutionMode %48 LocalSize "sv;
+		vstd::to_string(groupSize.x, AfterEntryHeader());
+		AfterEntryHeader() << ' ';
+		vstd::to_string(groupSize.y, AfterEntryHeader());
+		AfterEntryHeader() << ' ';
+		vstd::to_string(groupSize.z, AfterEntryHeader());
 	}
-	afterEntryHeader << R"(
+	AfterEntryHeader() << R"(
 OpSource HLSL 640
 OpName %48 "main"
 )"sv;
 	// ray payload
-	Builder_detail::AddInternalTypeCode(typeStr);
+	Builder_detail::AddInternalTypeCode(TypeStr());
 	if (useRayTracing) {
-		decorateStr << R"(OpMemberName %36 0 "bary"
+		DecorateStr() << R"(OpMemberName %36 0 "bary"
 OpMemberName %36 1 "primitiveID"
 OpMemberName %36 2 "instanceID"
 OpDecorate %24 BuiltIn LaunchIdKHR
 )"sv;
-		typeStr << R"(%36 = OpTypeStruct %4 %2 %2
+		TypeStr() << R"(%36 = OpTypeStruct %4 %2 %2
 %37 = OpTypePointer RayPayloadKHR %36
 )"sv;
 		Str() << "%38 = OpVariable %37 RayPayloadKHR\n"sv;
 	} else {
-		decorateStr << R"(OpDecorate %24 BuiltIn GlobalInvocationId
+		DecorateStr() << R"(OpDecorate %24 BuiltIn GlobalInvocationId
 OpDecorate %25 BuiltIn LocalInvocationId
 OpDecorate %26 BuiltIn WorkgroupId
 )"sv;
 	}
 	auto uint16{NewId()};
 	constMap.Emplace(16u, uint16);
-	typeStr << uint16.ToString() << " = OpConstant %2 16\n%32 = OpTypeArray %31 "sv << uint16.ToString() << R"(
+	TypeStr() << uint16.ToString() << " = OpConstant %2 16\n%32 = OpTypeArray %31 "sv << uint16.ToString() << R"(
 %35 = OpTypePointer UniformConstant %32
 %33 = OpTypePointer UniformConstant %31
 )"sv;
@@ -225,23 +238,22 @@ OpDecorate %26 BuiltIn WorkgroupId
 	if (useRayTracing) {
 	}
 }
-vstd::string Builder::Combine() {
-	vstd::string result;
-	*(beforeEntryHeader.end() - 1) = '\n';
-	result.resize(
-		beforeEntryHeader.size() +
-		afterEntryHeader.size() + decorateStr.size() + typeStr.size() + bodyStr.size());
-	char* ptr = result.data();
-	auto copy = [&](vstd::string& str) {
-		memcpy(ptr, str.data(), str.size());
-		ptr += str.size();
-	};
-	copy(beforeEntryHeader);
-	copy(afterEntryHeader);
-	copy(decorateStr);
-	copy(typeStr);
-	copy(bodyStr);
-	return result;
+vstd::string const& Builder::Combine() {
+	*(BeforeEntryHeader().end() - 1) = '\n';
+	size_t strSize = 0;
+	for (auto&& i :  vstd::ptr_range(strings.data(), stringCount)) {
+		strSize += i.size();
+	}
+	//resultString.clear();
+	auto&& resultString = strings[0];
+	auto beforeSize = resultString.size();
+	resultString.resize(strSize);
+	auto ptr = resultString.data() + beforeSize;
+	for (auto&& i :  vstd::ptr_range(strings.data() + 1, stringCount - 1)) {
+		memcpy(ptr, i.data(), i.size());
+		ptr += i.size();
+	}
+	return resultString;
 }
 Builder::TypeName& Builder::GetTypeName(BufferTypeDescriptor const& type) {
 	auto ite = types.TryEmplace(type);
@@ -297,10 +309,10 @@ Builder::TypeName& Builder::GetTypeName(InternalType const& type) {
 	return result;
 }
 void Builder::GenBuffer(Id structId, TypeName& eleTypeName, uint arrayStride) {
-	vstd::StringBuilder(&decorateStr)
+	DecorateStr()
 		<< "OpMemberDecorate "sv << structId.ToString() << " 0 Offset 0\nOpDecorate "sv
 		<< structId.ToString() << " Block\n"sv;
-	vstd::StringBuilder(&typeStr)
+	TypeStr()
 		<< structId.ToString() << " = OpTypeStruct "sv
 		<< GetRuntimeArrayType(eleTypeName, PointerUsage::NotPointer, arrayStride).ToString() << '\n';
 }
@@ -346,7 +358,7 @@ Builder::TypeName& Builder::GetTypeName(Type const* type) {
 			} break;
 			case Tag::ARRAY: {
 				typeName = Id(idCount++);
-				vstd::StringBuilder(&typeStr)
+				TypeStr()
 					<< typeName.ToString() << " = OpTypeArray "sv
 					<< func(func, type->element()).typeId.ToString()
 					<< ' ' << GetConstId((uint)type->dimension()).ToString() << '\n';
@@ -388,7 +400,7 @@ Builder::TypeName& Builder::GetTypeName(TexDescriptor const& type) {
 			break;
 	}
 	result.typeId = NewId();
-	vstd::StringBuilder(&typeStr) << result.typeId.ToString() << " = OpTypeImage "sv << scalarTypeName.typeId.ToString() << ' ' << static_cast<char>(type.dimension + 48) << "D 2 0 0 "sv << static_cast<char>(sampleIdx + 48) << ' ' << formatStr << '\n';
+	TypeStr() << result.typeId.ToString() << " = OpTypeImage "sv << scalarTypeName.typeId.ToString() << ' ' << static_cast<char>(type.dimension + 48) << "D 2 0 0 "sv << static_cast<char>(sampleIdx + 48) << ' ' << formatStr << '\n';
 	//TODO: format
 	return result;
 }
@@ -399,7 +411,7 @@ Id Builder::GetTypeNamePointer(TypeName& typeName, PointerUsage usage) {
 		auto& value = typeName.pointerId[(vbyte)usage - 1];
 		if (!value.valid()) {
 			value = Id(idCount++);
-			vstd::StringBuilder(&typeStr) << value.ToString() << " = OpTypePointer "sv << UsageName(usage) << ' ' << typeName.typeId.ToString() << '\n';
+			TypeStr() << value.ToString() << " = OpTypePointer "sv << UsageName(usage) << ' ' << typeName.typeId.ToString() << '\n';
 		}
 		return value;
 	}
@@ -407,10 +419,10 @@ Id Builder::GetTypeNamePointer(TypeName& typeName, PointerUsage usage) {
 Id Builder::GetRuntimeArrayType(TypeName& typeName, PointerUsage usage, uint runtimeArrayStride) {
 	if (!typeName.runtimeId.valid()) {
 		typeName.runtimeId = NewId();
-		vstd::StringBuilder(&typeStr) << typeName.runtimeId.ToString() << " = OpTypeRuntimeArray "sv << typeName.typeId.ToString() << '\n';
+		TypeStr() << typeName.runtimeId.ToString() << " = OpTypeRuntimeArray "sv << typeName.typeId.ToString() << '\n';
 		if (runtimeArrayStride != 0 && typeName.runtimeArrayStride == 0) {
 			typeName.runtimeArrayStride = runtimeArrayStride;
-			vstd::StringBuilder(&decorateStr)
+			DecorateStr()
 				<< "OpDecorate "sv
 				<< typeName.runtimeId.ToString()
 				<< " ArrayStride "sv
@@ -422,7 +434,7 @@ Id Builder::GetRuntimeArrayType(TypeName& typeName, PointerUsage usage, uint run
 	auto& id = typeName.runtimePointerId[static_cast<uint>(usage) - 1];
 	if (id.valid()) return id;
 	id = NewId();
-	vstd::StringBuilder(&typeStr) << id.ToString() << " = OpTypePointer "sv << UsageName(usage) << ' ' << typeName.runtimeId.ToString() << '\n';
+	TypeStr() << id.ToString() << " = OpTypePointer "sv << UsageName(usage) << ' ' << typeName.runtimeId.ToString() << '\n';
 	return id;
 }
 
@@ -448,7 +460,7 @@ std::pair<Id, Id> Builder::GetTypeAndPtrId(TypeDescriptor const& type, PointerUs
 		auto& value = typeName.pointerId[(vbyte)usage - 1];
 		if (!value.valid()) {
 			value = Id(idCount++);
-			vstd::StringBuilder(&typeStr) << value.ToString() << " = OpTypePointer "sv << UsageName(usage) << ' ' << typeName.typeId.ToString() << '\n';
+			TypeStr() << value.ToString() << " = OpTypePointer "sv << UsageName(usage) << ' ' << typeName.typeId.ToString() << '\n';
 		}
 		return {typeName.typeId, value};
 	}
@@ -457,7 +469,7 @@ Id Builder::GetSampledImageType(
 	TypeName& typeName) {
 	if (typeName.sampledId.valid()) return typeName.sampledId;
 	typeName.sampledId = NewId();
-	vstd::StringBuilder(&typeStr) << typeName.sampledId.ToString() << " = OpTypeSampledImage "sv << typeName.typeId.ToString() << '\n';
+	TypeStr() << typeName.sampledId.ToString() << " = OpTypeSampledImage "sv << typeName.typeId.ToString() << '\n';
 	return typeName.sampledId;
 }
 Id Builder::GetSampledImageTypeId(
@@ -482,7 +494,7 @@ Id Builder::GetFuncReturnTypeId(Id returnType, vstd::IRange<Id>* argType) {
 			md5,
 			vstd::LazyEval([&] {
 				Id newId(idCount++);
-				vstd::StringBuilder builder(&typeStr);
+				auto builder = TypeStr();
 				builder << newId.ToString() << " = OpTypeFunction "sv << returnType.ToString() << ' ';
 				if (argType) {
 					for (auto&& i : *argType) {
@@ -503,7 +515,7 @@ std::pair<Id, size_t> Builder::GenStruct(
 	auto size = 0;
 	size_t memIdx = 0;
 	auto structStr = structId.ToString();
-	vstd::StringBuilder cmd(&typeStr);
+	auto cmd = TypeStr();
 	cmd << structStr << " = OpTypeStruct "sv;
 	size_t maxAlign = 1;
 	for (auto&& m : type) {
@@ -522,7 +534,7 @@ std::pair<Id, size_t> Builder::GenStruct(
 					  size_t(0), [](Type const* t) { return t->size(); }, [](InternalType const& t) { return t.Size(); }); };
 		size = vk::CalcAlign(size, align);
 		maxAlign = std::max(align, maxAlign);
-		vstd::StringBuilder(&decorateStr) << "OpMemberDecorate "sv << structStr << ' ' << vstd::to_string(memIdx) << " Offset "sv << vstd::to_string(size) << '\n';
+		DecorateStr() << "OpMemberDecorate "sv << structStr << ' ' << vstd::to_string(memIdx) << " Offset "sv << vstd::to_string(size) << '\n';
 		if (isMatrix() && dimension() == 3)
 			AddFloat3x3Decorate(structId, memIdx);
 		size += structSize();
@@ -542,7 +554,7 @@ std::pair<Id, size_t> Builder::GenStruct(
 }
 
 void Builder::AddFloat3x3Decorate(Id structId, uint memberIdx) {
-	vstd::StringBuilder(&decorateStr) << "OpMemberDecorate "sv << structId.ToString() << ' ' << vstd::to_string(memberIdx) << " MatrixStride 16\n"sv;
+	DecorateStr() << "OpMemberDecorate "sv << structId.ToString() << ' ' << vstd::to_string(memberIdx) << " MatrixStride 16\n"sv;
 }
 
 Id Builder::GenStruct(Type const* type) {
@@ -551,11 +563,11 @@ Id Builder::GenStruct(Type const* type) {
 	size_t memIdx = 0;
 	auto structStr = structId.ToString();
 	{
-		vstd::StringBuilder cmd(&typeStr);
+		auto cmd = TypeStr();
 		cmd << structStr << " = OpTypeStruct "sv;
 		for (auto&& m : type->members()) {
 			vk::CalcAlign(size, m->alignment());
-			vstd::StringBuilder(&decorateStr) << "OpMemberDecorate "sv << structStr << ' ' << vstd::to_string(memIdx) << " Offset "sv << vstd::to_string(size) << '\n';
+			DecorateStr() << "OpMemberDecorate "sv << structStr << ' ' << vstd::to_string(memIdx) << " Offset "sv << vstd::to_string(size) << '\n';
 			if (m->is_matrix() && m->dimension() == 3)
 				AddFloat3x3Decorate(structId, memIdx);
 			size += m->size();
@@ -568,7 +580,7 @@ Id Builder::GenStruct(Type const* type) {
 }
 void Builder::BindVariable(Id varId, uint descSet, uint binding) {
 	auto str = varId.ToString();
-	vstd::StringBuilder(&decorateStr)
+	DecorateStr()
 		<< "OpDecorate "sv << str << " DescriptorSet "sv << vstd::to_string(descSet)
 		<< "\nOpDecorate "sv << str << " Binding "sv << vstd::to_string(binding) << '\n';
 }
@@ -599,7 +611,7 @@ Id Builder::GenConstId(ConstValue const& value) {
 				[&](size_t index) {
 					return GetConstId(elePtr[index]);
 				});
-			vstd::StringBuilder builder(&typeStr);
+			auto builder = TypeStr();
 			newId = NewId();
 			//TODO: add type
 			builder << newId.ToString() << " = OpConstantComposite "sv << VIF::VecId().ToString();
@@ -615,7 +627,7 @@ Id Builder::GenConstId(ConstValue const& value) {
 				[&](size_t i) {
 					return GetConstId(v.cols[i]);
 				});
-			vstd::StringBuilder builder(&typeStr);
+			auto builder = TypeStr();
 			newId = NewId();
 			builder << newId.ToString() << " = OpConstantComposite "sv << Id::MatId(VIF::dimension).ToString();
 			for (auto&& i : arr) {
@@ -624,13 +636,13 @@ Id Builder::GenConstId(ConstValue const& value) {
 			builder << '\n';
 		} else if constexpr (std::is_same_v<T, uint>) {
 			newId = NewId();
-			vstd::StringBuilder(&typeStr) << newId.ToString() << " = OpConstant "sv << Id::UIntId().ToString() << ' ' << vstd::to_string(v) << '\n';
+			TypeStr() << newId.ToString() << " = OpConstant "sv << Id::UIntId().ToString() << ' ' << vstd::to_string(v) << '\n';
 		} else if constexpr (std::is_same_v<T, int32>) {
 			newId = NewId();
-			vstd::StringBuilder(&typeStr) << newId.ToString() << " = OpConstant "sv << Id::IntId().ToString() << ' ' << vstd::to_string(v) << '\n';
+			TypeStr() << newId.ToString() << " = OpConstant "sv << Id::IntId().ToString() << ' ' << vstd::to_string(v) << '\n';
 		} else if constexpr (std::is_same_v<T, float>) {
 			newId = NewId();
-			vstd::StringBuilder(&typeStr) << newId.ToString() << " = OpConstant "sv << Id::FloatId().ToString() << ' ' << vstd::to_string(v) << '\n';
+			TypeStr() << newId.ToString() << " = OpConstant "sv << Id::FloatId().ToString() << ' ' << vstd::to_string(v) << '\n';
 		} else if constexpr (std::is_same_v<T, bool>) {
 			newId = v ? Id::TrueId() : Id::FalseId();
 		}
@@ -674,21 +686,23 @@ Id Builder::GetConstId(ConstValue const& value) {
 Id Builder::GenConstArrayId(ConstantData const& value, Id typeId) {
 	Id newId(NewId());
 	Id newPtrId(NewId());
-	luisa::visit([&](auto&& sp) {
-		auto builder = Str();
-		builder << newId.ToString() << " = OpConstantComposite "sv << typeId.ToString();
-		for (auto&& i : sp) {
-			builder << ' ' << GetConstId(i).ToString();
-		}
-	},
-				 value.view());
+	luisa::visit(
+		[&](auto&& sp) {
+			auto builder = TypeStr();
+			builder << newId.ToString() << " = OpConstantComposite "sv << typeId.ToString();
+			for (auto&& i : sp) {
+				builder << ' ' << GetConstId(i).ToString();
+			}
+			builder << '\n';
+		},
+		value.view());
 	return newId;
 }
 
-Id Builder::GetConstArrayId(ConstantData const& data, Type const* type) {
+Id Builder::GetConstArrayId(ConstantData const& data, Type const* type, size_t hash) {
 	return constArrMap
 		.Emplace(
-			data.hash(),
+			hash,
 			vstd::LazyEval([&] {
 				return GenConstArrayId(data, GetTypeId(type, PointerUsage::NotPointer));
 			}))
@@ -727,5 +741,12 @@ void Builder::GenCBuffer(vstd::IRange<luisa::compute::Variable>& args) {
 		  << " = OpVariable "sv << GetTypeNamePointer(*cbufferType, PointerUsage::StorageBuffer).ToString()
 		  << ' ' << UsageName(PointerUsage::StorageBuffer)
 		  << '\n';
+}
+void Builder::BeginFunc() {
+	AddString();
+	insideFunction = true;
+}
+void Builder::EndFunc() {
+	insideFunction = false;
 }
 }// namespace toolhub::spv

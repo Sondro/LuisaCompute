@@ -32,6 +32,8 @@ struct compare<luisa::compute::Type const*> {
 namespace toolhub::spv {
 class Builder : public vstd::IOperatorNewBase {
 public:
+	friend class Function;
+
 	struct TypeName {
 		Id typeId;
 		Id runtimeId;
@@ -67,6 +69,17 @@ private:
 	TypeName& GetTypeName(TexDescriptor const& type);
 	TypeName& GetTypeName(InternalType const& type);
 	TypeName& GetTypeName(BufferTypeDescriptor const& type);
+	vstd::vector<vstd::string> strings;
+	size_t stringCount = 0;
+	size_t beforeEntryHeaderIdx = 0;
+	size_t afterEntryHeaderIdx = 0;
+	size_t decorateStrIdx = 0;
+	size_t typeStrIdx = 0;
+	vstd::StringBuilder DecorateStr() { return {&strings[decorateStrIdx]}; }
+	vstd::string& BeforeEntryHeader() { return strings[beforeEntryHeaderIdx]; }
+	vstd::string& AfterEntryHeader() { return strings[afterEntryHeaderIdx]; }
+	vstd::string* lastStr;
+	bool insideFunction = false;
 
 	Id GetTypeNamePointer(TypeName& typeName, PointerUsage usage);
 	Id GetRuntimeArrayType(
@@ -75,20 +88,20 @@ private:
 		uint runtimeArrayStride);
 	Id GetSampledImageType(
 		TypeName& typeName);
-	vstd::string bodyStr;
-	vstd::string beforeEntryHeader;
-	vstd::string afterEntryHeader;
-	vstd::string decorateStr;
-	vstd::string typeStr;
 	void GenBuffer(Id structId, TypeName& eleTypeName, uint arrayStride);
 
 public:
+	size_t AddString();
+	vstd::StringBuilder TypeStr() { return {&strings[typeStrIdx]}; }
+	vstd::StringBuilder VarStr() { return {&strings[stringCount - (insideFunction ? 2 : 1)]}; }
+	Builder();
+	~Builder();
 	void AddKernelResource(Id resource);
 	Id CBufferVar() const { return cbufferVar; }
 	void GenCBuffer(vstd::IRange<luisa::compute::Variable>& args);
-	vstd::StringBuilder TypeStr() { return {&typeStr}; }
-	vstd::StringBuilder Str() { return {&bodyStr}; }
-	vstd::string Combine();
+	vstd::StringBuilder Str() { return {lastStr}; }
+	vstd::StringBuilder Str(size_t index) { return {&strings[index]}; }
+	vstd::string const& Combine();
 	//void GenConstBuffer();
 	bool inBlock = false;
 	std::pair<Id, size_t> GenStruct(
@@ -114,7 +127,9 @@ public:
 	void BindCBuffer(uint binding);
 	////////////////////// variable
 	Id GetConstId(ConstValue const& value);
-	Id GetConstArrayId(ConstantData const& data, Type const* type);
+	Id GetConstArrayId(ConstantData const& data, Type const* type, size_t hash);
 	Id ReadSampler(Id index);
+	void BeginFunc();
+	void EndFunc();
 };
 }// namespace toolhub::spv

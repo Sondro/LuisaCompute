@@ -1,5 +1,6 @@
 #pragma once
 #include "types.h"
+#include <vstl/string_builder.h>
 #include <vstl/small_vector.h>
 namespace toolhub::spv {
 class Builder;
@@ -20,5 +21,9 @@ public:
 	void Return();
 	//Id GetReturnTypeBranch(Id value);
 	~Function();
+	vstd::StringBuilder VarStr() { return {varString}; }
+
+private:
+	vstd::string* varString;
 };
 }// namespace toolhub::spv

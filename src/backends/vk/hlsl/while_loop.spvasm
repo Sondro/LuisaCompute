@@ -1,0 +1,12 @@
+; loop
+%18 = OpLabel
+; commands
+%19 = OpAccessChain %_ptr_StorageBuffer_uint %bb %int_0 %17
+%20 = OpLoad %uint %19
+%21 = OpIAdd %uint %20 %17
+OpStore %19 %21
+OpLoopMerge %22 %18 None
+OpBranch %18
+%22 = OpLabel
+OpUnreachable
+OpFunctionEnd

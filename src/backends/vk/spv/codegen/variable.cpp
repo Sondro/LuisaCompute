@@ -7,7 +7,7 @@ Variable::Variable(Builder* bd, Type const* type, PointerUsage usage)
 	auto typePtrId = typeAndPtrId.second;
 	typeId = typeAndPtrId.first;
 	varId = bd->NewId();
-	bd->Str() << varId.ToString() << " = OpVariable "sv << typePtrId.ToString() << ' ' << bd->UsageName(usage) << '\n';
+	bd->VarStr() << varId.ToString() << " = OpVariable "sv << typePtrId.ToString() << ' ' << bd->UsageName(usage) << '\n';
 }
 Variable::Variable(Builder* bd, Type const* type, Id varId, PointerUsage usage)
 	: Component(bd), type(type), usage(usage), varId(varId) {
