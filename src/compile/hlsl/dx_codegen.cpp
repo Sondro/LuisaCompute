@@ -2,6 +2,7 @@
 
 #include <compile/hlsl/dx_codegen.h>
 #include <compile/hlsl/struct_generator.h>
+#include <compile/hlsl/codegen_stack_data.h>
 namespace toolhub::directx {
 
 void StringStateVisitor::visit(const UnaryExpr *expr) {
@@ -138,16 +139,28 @@ void StringStateVisitor::visit(const MemberExpr *expr) {
 }
 void StringStateVisitor::visit(const AccessExpr *expr) {
     str << "(";
+    auto disp = vstd::create_disposer([&] {
+        str << ")";
+    });
     auto t = expr->range()->type();
+    auto PrintOrigin = [&] {
+        expr->range()->accept(*this);
+        str << '[';
+        expr->index()->accept(*this);
+        str << ']';
+        if (t->tag() == Type::Tag::MATRIX && t->dimension() == 3u) {
+            str << ".xyz"sv;
+        }
+    };
     if (expr->range()->tag() == Expression::Tag::REF) {
         auto variable = static_cast<RefExpr const *>(expr->range())->variable();
         if (variable.tag() == Variable::Tag::SHARED) {
-            expr->range()->accept(*this);
-            str << '[';
-            expr->index()->accept(*this);
-            str << ']';
+            PrintOrigin();
             return;
         }
+    } else if (expr->range()->tag() == Expression::Tag::CONSTANT) {
+        PrintOrigin();
+        return;
     }
     switch (t->tag()) {
         case Type::Tag::BUFFER:
@@ -173,7 +186,6 @@ void StringStateVisitor::visit(const AccessExpr *expr) {
             str << ']';
         } break;
     }
-    str << ")";
 }
 void StringStateVisitor::visit(const RefExpr *expr) {
     Variable v = expr->variable();
@@ -238,7 +250,11 @@ void StringStateVisitor::visit(const ConstantExpr *expr) {
 }
 
 void StringStateVisitor::visit(const BreakStmt *state) {
-    str << "break;\n";
+#ifdef USE_SPIRV
+    auto stackData = CodegenUtility::StackData();
+    if (!CodegenStackData::ThreadLocalSpirv() || !stackData->tempSwitchExpr)
+#endif
+        str << "break;\n";
 }
 void StringStateVisitor::visit(const ContinueStmt *state) {
 
@@ -257,6 +273,11 @@ void StringStateVisitor::visit(const ScopeStmt *state) {
     str << "{\n";
     for (auto &&i : state->statements()) {
         i->accept(*this);
+        switch (state->tag()) {
+            case Statement::Tag::BREAK:
+            case Statement::Tag::CONTINUE:
+                break;
+        }
     }
     str << "}\n";
 }
@@ -282,20 +303,65 @@ void StringStateVisitor::visit(const ExprStmt *state) {
     str << ";\n";
 }
 void StringStateVisitor::visit(const SwitchStmt *state) {
-    str << "switch(";
-    state->expression()->accept(*this);
-    str << ")";
-    state->body()->accept(*this);
+#ifdef USE_SPIRV
+    if (CodegenStackData::ThreadLocalSpirv()) {
+        auto stackData = CodegenUtility::StackData();
+        stackData->tempSwitchExpr = state->expression();
+        stackData->tempSwitchCounter = 0;
+        state->body()->accept(*this);
+        stackData->tempSwitchExpr = nullptr;
+    } else
+#endif
+    {
+
+        str << "switch(";
+        state->expression()->accept(*this);
+        str << ")";
+        state->body()->accept(*this);
+    }
 }
 void StringStateVisitor::visit(const SwitchCaseStmt *state) {
-    str << "case ";
-    state->expression()->accept(*this);
-    str << ":";
-    state->body()->accept(*this);
+#ifdef USE_SPIRV
+    if (CodegenStackData::ThreadLocalSpirv()) {
+        auto stackData = CodegenUtility::StackData();
+        if (stackData->tempSwitchCounter == 0) {
+            str << "if("sv;
+        } else {
+            str << "else if("sv;
+        }
+        ++stackData->tempSwitchCounter;
+        CodegenUtility::StackData()->tempSwitchExpr->accept(*this);
+        str << "=="sv;
+        state->expression()->accept(*this);
+        str << ')';
+        state->body()->accept(*this);
+    } else
+#endif
+    {
+        str << "case ";
+        state->expression()->accept(*this);
+        str << ":";
+        state->body()->accept(*this);
+    }
 }
 void StringStateVisitor::visit(const SwitchDefaultStmt *state) {
-    str << "default:";
-    state->body()->accept(*this);
+#ifdef USE_SPIRV
+    if (CodegenStackData::ThreadLocalSpirv()) {
+        auto stackData = CodegenUtility::StackData();
+        if (stackData->tempSwitchCounter == 0) {
+            state->body()->accept(*this);
+        } else {
+            str << "else";
+            state->body()->accept(*this);
+        }
+        ++stackData->tempSwitchCounter;
+
+    } else
+#endif
+    {
+        str << "default:";
+        state->body()->accept(*this);
+    }
 }
 
 void StringStateVisitor::visit(const AssignStmt *state) {

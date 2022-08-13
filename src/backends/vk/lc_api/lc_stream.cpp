@@ -328,6 +328,7 @@ public:
 		auto usage = func.variable_usage(bf.variable_uid);
 		if (((uint)usage & (uint)Usage::WRITE) == 0) {
 			stream->bindVec.emplace_back(accel);
+			stream->bindVec.emplace_back(accel->InstanceBuffer());
 			stream->StateTracker().MarkBufferRead(
 				accel->AccelBuffer(),
 				BufferReadState::UseAccel);

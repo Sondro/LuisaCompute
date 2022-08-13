@@ -28,18 +28,21 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     StructGenerator *rayDesc = nullptr;
     StructGenerator *hitDesc = nullptr;
     vstd::HashMap<vstd::string, vstd::string> structReplaceName;
-    vstd::HashMap<uint64_t> generatedConstants;
     DefinitionAnalysis::VariableSet sharedVariable;
     DefinitionAnalysis::VariableSet allVariables;
+    Expression const *tempSwitchExpr;
+    size_t tempSwitchCounter = 0;
     CodegenStackData();
     void Clear();
     uint AddBindlessType(Type const *type);
     StructGenerator *CreateStruct(Type const *t);
     uint64 GetConstCount(uint64 data);
+    vstd::optional<uint64> GetNewConstCount(uint64 data);
     uint64 GetFuncCount(uint64 data);
     uint64 GetTypeCount(Type const *t);
     ~CodegenStackData();
     static vstd::unique_ptr<CodegenStackData> Allocate();
     static void DeAllocate(vstd::unique_ptr<CodegenStackData>&& v);
+    static bool& ThreadLocalSpirv();
 };
 }// namespace toolhub::directx

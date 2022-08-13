@@ -30,17 +30,17 @@ void Accel::UpdateMesh(FrameResource* frameRes) {
 	auto bfView = frameRes->AllocateUpload(sizeof(uint64) * requireUpdateMesh.size());
 	auto iterator = vstd::RangeImpl(
 		vstd::CacheEndRange(requireUpdateMesh) | vstd::TransformRange(
-			[&](uint index) {
-				auto newAddressValue = GetAccelAddress(device, accelInsts[index].second->mesh->GetAccel());
-				accelInsts[index].first.accelerationStructureReference = newAddressValue;
-				VkBufferCopy v;
-				bfView.buffer->CopyValueFrom(newAddressValue, bfView.offset);
-				v.srcOffset = bfView.offset;
-				bfView.offset += sizeof(uint64);
-				v.dstOffset = index * ACCEL_INST_SIZE + offsetof(VkAccelerationStructureInstanceKHR, accelerationStructureReference);
-				v.size = sizeof(uint64);
-				return v;
-			}));
+													 [&](uint index) {
+														 auto newAddressValue = GetAccelAddress(device, accelInsts[index].second->mesh->GetAccel());
+														 accelInsts[index].first.accelerationStructureReference = newAddressValue;
+														 VkBufferCopy v;
+														 bfView.buffer->CopyValueFrom(newAddressValue, bfView.offset);
+														 v.srcOffset = bfView.offset;
+														 bfView.offset += sizeof(uint64);
+														 v.dstOffset = index * ACCEL_INST_SIZE + offsetof(VkAccelerationStructureInstanceKHR, accelerationStructureReference);
+														 v.size = sizeof(uint64);
+														 return v;
+													 }));
 	frameRes->AddCopyCmd(
 		bfView.buffer,
 		instanceBuffer.get(),
@@ -82,8 +82,8 @@ VkBufferCopy Accel::SetInstance(
 			originMesh = mesh->AddAccelRef(this, index);
 		}
 		info.isUpdate = false;
+		inst.accelerationStructureReference = GetAccelAddress(device, mesh->GetAccel());
 	}
-	inst.accelerationStructureReference = GetAccelAddress(device, mesh->GetAccel());
 	uploadBuffer->CopyValueFrom(
 		inst,
 		instByteOffset);

@@ -11,8 +11,13 @@ class CommandBuffer;
 class FrameResource;
 class MeshHandle;
 class Accel : public GPUCollection {
+	struct InitAccelInst: public VkAccelerationStructureInstanceKHR{
+		InitAccelInst(){
+			mask = 0xFF;
+		}
+	};
 	friend class Mesh;
-	vstd::vector<std::pair<VkAccelerationStructureInstanceKHR, MeshHandle*>> accelInsts;
+	vstd::vector<std::pair<InitAccelInst, MeshHandle*>> accelInsts;
 	vstd::unique_ptr<Buffer> instanceBuffer;//VkAccelerationStructureInstanceKHR
 	vstd::unique_ptr<Buffer> accelBuffer;
 	VkAccelerationStructureKHR accel = nullptr;

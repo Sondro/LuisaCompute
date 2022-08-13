@@ -4,7 +4,7 @@
 #include <DXRuntime/Device.h>
 #include <Resource/Buffer.h>
 #include <Shader/ComputeShader.h>
-#include <Shader/RTShader.h>
+
 namespace toolhub::directx {
 ID3D12GraphicsCommandList4 *CommandBufferBuilder::CmdList() const { return cb->cmdList.Get(); }
 CommandBuffer::CommandBuffer(CommandBuffer &&v)

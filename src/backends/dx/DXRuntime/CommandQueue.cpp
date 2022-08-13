@@ -6,152 +6,155 @@
 #include <Api/LCEvent.h>
 namespace toolhub::directx {
 CommandQueue::CommandQueue(
-    Device *device,
-    IGpuAllocator *resourceAllocator,
-    D3D12_COMMAND_LIST_TYPE type)
-    : device(device),
-      type(type),
-      resourceAllocator(resourceAllocator), thd([this] { ExecuteThread(); }) {
-    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-    queueDesc.Type = type;
-    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_DISABLE_GPU_TIMEOUT;
-    ThrowIfFailed(device->device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(queue.GetAddressOf())));
-    ThrowIfFailed(device->device->CreateFence(
-        0,
-        D3D12_FENCE_FLAG_NONE,
-        IID_PPV_ARGS(&cmdFence)));
+	Device* device,
+	IGpuAllocator* resourceAllocator,
+	D3D12_COMMAND_LIST_TYPE type)
+	: device(device),
+	  type(type),
+	  resourceAllocator(resourceAllocator), thd([this] { ExecuteThread(); }) {
+	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+	queueDesc.Type = type;
+	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_DISABLE_GPU_TIMEOUT;
+	ThrowIfFailed(device->device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(queue.GetAddressOf())));
+	ThrowIfFailed(device->device->CreateFence(
+		0,
+		D3D12_FENCE_FLAG_NONE,
+		IID_PPV_ARGS(&cmdFence)));
 }
 CommandQueue::AllocatorPtr CommandQueue::CreateAllocator(size_t maxAllocCount) {
-    if (maxAllocCount != std::numeric_limits<size_t>::max()) {
-        std::unique_lock lck(mtx);
-        while (lastFrame - executedFrame > maxAllocCount) {
-            mainCv.wait(lck);
-        }
-    }
-    auto newPtr = allocatorPool.Pop();
-    if (newPtr) {
-        return std::move(*newPtr);
-    }
-    return AllocatorPtr(new CommandAllocator(device, resourceAllocator, type));
+	if (maxAllocCount != std::numeric_limits<size_t>::max()) {
+		std::unique_lock lck(mtx);
+		while (lastFrame - executedFrame > maxAllocCount) {
+			mainCv.wait(lck);
+		}
+	}
+	auto newPtr = allocatorPool.Pop();
+	if (newPtr) {
+		return std::move(*newPtr);
+	}
+	return AllocatorPtr(new CommandAllocator(device, resourceAllocator, type));
 }
 
-void CommandQueue::AddEvent(LCEvent const *evt) {
-    executedAllocators.Push(evt, uint64(evt->fenceIndex));
-    mtx.lock();
-    mtx.unlock();
-    waitCv.notify_one();
-    
+void CommandQueue::AddEvent(LCEvent const* evt) {
+	executedAllocators.Push(evt, uint64(evt->fenceIndex));
+	mtx.lock();
+	mtx.unlock();
+	waitCv.notify_one();
 }
-void CommandQueue::Callback(vstd::function<void()> &&f) {
-    executedAllocators.Push(std::move(f));
-    mtx.lock();
-    mtx.unlock();
-    waitCv.notify_one();
+void CommandQueue::Callback(vstd::function<void()>&& f) {
+	executedAllocators.Push(std::move(f));
+	mtx.lock();
+	mtx.unlock();
+	waitCv.notify_one();
 }
 void CommandQueue::ExecuteThread() {
-    while (enabled) {
-        auto ExecuteAllocator = [&](std::pair<AllocatorPtr, uint64> &b) {
-            b.first->Complete(this, cmdFence.Get(), b.second);
-            b.first->Reset(this);
-            allocatorPool.Push(std::move(b.first));
-            {
-                std::lock_guard lck(mtx);
-                executedFrame = b.second;
-            }
-            mainCv.notify_all();
-        };
+	while (enabled) {
+		auto ExecuteAllocator = [&](std::pair<AllocatorPtr, uint64>& b) {
+			b.first->Complete(this, cmdFence.Get(), b.second);
+			b.first->Reset(this);
+			allocatorPool.Push(std::move(b.first));
+			{
+				std::lock_guard lck(mtx);
+				executedFrame = b.second;
+			}
+			mainCv.notify_all();
+		};
 
-        auto ExecuteEvent = [&](std::pair<LCEvent const *, uint64> &pair) {
-            auto evt = pair.first;
-            auto tarFrame = pair.second;
-            device->WaitFence(evt->fence.Get(), tarFrame);
-            {
-                std::lock_guard lck(evt->globalMtx);
-                evt->finishedEvent = tarFrame;
-            }
-            evt->cv.notify_all();
-        };
-        while (auto b = executedAllocators.Pop()) {
-            b->multi_visit(
-                ExecuteAllocator,
-                [&](auto &&f) { f(); },
-                ExecuteEvent);
-        }
-        std::unique_lock lck(mtx);
-        while (enabled && executedAllocators.Length() == 0) {
-            waitCv.wait(lck);
-        }
-    }
+		auto ExecuteEvent = [&](std::pair<LCEvent const*, uint64>& pair) {
+			auto evt = pair.first;
+			auto tarFrame = pair.second;
+			device->WaitFence(evt->fence.Get(), tarFrame);
+			{
+				std::lock_guard lck(evt->globalMtx);
+				evt->finishedEvent = tarFrame;
+			}
+			evt->cv.notify_all();
+		};
+		while (auto b = executedAllocators.Pop()) {
+			b->multi_visit(
+				ExecuteAllocator,
+				[&](auto&& f) { f(); },
+				ExecuteEvent);
+		}
+		std::unique_lock lck(mtx);
+		while (enabled && executedAllocators.Length() == 0) {
+			waitCv.wait(lck);
+		}
+	}
 }
 void CommandQueue::ForceSync(
-    AllocatorPtr &alloc,
-    CommandBuffer &cb) {
-    cb.Close();
-    Complete();
-    auto curFrame = ++lastFrame;
-    alloc->Execute(this, cmdFence.Get(), curFrame);
-    alloc->Complete(this, cmdFence.Get(), curFrame);
-    alloc->Reset(this);
-    {
-        std::lock_guard lck(mtx);
-        executedFrame = curFrame;
-    }
-    cb.Reset();
+	AllocatorPtr& alloc,
+	CommandBuffer& cb) {
+	cb.Close();
+	Complete();
+	auto curFrame = ++lastFrame;
+	alloc->Execute(this, cmdFence.Get(), curFrame);
+	alloc->Complete(this, cmdFence.Get(), curFrame);
+	alloc->Reset(this);
+	{
+		std::lock_guard lck(mtx);
+		executedFrame = curFrame;
+	}
+	cb.Reset();
 }
 CommandQueue::~CommandQueue() {
-    {
-        std::lock_guard lck(mtx);
-        enabled = false;
-    }
-    waitCv.notify_one();
-    thd.join();
+	{
+		std::lock_guard lck(mtx);
+		enabled = false;
+	}
+	waitCv.notify_one();
+	thd.join();
+}
+void CommandQueue::WaitFrame(uint64 lastFrame) {
+	if (lastFrame > 0)
+		queue->Wait(cmdFence.Get(), lastFrame);
 }
 
-uint64 CommandQueue::Execute(AllocatorPtr &&alloc) {
-    auto curFrame = ++lastFrame;
-    alloc->Execute(this, cmdFence.Get(), curFrame);
-    executedAllocators.Push(std::move(alloc), curFrame);
-    mtx.lock();
-    mtx.unlock();
-    waitCv.notify_one();
-    return curFrame;
+uint64 CommandQueue::Execute(AllocatorPtr&& alloc) {
+	auto curFrame = ++lastFrame;
+	alloc->Execute(this, cmdFence.Get(), curFrame);
+	executedAllocators.Push(std::move(alloc), curFrame);
+	mtx.lock();
+	mtx.unlock();
+	waitCv.notify_one();
+	return curFrame;
 }
-uint64 CommandQueue::Execute(AllocatorPtr &&alloc, vstd::function<void()> &&callback) {
-    auto curFrame = ++lastFrame;
-    alloc->Execute(this, cmdFence.Get(), curFrame);
-    executedAllocators.Push(std::move(alloc), curFrame);
-    executedAllocators.Push(std::move(callback));
-    mtx.lock();
-    mtx.unlock();
-    waitCv.notify_one();
-    return curFrame;
+uint64 CommandQueue::Execute(AllocatorPtr&& alloc, vstd::function<void()>&& callback) {
+	auto curFrame = ++lastFrame;
+	alloc->Execute(this, cmdFence.Get(), curFrame);
+	executedAllocators.Push(std::move(alloc), curFrame);
+	executedAllocators.Push(std::move(callback));
+	mtx.lock();
+	mtx.unlock();
+	waitCv.notify_one();
+	return curFrame;
 }
-void CommandQueue::ExecuteEmpty(AllocatorPtr &&alloc) {
-    alloc->Reset(this);
-    allocatorPool.Push(std::move(alloc));
+void CommandQueue::ExecuteEmpty(AllocatorPtr&& alloc) {
+	alloc->Reset(this);
+	allocatorPool.Push(std::move(alloc));
 }
 
-uint64 CommandQueue::ExecuteAndPresent(AllocatorPtr &&alloc, IDXGISwapChain3 *swapChain) {
-    auto curFrame = ++lastFrame;
-    alloc->ExecuteAndPresent(this, cmdFence.Get(), curFrame, swapChain);
-    executedAllocators.Push(std::move(alloc), curFrame);
-    mtx.lock();
-    mtx.unlock();
-    waitCv.notify_one();
-    return curFrame;
+uint64 CommandQueue::ExecuteAndPresent(AllocatorPtr&& alloc, IDXGISwapChain3* swapChain) {
+	auto curFrame = ++lastFrame;
+	alloc->ExecuteAndPresent(this, cmdFence.Get(), curFrame, swapChain);
+	executedAllocators.Push(std::move(alloc), curFrame);
+	mtx.lock();
+	mtx.unlock();
+	waitCv.notify_one();
+	return curFrame;
 }
 
 void CommandQueue::Complete(uint64 fence) {
-    std::unique_lock lck(mtx);
-    while (executedFrame < fence) {
-        mainCv.wait(lck);
-    }
+	std::unique_lock lck(mtx);
+	while (executedFrame < fence) {
+		mainCv.wait(lck);
+	}
 }
 void CommandQueue::Complete() {
-    std::unique_lock lck(mtx);
-    while (executedAllocators.Length() > 0) {
-        mainCv.wait(lck);
-    }
+	std::unique_lock lck(mtx);
+	while (executedAllocators.Length() > 0) {
+		mainCv.wait(lck);
+	}
 }
 
 }// namespace toolhub::directx

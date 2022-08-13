@@ -5,7 +5,6 @@
 #include <runtime/command_buffer.h>
 #include <compile/hlsl/dx_codegen.h>
 #include <Shader/ComputeShader.h>
-#include <Shader/RTShader.h>
 #include <Resource/RenderTexture.h>
 #include <Resource/BottomAccel.h>
 #include <Resource/TopAccel.h>

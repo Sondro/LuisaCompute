@@ -1,7 +1,6 @@
 
 #include <Shader/ShaderSerializer.h>
 #include <Shader/ComputeShader.h>
-#include <Shader/RTShader.h>
 #include <DXRuntime/GlobalSamplers.h>
 #include <Shader/PipelineLibrary.h>
 namespace toolhub::directx {

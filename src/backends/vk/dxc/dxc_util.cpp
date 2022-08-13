@@ -93,12 +93,10 @@ CompileResult DXShaderCompiler::CompileCompute(
 	args.push_back(smStr.c_str());
 	args.push_back_all(
 		{L"/Qstrip_rootsignature",
-		 L"/quiet",
-		 L"/q",
 		 L"-HV 2021",
 		 L"-spirv",
-		 L"-fspv-extension=SPV_KHR_ray_tracing",
 		 L"-fspv-extension=SPV_KHR_ray_query",
+		 L"-fspv-extension=SPV_EXT_descriptor_indexing",
 		 L"-fspv-target-env=vulkan1.3"});
 	if (optimize) {
 		args.push_back(L"/O3");

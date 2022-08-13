@@ -16,15 +16,16 @@ CodegenStackData::CodegenStackData()
 void CodegenStackData::Clear() {
     rayDesc = nullptr;
     hitDesc = nullptr;
+    tempSwitchExpr = nullptr;
     arguments.Clear();
     scopeCount = -1;
+    tempSwitchCounter = 0;
     structTypes.Clear();
     constTypes.Clear();
     funcTypes.Clear();
     bindlessBufferTypes.Clear();
     customStruct.Clear();
     customStructVector.clear();
-    generatedConstants.Clear();
     sharedVariable.clear();
     constCount = 0;
     count = 0;
@@ -42,6 +43,11 @@ uint CodegenStackData::AddBindlessType(Type const *type) {
             }))
         .Value();
 }
+static thread_local bool gIsCodegenSpirv = false;
+bool& CodegenStackData::ThreadLocalSpirv(){
+    return gIsCodegenSpirv;
+}
+
 StructGenerator *CodegenStackData::CreateStruct(Type const *t) {
     bool isRayType = t->description() == CodegenUtility::rayTypeDesc;
     bool isHitType = t->description() == CodegenUtility::hitTypeDesc;
@@ -77,6 +83,18 @@ uint64 CodegenStackData::GetConstCount(uint64 data) {
             }));
     return ite.Value();
 }
+vstd::optional<uint64> CodegenStackData::GetNewConstCount(uint64 data) {
+    vstd::optional<uint64> result;
+    constTypes.Emplace(
+        data,
+        vstd::LazyEval(
+            [&] {
+                result.New(constCount++);
+                return *result;
+            }));
+    return result;
+}
+
 uint64 CodegenStackData::GetFuncCount(uint64 data) {
     auto ite = funcTypes.Emplace(
         data,

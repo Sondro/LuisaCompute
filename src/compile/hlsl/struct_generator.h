@@ -27,8 +27,8 @@ public:
     static StructureType GetMatrix(vbyte dim);
     vbyte dimension() const { return mDimension; }
     Tag tag() const { return mTag; }
-    size_t size() const;
-    size_t align() const;
+    //size_t size() const;
+  //  size_t align() const;
 };
 class StructGenerator : public vstd::IOperatorNewBase {
     Type const *structureType{nullptr};

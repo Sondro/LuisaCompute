@@ -1,7 +1,5 @@
 #include <vk_utility/shader_utility.h>
 #include <components/device.h>
-#include <ve_shaderc/visibility.h>
-#include <ve_shaderc/shaderc.hpp>
 namespace toolhub::vk {
 VkShaderModule ShaderUtility::LoadShader(vstd::span<uint const> data, VkDevice device) {
 	VkShaderModule shaderModule;

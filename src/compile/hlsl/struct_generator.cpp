@@ -4,6 +4,7 @@
 #include <compile/hlsl/dx_codegen.h>
 #include <vstl/CommonIterator.h>
 namespace toolhub::directx {
+/*
 size_t StructureType::size() const {
     switch (mTag) {
         case Tag::Scalar:
@@ -28,7 +29,7 @@ size_t StructureType::align() const {
             return v.begin()[0];
         }
     }
-}
+}*/
 void StructGenerator::ProvideAlignVariable(size_t tarAlign, size_t &structSize, size_t &alignCount, vstd::string &structDesc) {
     auto leftedValue = tarAlign - (structSize % tarAlign);
     if (leftedValue == tarAlign) {
@@ -142,7 +143,14 @@ void StructGenerator::InitAsStruct(
                 break;
             case Type::Tag::VECTOR: {
                 Align(i->alignment());
-                structSize += 4 * i->dimension();
+                //TODO: vulkan float3
+                if (CodegenStackData::ThreadLocalSpirv()) {
+                    auto alignDim = i->dimension();
+                    alignDim = (alignDim == 3) ? 4 : alignDim;
+                    structSize += 4 * alignDim;
+                } else {
+                    structSize += 4 * i->dimension();
+                }
                 ele = StructureType::GetVector(i->dimension());
             } break;
             case Type::Tag::MATRIX: {

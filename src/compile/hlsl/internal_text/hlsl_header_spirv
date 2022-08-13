@@ -1,11 +1,6 @@
 #pragma pack_matrix(row_major)
 #define INFINITY_f 3.40282347e+37
-#ifdef SPIRV
 SamplerState samplers[16] : register(s0, space4);
-#else
-SamplerState samplers[16] : register(s0, space1);
-#endif
-
 float determinant(float2x2 m) {
 return m[0][0] * m[1][1] - m[1][0] * m[0][1];
 }
@@ -165,10 +160,32 @@ return (asuint(x) & 0x7FFFFFFF) == 0x7F800000;
 bool4 _isinf(float4 x) {
 return (asuint(x) & 0x7FFFFFFF) == 0x7F800000;
 }
-template<typename T, typename V>
-T _select(T a, T b, V c) {
-return select(c, b, a);
-}
+int _select(int a, int b, bool c){return c ? b : a;}
+int2 _select(int2 a, int2 b, bool2 c){return int2(c.x ? b.x : a.x, c.y ? b.y : a.y);}
+int3 _select(int3 a, int3 b, bool3 c){return int3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z);}
+int4 _select(int4 a, int4 b, bool4 c){return int4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z,c.w ? b.w : a.w);}
+uint _select(uint a, uint b, bool c){return c ? b : a;}
+uint2 _select(uint2 a, uint2 b, bool2 c){return uint2(c.x ? b.x : a.x, c.y ? b.y : a.y);}
+uint3 _select(uint3 a, uint3 b, bool3 c){return uint3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z);}
+uint4 _select(uint4 a, uint4 b, bool4 c){return uint4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z,c.w ? b.w : a.w);}
+float _select(float a, float b, bool c){return c ? b : a;}
+float2 _select(float2 a, float2 b, bool2 c){return float2(c.x ? b.x : a.x, c.y ? b.y : a.y);}
+float3 _select(float3 a, float3 b, bool3 c){return float3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z);}
+float4 _select(float4 a, float4 b, bool4 c){return float4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z,c.w ? b.w : a.w);}
+
+int _select(int a, int b, int c){return (c!=0) ? b : a;}
+int2 _select(int2 a, int2 b, int2 c){return _select(a,b,c!=0);}
+int3 _select(int3 a, int3 b, int3 c){return _select(a,b,c!=0);}
+int4 _select(int4 a, int4 b, int4 c){return _select(a,b,c!=0);}
+float _select(float a, float b, float c){return (c!=0) ? b : a;}
+float2 _select(float2 a, float2 b, float2 c){return _select(a,b,c!=0);}
+float3 _select(float3 a, float3 b, float3 c){return _select(a,b,c!=0);}
+float4 _select(float4 a, float4 b, float4 c){return _select(a,b,c!=0);}
+uint _select(uint a, uint b, uint c){return (c!=0) ? b : a;}
+uint2 _select(uint2 a, uint2 b, uint2 c){return _select(a,b,c!=0);}
+uint3 _select(uint3 a, uint3 b, uint3 c){return _select(a,b,c!=0);}
+uint4 _select(uint4 a, uint4 b, uint4 c){return _select(a,b,c!=0);}
+
 
 template<typename T>
 T copysign(T a, T b) { return asfloat((asuint(a) & 0x7fffffffu) | (asuint(b) & 0x80000000u)); }
@@ -246,9 +263,7 @@ row_major float4x4 m;
 #define bfwriteVec3(bf, idx, value) (bf[(idx)] = float4((value), 0))
 #define bfwriteMat(bf, idx, value) (bf[idx].m = value)
 struct BdlsStruct {
-uint buffer;
-uint tex2D;
-uint tex3D;
+uint index;
 uint tex2DX : 16;
 uint tex2DY : 16;
 uint tex3DX : 16;
@@ -260,19 +275,14 @@ uint samp3D : 8;
 #define Smptx(tex, uv) (tex[uv])
 #define Writetx(tex, uv, value) (tex[uv] = value)
 #define BINDLESS_ARRAY StructuredBuffer<BdlsStruct>
-#ifdef SPIRV
 Texture2D<float4> _BindlessTex[] : register(t0, space2);
 Texture3D<float4> _BindlessTex3D[] : register(t0, space3);
-#else
-Texture2D<float4> _BindlessTex[] : register(t0, space1);
-Texture3D<float4> _BindlessTex3D[] : register(t0, space2);
-#endif
 template<typename T>
 T fract(T x) { return x - floor(x); }
 float4 SampleTex2D(BINDLESS_ARRAY arr, uint index, float2 uv, float level) {
 BdlsStruct s = arr[index];
 SamplerState samp = samplers[s.samp2D];
-return _BindlessTex[s.tex2D].SampleLevel(samp, uv, level);
+return _BindlessTex[s.index].SampleLevel(samp, uv, level);
 }
 float4 SampleTex2D(BINDLESS_ARRAY arr, uint index, float2 uv) {
 return SampleTex2D(arr, index, uv, 0);
@@ -280,12 +290,12 @@ return SampleTex2D(arr, index, uv, 0);
 float4 SampleTex2D(BINDLESS_ARRAY arr, uint index, float2 uv, float2 ddx, float2 ddy) {
 BdlsStruct s = arr[index];
 SamplerState samp = samplers[s.samp2D];
-return _BindlessTex[s.tex2D].SampleGrad(samp, uv, ddx, ddy);
+return _BindlessTex[s.index].SampleGrad(samp, uv, ddx, ddy);
 }
 float4 SampleTex3D(BINDLESS_ARRAY arr, uint index, float3 uv, float level) {
 BdlsStruct s = arr[index];
 SamplerState samp = samplers[s.samp3D];
-return _BindlessTex3D[s.tex3D].SampleLevel(samp, uv, level);
+return _BindlessTex3D[s.index].SampleLevel(samp, uv, level);
 }
 float4 SampleTex3D(BINDLESS_ARRAY arr, uint index, float3 uv) {
 return SampleTex3D(arr, index, uv, 0);
@@ -293,15 +303,15 @@ return SampleTex3D(arr, index, uv, 0);
 float4 SampleTex3D(BINDLESS_ARRAY arr, uint index, float3 uv, float3 ddx, float3 ddy) {
 BdlsStruct s = arr[index];
 SamplerState samp = samplers[s.samp3D];
-return _BindlessTex3D[s.tex3D].SampleGrad(samp, uv, ddx, ddy);
+return _BindlessTex3D[s.index].SampleGrad(samp, uv, ddx, ddy);
 }
 float4 ReadTex2D(BINDLESS_ARRAY arr, uint index, uint2 coord, uint level) {
 BdlsStruct s = arr[index];
-return _BindlessTex[s.tex2D].Load(uint3(coord, level));
+return _BindlessTex[s.index].Load(uint3(coord, level));
 }
 float4 ReadTex3D(BINDLESS_ARRAY arr, uint index, uint3 coord, uint level) {
 BdlsStruct s = arr[index];
-return _BindlessTex3D[s.tex3D].Load(uint4(coord, level));
+return _BindlessTex3D[s.index].Load(uint4(coord, level));
 }
 float4 ReadTex2D(BINDLESS_ARRAY arr, uint index, uint2 coord) {
 return ReadTex2D(arr, index, coord, 0);
@@ -323,9 +333,9 @@ return max(Tex2DSize(arr, index) >> level, 1u);
 uint3 Tex3DSize(BINDLESS_ARRAY arr, uint index, uint level) {
 return max(Tex3DSize(arr, index) >> level, 1u);
 }
-#define READ_BUFFER_FLOAT(arr, arrIdx, idx, bf) (asfloat(bf[arr[arrIdx].buffer][idx]))
-#define READ_BUFFER(arr, arrIdx, idx, bf) (bf[arr[arrIdx].buffer][idx])
-#define READ_BUFFERVec3(arr, arrIdx, idx, bf) (bf[arr[arrIdx].buffer][idx].xyz)
+#define READ_BUFFER_FLOAT(arr, arrIdx, idx, bf) (asfloat(bf[arr[arrIdx].index][idx]))
+#define READ_BUFFER(arr, arrIdx, idx, bf) (bf[arr[arrIdx].index][idx])
+#define READ_BUFFERVec3(arr, arrIdx, idx, bf) (bf[arr[arrIdx].index][idx].xyz)
 struct MeshInst {
 float4 p0;
 float4 p1;

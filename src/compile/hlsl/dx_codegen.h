@@ -1,5 +1,5 @@
 #pragma once
-
+//#define USE_SPIRV
 #include <vstl/Common.h>
 #include <vstl/functional.h>
 #include <ast/function.h>
@@ -14,6 +14,7 @@ namespace toolhub::directx {
 class StringStateVisitor;
 class StructVariableTracker;
 class StructGenerator;
+class CodegenStackData;
 struct CodegenResult {
     using Properties = vstd::vector<Property>;
     vstd::string result;
@@ -63,8 +64,14 @@ public:
         vstd::string &result);
     static void GenerateBindless(
         CodegenResult::Properties &properties,
-        vstd::string& str);
-    static vstd::optional<CodegenResult> Codegen(Function kernel, std::filesystem::path const & internalDataPath);
+        vstd::string &str);
+    static vstd::optional<CodegenResult> Codegen(Function kernel, std::filesystem::path const &internalDataPath);
+#ifdef USE_SPIRV
+    static void GenerateBindlessSpirv(
+        vstd::string &str);
+    static CodegenStackData *StackData();
+    static vstd::optional<vstd::string> CodegenSpirv(Function kernel, std::filesystem::path const &internalDataPath);
+#endif
     static vstd::string GetNewTempVarName();
 };
 class StringStateVisitor final : public StmtVisitor, public ExprVisitor {

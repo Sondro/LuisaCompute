@@ -241,9 +241,10 @@ void Device::Init() {
 	vkGetAccelerationStructureDeviceAddressKHR = SafeCastFuncPtr.operator()<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
 	vkCmdWriteAccelerationStructuresPropertiesKHR = SafeCastFuncPtr.operator()<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
 	vkCmdCopyAccelerationStructureKHR = SafeCastFuncPtr.operator()<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCmdCopyAccelerationStructureKHR"));
+	/*
 	vkCmdTraceRaysKHR = SafeCastFuncPtr.operator()<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
 	vkGetRayTracingShaderGroupHandlesKHR = SafeCastFuncPtr.operator()<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
-	vkCreateRayTracingPipelinesKHR = SafeCastFuncPtr.operator()<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
+	vkCreateRayTracingPipelinesKHR = SafeCastFuncPtr.operator()<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));*/
 }
 void Device::InitBindless() {
 	VkDescriptorSetLayoutBinding setLayoutBinding{};
@@ -324,6 +325,7 @@ Device* Device::CreateDevice(
 		"VK_KHR_deferred_host_operations",
 		"VK_KHR_acceleration_structure",
 		"VK_KHR_variable_pointers",
+		"VK_KHR_ray_query",
 		"VK_KHR_ray_tracing_pipeline"};
 	auto checkDeviceExtensionSupport = [&](VkPhysicalDevice device) {
 		uint32_t extensionCount;
@@ -436,19 +438,21 @@ Device* Device::CreateDevice(
 	VkPhysicalDeviceBufferDeviceAddressFeatures enabledBufferDeviceAddresFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES};
 	enabledBufferDeviceAddresFeatures.bufferDeviceAddress = VK_TRUE;
 	enabledBufferDeviceAddresFeatures.pNext = &indexingFeatures;
-
+	
 	VkPhysicalDeviceRayTracingPipelineFeaturesKHR enabledRayTracingPipelineFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
 	enabledRayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
+	enabledRayTracingPipelineFeatures.rayTraversalPrimitiveCulling = VK_TRUE;
 	enabledRayTracingPipelineFeatures.pNext = &enabledBufferDeviceAddresFeatures;
+
+
+	VkPhysicalDeviceRayQueryFeaturesKHR enabledRayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
+	enabledRayQueryFeatures.rayQuery = VK_TRUE;
+	enabledRayQueryFeatures.pNext = &enabledRayTracingPipelineFeatures;
 
 	VkPhysicalDeviceAccelerationStructureFeaturesKHR enabledAccelerationStructureFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
 	enabledAccelerationStructureFeatures.accelerationStructure = VK_TRUE;
-	enabledAccelerationStructureFeatures.pNext = &enabledRayTracingPipelineFeatures;
+	enabledAccelerationStructureFeatures.pNext = &enabledRayQueryFeatures;
 
-	/*	VkPhysicalDeviceRayQueryFeaturesKHR enabledRayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
-	enabledRayQueryFeatures.rayQuery = VK_TRUE;
-	enabledRayQueryFeatures.pNext = &enabledAccelerationStructureFeatures;
-*/
 	VkPhysicalDeviceVariablePointersFeatures variablePointerFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES};
 	variablePointerFeatures.variablePointers = VK_TRUE;
 	variablePointerFeatures.variablePointersStorageBuffer = VK_TRUE;

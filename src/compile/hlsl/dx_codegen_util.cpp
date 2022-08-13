@@ -14,12 +14,19 @@ static vstd::string const &HLSLHeader(std::filesystem::path const &internalDataP
     static vstd::string header = ReadInternalHLSLFile("hlsl_header", internalDataPath);
     return header;
 }
+static vstd::string const &HLSLHeaderSpirv(std::filesystem::path const &internalDataPath) {
+    static vstd::string header = ReadInternalHLSLFile("hlsl_header_spirv", internalDataPath);
+    return header;
+}
 static vstd::string const &RayTracingHeader(std::filesystem::path const &internalDataPath) {
     static vstd::string rtHeader = ReadInternalHLSLFile("raytracing_header", internalDataPath);
     return rtHeader;
 }
 }// namespace detail
 static thread_local vstd::unique_ptr<CodegenStackData> opt;
+#ifdef USE_SPIRV
+CodegenStackData *CodegenUtility::StackData() { return opt.get(); }
+#endif
 uint CodegenUtility::IsBool(Type const &type) {
     if (type.tag() == Type::Tag::BOOL) {
         return 1;
@@ -963,6 +970,32 @@ void CodegenUtility::GetBasicTypeName(uint64 typeIndex, vstd::string &str) {
         typeIndex);
 }
 void CodegenUtility::CodegenFunction(Function func, vstd::string &result) {
+    auto constants = func.constants();
+    for (auto &&i : constants) {
+        auto constIdx = opt->GetNewConstCount(i.data.hash());
+        if (!constIdx) continue;
+        vstd::string constValueName = "c";
+        vstd::to_string(*constIdx, constValueName);
+        result << "static const "sv;
+        GetTypeName(*i.type->element(), result, Usage::READ);
+        result << ' ' << constValueName << '[';
+        vstd::to_string(i.type->dimension(), result);
+        result << "]={"sv;
+        auto &&dataView = i.data.view();
+        eastl::visit(
+            [&]<typename T>(eastl::span<T> const &sp) {
+                for (auto i : vstd::range(sp.size())) {
+                    auto &&value = sp[i];
+                    PrintValue<std::remove_cvref_t<T>>()(value, result);
+                    if (i != (sp.size() - 1)) {
+                        result << ',';
+                    }
+                }
+            },
+            dataView);
+        //TODO: constants
+        result << "};\n"sv;
+    }
     auto codegenOneFunc = [&](Function func) {
         if (func.tag() == Function::Tag::KERNEL) {
             result << "[numthreads("
@@ -981,43 +1014,7 @@ if(any(dspId >= a.dsp_c)) return;
             GetFunctionDecl(func, result);
             result << "{\n"sv;
         }
-        auto constants = func.constants();
-        for (auto &&i : constants) {
-            if (!opt->generatedConstants.TryEmplace(i.hash()).second) {
-                continue;
-            }
-            GetTypeName(*i.type, result, Usage::READ);
-            result << ' ';
-            vstd::string constName;
-            GetConstName(
-                i.data,
-                constName);
 
-            result << constName << ";\nconst "sv;
-            vstd::string constValueName(constName + "_v");
-            GetTypeName(*i.type->element(), result, Usage::READ);
-            result << ' ' << constValueName << '[';
-            vstd::to_string(i.type->dimension(), result);
-            result << "]={"sv;
-            auto &&dataView = i.data.view();
-            eastl::visit(
-                [&]<typename T>(eastl::span<T> const &sp) {
-                    for (auto i : vstd::range(sp.size())) {
-                        auto &&value = sp[i];
-                        PrintValue<std::remove_cvref_t<T>>()(value, result);
-                        if (i != (sp.size() - 1)) {
-                            result << ',';
-                        }
-                    }
-                },
-                dataView);
-            //TODO: constants
-            result << "};\n"sv
-                   << constName
-                   << ".v="sv
-                   << constValueName
-                   << ";\n"sv;
-        }
         if (func.tag() == Function::Tag::KERNEL) {
             opt->isKernel = true;
             opt->arguments.Clear();
@@ -1082,6 +1079,25 @@ uint3 dsp_c;
 StructuredBuffer<Args> _Global:register(t0);
 )"sv;
 }
+#ifdef USE_SPIRV
+void CodegenUtility::GenerateBindlessSpirv(
+    vstd::string &str) {
+    for (auto &&i : opt->bindlessBufferTypes) {
+        str << "StructuredBuffer<"sv;
+        if (i.first->is_matrix()) {
+            auto n = i.first->dimension();
+            str << luisa::format("WrappedFloat{}x{}", n, n);
+        } else if (i.first->is_vector() && i.first->dimension() == 3) {
+            str << "float4"sv;
+        } else {
+            GetTypeName(*i.first, str, Usage::READ);
+        }
+        vstd::string instName("bdls"sv);
+        vstd::to_string(i.second, instName);
+        str << "> " << instName << "[]:register(t0,space1);"sv;
+    }
+}
+#endif
 void CodegenUtility::GenerateBindless(
     CodegenResult::Properties &properties,
     vstd::string &str) {
@@ -1110,8 +1126,9 @@ void CodegenUtility::GenerateBindless(
 }
 vstd::optional<CodegenResult> CodegenUtility::Codegen(
     Function kernel, std::filesystem::path const &internalDataPath) {
-    if (kernel.tag() != Function::Tag::KERNEL) return {};
+    assert(kernel.tag() == Function::Tag::KERNEL);
     opt = CodegenStackData::Allocate();
+    CodegenStackData::ThreadLocalSpirv() = false;
     opt->kernel = kernel;
     auto disposeOpt = vstd::create_disposer([&] {
         CodegenStackData::DeAllocate(std::move(opt));
@@ -1265,10 +1282,136 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
     }
 
     finalResult << varData << codegenData;
+    auto md5Strv = vstd::string_view(finalResult.c_str() + unChangedOffset, finalResult.size() - unChangedOffset);
+
+    auto md5 = vstd::MD5(md5Strv);
     return {
         std::move(finalResult),
         std::move(properties),
         opt->bindlessBufferCount,
-        vstd::MD5(vstd::string_view(finalResult.c_str() + unChangedOffset, finalResult.size() - unChangedOffset))};
+        md5};
 }
+#ifdef USE_SPIRV
+
+vstd::optional<vstd::string> CodegenUtility::CodegenSpirv(Function kernel, std::filesystem::path const &internalDataPath) {
+    assert(kernel.tag() == Function::Tag::KERNEL);
+    opt = CodegenStackData::Allocate();
+    CodegenStackData::ThreadLocalSpirv() = true;
+    opt->kernel = kernel;
+    auto disposeOpt = vstd::create_disposer([&] {
+        CodegenStackData::DeAllocate(std::move(opt));
+    });
+    vstd::string codegenData;
+    vstd::string varData;
+    CodegenFunction(kernel, codegenData);
+    vstd::string finalResult;
+    finalResult.reserve(65500);
+    finalResult << detail::HLSLHeaderSpirv(internalDataPath);
+    if (kernel.raytracing()) {
+        finalResult << detail::RayTracingHeader(internalDataPath);
+    }
+    size_t unChangedOffset = finalResult.size();
+
+    opt->isKernel = false;
+    GenerateCBuffer(kernel, kernel.arguments(), varData);
+    GenerateBindlessSpirv(varData);
+    auto Writable = [&](Variable const &v) {
+        return (static_cast<uint>(kernel.variable_usage(v.uid())) & static_cast<uint>(Usage::WRITE)) != 0;
+    };
+    uint registerCount = 1;
+    for (auto &&i : kernel.arguments()) {
+        auto print = [&] {
+            GetTypeName(*i.type(), varData, kernel.variable_usage(i.uid()));
+            varData << ' ';
+            vstd::string varName;
+            GetVariableName(i, varName);
+            varData << varName;
+        };
+        auto printInstBuffer = [&]<bool writable>() {
+            if constexpr (writable)
+                varData << "RWStructuredBuffer<MeshInst> "sv;
+            else
+                varData << "StructuredBuffer<MeshInst> "sv;
+            vstd::string varName;
+            GetVariableName(i, varName);
+            varName << "Inst"sv;
+            varData << varName;
+        };
+        auto genArg = [&]<bool rtBuffer = false, bool writable = false>(ShaderVariableType sT, char v) {
+            auto r = registerCount++;
+            Property prop = {
+                .type = sT,
+                .spaceIndex = 0,
+                .registerIndex = r,
+                .arrSize = 0};
+            if constexpr (rtBuffer) {
+                printInstBuffer.operator()<writable>();
+
+            } else {
+                print();
+            }
+            varData << ":register("sv << v;
+            vstd::to_string(r, varData);
+            varData << ");\n"sv;
+        };
+
+        switch (i.type()->tag()) {
+            case Type::Tag::TEXTURE:
+                if (Writable(i)) {
+                    genArg(ShaderVariableType::UAVDescriptorHeap, 'u');
+                } else {
+                    genArg(ShaderVariableType::SRVDescriptorHeap, 't');
+                }
+                break;
+            case Type::Tag::BUFFER: {
+                if (Writable(i)) {
+                    genArg(ShaderVariableType::RWStructuredBuffer, 'u');
+                } else {
+                    genArg(ShaderVariableType::StructuredBuffer, 't');
+                }
+            } break;
+            case Type::Tag::BINDLESS_ARRAY:
+                genArg(ShaderVariableType::StructuredBuffer, 't');
+                break;
+            case Type::Tag::ACCEL:
+                if (Writable(i)) {
+                    genArg.operator()<true, true>(ShaderVariableType::RWStructuredBuffer, 'u');
+                } else {
+                    genArg(ShaderVariableType::StructuredBuffer, 't');
+                    genArg.operator()<true>(ShaderVariableType::StructuredBuffer, 't');
+                }
+                break;
+        }
+    }
+    if (!opt->customStructVector.empty()) {
+        luisa::vector<const StructGenerator *> structures(
+            opt->customStructVector.begin(),
+            opt->customStructVector.end());
+        std::sort(structures.begin(), structures.end(), [](auto lhs, auto rhs) noexcept {
+            return lhs->GetType()->index() < rhs->GetType()->index();
+        });
+        structures.erase(
+            std::unique(structures.begin(), structures.end(), [](auto lhs, auto rhs) noexcept {
+                return lhs->GetType()->hash() == rhs->GetType()->hash();
+            }),
+            structures.end());
+        for (auto v : structures) {
+            finalResult << "struct " << v->GetStructName() << "{\n"
+                        << v->GetStructDesc() << "};\n";
+        }
+    }
+    for (auto &&i : opt->sharedVariable) {
+        finalResult << "groupshared "sv;
+        GetTypeName(*i.type()->element(), finalResult, Usage::READ);
+        finalResult << ' ';
+        GetVariableName(i, finalResult);
+        finalResult << '[';
+        vstd::to_string(i.type()->dimension(), finalResult);
+        finalResult << "];\n"sv;
+    }
+
+    finalResult << varData << codegenData;
+    return finalResult;
+}
+#endif
 }// namespace toolhub::directx

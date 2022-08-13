@@ -9,11 +9,15 @@
 #include <shader/pipeline_cache.h>
 #include <shader/compute_shader.h>
 #include <shader/rt_shader.h>
+#include <compile/hlsl/dx_codegen.h>
+#include <dxc/dxc_util.h>
+#include <vstl/BinaryReader.h>
 namespace toolhub::vk {
 namespace detail {
 static VkInstance vkInstance = nullptr;
 static size_t vkDeviceCount = 0;
 static std::mutex vkInstMtx;
+
 }// namespace detail
 VkFormat LCDevice::GetNativeFormat(PixelFormat pixelFormat) {
 	switch (pixelFormat) {
@@ -95,7 +99,8 @@ VkFormat LCDevice::GetNativeFormat(PixelFormat pixelFormat) {
 }
 
 LCDevice::LCDevice(Context const& ctx)
-	: luisa::compute::Device::Interface(ctx) {
+	: luisa::compute::Device::Interface(ctx),
+	  ctx(ctx) {
 	{
 		std::lock_guard lck(detail::vkInstMtx);
 		if (detail::vkInstance == nullptr) {
@@ -264,6 +269,7 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 					types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 				} else {
 					types.emplace_back(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+					types.emplace_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 				}
 				break;
 		}
@@ -278,8 +284,9 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 	auto Cast = [](auto&& value) {
 		return reinterpret_cast<uint64>(static_cast<IShader*>(value));
 	};
-	// if (kernel.raytracing())
-	if (false) {
+	//Spirv Compile
+	/*
+	if (kernel.raytracing()) {
 		auto raygenResult = compiler.CompileSpirV(kernel, true, false);
 		//auto raygenResult = compiler.CompileExistsFile(kernel, true, false, "output.spvasm");
 		auto missResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/miss_output.spvasm");
@@ -317,7 +324,44 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 			},
 			printErrCode);
 		return Cast(value);
+	}*/
+	// HLSL Compile
+//#define USE_EXTERNAL_FILE
+#ifdef USE_EXTERNAL_FILE
+	BinaryReader binReader("result.hlsl");
+	vstd::string str;
+	vstd::string* strv = &str;
+	str.resize(binReader.GetLength());
+	binReader.Read(str.data(), str.size());
+#else
+	auto strv = directx::CodegenUtility::CodegenSpirv(kernel, ctx.data_directory());
+	assert(strv);
+	
+	auto f = fopen("result.hlsl", "wb");
+	if (f) {
+		fwrite(strv->data(), strv->size(), 1, f);
+		fclose(f);
 	}
+	
+#endif
+	static directx::DXShaderCompiler compiler;
+	auto compileResult = compiler.CompileCompute(*strv, true, 64, false);
+	return Cast(compileResult.multi_visit_or(
+		vstd::UndefEval<ComputeShader*>{},
+		[&](vstd::unique_ptr<directx::DXByteBlob> const& blob) {
+			return new ComputeShader(
+				device,
+				{reinterpret_cast<uint const*>(blob->GetBufferPtr()),
+				 blob->GetBufferSize() / sizeof(uint)},
+				nullptr,
+				types,
+				kernel.block_size());
+		},
+		[&](auto&& str) {
+			std::cout << "compile error: " << str << '\n';
+			assert(false);
+			return nullptr;
+		}));
 }
 void LCDevice::destroy_shader(uint64_t handle) noexcept {
 	delete reinterpret_cast<IShader*>(handle);

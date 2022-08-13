@@ -1,7 +1,7 @@
 #pragma once
 #include <DllManager.h>
 #include <Shader/ComputeShader.h>
-#include <Shader/RTShader.h>
+
 #include <Graphics/ShaderCompiler/ShaderCompiler.h>
 #include <DXRuntime/Device.h>
 #include <DXRuntime/CommandQueue.h>
