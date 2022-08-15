@@ -323,6 +323,7 @@ CMakeSettings.json
 **/__pycache__/**
 
 .vscode/
+src/LCTest_XMake/
 
 #white list
 !src/backends/dx/dx_support/dxcompiler.dll
