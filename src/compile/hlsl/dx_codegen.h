@@ -65,7 +65,7 @@ public:
     static void GenerateBindless(
         CodegenResult::Properties &properties,
         vstd::string &str);
-    static vstd::optional<CodegenResult> Codegen(Function kernel, std::filesystem::path const &internalDataPath);
+    static vstd::optional<CodegenResult> Codegen(Function kernel, vstd::string_view internalDataPath);
 #ifdef USE_SPIRV
     static void GenerateBindlessSpirv(
         vstd::string &str);

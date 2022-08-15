@@ -32,6 +32,7 @@ public:
 
     public:
         virtual vbyte const *ReadFile(size_t size) = 0;
+        virtual void ReadFile(void* ptr, size_t size) = 0;
         virtual ReadResult ReadFileAndPSO(
             size_t fileSize) = 0;
         virtual void DeletePSOFile() = 0;
@@ -41,11 +42,11 @@ public:
         vstd::span<Property const> properties,
         vstd::span<vbyte> binByte,
         vstd::MD5 md5,
+        uint bindlessCount,
         uint3 blockSize);
     static ComputeShader *DeSerialize(
-        vstd::span<Property const> properties,
         Device *device,
-        vstd::MD5 md5,
+        vstd::optional<vstd::MD5>&& md5,
         Visitor &streamFunc);
     ShaderSerializer() = delete;
     ~ShaderSerializer() = delete;

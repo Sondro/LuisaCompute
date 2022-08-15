@@ -1,13 +1,20 @@
 #pragma vengine_package vengine_dll
 #include <vstl/BinaryReader.h>
+#ifdef _WIN32
+#define VSTD_FSEEK _fseeki64_nolock
+#define VSTD_FTELL _ftelli64_nolock
+#else
+#define VSTD_FSEEK fseek
+#define VSTD_FTELL ftell
+#endif
 BinaryReader::BinaryReader(vstd::string const &path) {
     currentPos = 0;
     ifs = fopen(path.c_str(), "rb");
     isAvaliable = ifs;
     if (isAvaliable) {
-        fseek(ifs, 0, SEEK_END);
-        length = ftell(ifs);
-        fseek(ifs, 0, SEEK_SET);
+        VSTD_FSEEK(ifs, 0, SEEK_END);
+        length = VSTD_FTELL(ifs);
+        VSTD_FSEEK(ifs, 0, SEEK_SET);
     } else {
         length = 0;
     }
@@ -48,9 +55,11 @@ void BinaryReader::SetPos(uint64 pos) {
     if (!isAvaliable) return;
     if (pos > length) pos = length;
     currentPos = pos;
-    fseek(ifs, currentPos, SEEK_SET);
+    VSTD_FSEEK(ifs, currentPos, SEEK_SET);
 }
 BinaryReader::~BinaryReader() {
     if (!isAvaliable) return;
     fclose(ifs);
 }
+#undef VSTD_FSEEK _fseeki64_nolock
+#undef VSTD_FTELL _ftelli64_nolock

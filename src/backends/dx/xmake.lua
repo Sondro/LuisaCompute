@@ -91,7 +91,7 @@ after_build(function(target)
     end
     os.cp("../../compile/hlsl/internal_text/*", build_path .. ".data/")
 end)
-IncludePath = {"./", "../../", "../../ext/abseil-cpp/", "../../ext/EASTL/include/",
+IncludePath = {"./", "../../", "../../ext/abseil-cpp/", "../../ext/EASTL/include/", "../../ext/json/include/",
                "../../ext/EASTL/packages/EABase/include/Common", "../../ext/fmt/include/", "../../ext/spdlog/include/",
                "../../ext/xxHash/", "../../ext/stb/"}
 Defines = {"VENGINE_VULKAN_PROJECT", "UNICODE", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", "NOMINMAX", "EASTL_DLL=1",

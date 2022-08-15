@@ -8,6 +8,7 @@ class LCUtil;
 using LCDeviceInterface = luisa::compute::Device::Interface;
 class LCDevice : public LCDeviceInterface, public vstd::IOperatorNewBase {
 public:
+    ShaderPaths shaderPaths;
     Device nativeDevice;
     vstd::unique_ptr<LCUtil> util;
     static constexpr size_t maxAllocatorCount = 2;

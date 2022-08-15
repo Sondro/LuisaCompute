@@ -34,15 +34,15 @@ void Device::WaitFence(ID3D12Fence *fence, uint64 fenceIndex) {
 }
 ComputeShader *Device::LazyLoadShader::Get(Device *self) {
     if (!shader) {
-        shader = vstd::create_unique(loadFunc(self, self->ctx));
+        shader = vstd::create_unique(loadFunc(self, self->path));
     }
     return shader.get();
 }
 DXShaderCompiler *Device::Compiler() {
     return gDxcCompiler;
 }
-Device::Device(Context const &ctx, uint index)
-    : ctx(ctx),
+Device::Device(ShaderPaths const &path, uint index)
+    : path(path),
       bc6TryModeG10(BuiltinKernel::LoadBC6TryModeG10CSKernel),
       bc6TryModeLE10(BuiltinKernel::LoadBC6TryModeLE10CSKernel),
       bc6EncodeBlock(BuiltinKernel::LoadBC6EncodeBlockCSKernel),

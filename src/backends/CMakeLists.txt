@@ -15,4 +15,3 @@ function(luisa_compute_add_backend name)
             DEBUG_POSTFIX "")
 endfunction()
 
-add_subdirectory(dx)

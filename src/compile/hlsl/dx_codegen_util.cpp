@@ -10,15 +10,15 @@ namespace detail {
 static inline uint64 CalcAlign(uint64 value, uint64 align) {
     return (value + (align - 1)) & ~(align - 1);
 }
-static vstd::string const &HLSLHeader(std::filesystem::path const &internalDataPath) {
+static vstd::string const &HLSLHeader(vstd::string_view internalDataPath) {
     static vstd::string header = ReadInternalHLSLFile("hlsl_header", internalDataPath);
     return header;
 }
-static vstd::string const &HLSLHeaderSpirv(std::filesystem::path const &internalDataPath) {
+static vstd::string const &HLSLHeaderSpirv(vstd::string_view internalDataPath) {
     static vstd::string header = ReadInternalHLSLFile("hlsl_header_spirv", internalDataPath);
     return header;
 }
-static vstd::string const &RayTracingHeader(std::filesystem::path const &internalDataPath) {
+static vstd::string const &RayTracingHeader(vstd::string_view internalDataPath) {
     static vstd::string rtHeader = ReadInternalHLSLFile("raytracing_header", internalDataPath);
     return rtHeader;
 }
@@ -1126,7 +1126,7 @@ void CodegenUtility::GenerateBindless(
     }
 }
 vstd::optional<CodegenResult> CodegenUtility::Codegen(
-    Function kernel, std::filesystem::path const &internalDataPath) {
+    Function kernel, vstd::string_view internalDataPath) {
     assert(kernel.tag() == Function::Tag::KERNEL);
     opt = CodegenStackData::Allocate();
     CodegenStackData::ThreadLocalSpirv() = false;
@@ -1295,7 +1295,7 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
 }
 #ifdef USE_SPIRV
 
-vstd::optional<vstd::string> CodegenUtility::CodegenSpirv(Function kernel, std::filesystem::path const &internalDataPath) {
+vstd::optional<vstd::string> CodegenUtility::CodegenSpirv(Function kernel, vstd::string_view internalDataPath) {
     assert(kernel.tag() == Function::Tag::KERNEL);
     opt = CodegenStackData::Allocate();
     CodegenStackData::ThreadLocalSpirv() = true;
