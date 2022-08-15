@@ -101,7 +101,7 @@ void LLVMCodegen::visit(const SwitchStmt *stmt) {
     auto inst = ctx->builder->CreateSwitch(cond, end_block);
     ctx->break_targets.emplace_back(end_block);
     ctx->switch_stack.emplace_back(inst);
-    stmt->body()->accept(*this);
+    for (auto c : stmt->body()->statements()) { c->accept(*this); }
     ctx->break_targets.pop_back();
     ctx->switch_stack.pop_back();
     end_block->moveAfter(ctx->builder->GetInsertBlock());
@@ -149,7 +149,7 @@ void LLVMCodegen::visit(const AssignStmt *stmt) {
 void LLVMCodegen::visit(const ForStmt *stmt) {
     auto var = _create_expr(stmt->variable());
     auto ctx = _current_context();
-    auto loop_test = ::llvm::BasicBlock::Create(_context, "loop.test", ctx->ir);
+    auto loop_test = ::llvm::BasicBlock::Create(_context, "for.test", ctx->ir);
     auto loop_body = ::llvm::BasicBlock::Create(_context, "for.body", ctx->ir);
     auto loop_update = ::llvm::BasicBlock::Create(_context, "for.update", ctx->ir);
     auto loop_exit = ::llvm::BasicBlock::Create(_context, "for.exit", ctx->ir);
@@ -159,10 +159,10 @@ void LLVMCodegen::visit(const ForStmt *stmt) {
     auto cond = _create_expr(stmt->condition());
     cond = _scalar_to_bool(stmt->condition()->type(), cond);
     cond = ctx->builder->CreateICmpNE(
-        ctx->builder->CreateLoad(_create_type(Type::of<bool>()), cond, "cond"),
-        ctx->builder->getInt8(0), "cond.cmp");
+        ctx->builder->CreateLoad(ctx->builder->getInt8Ty(), cond, "for.cond"),
+        ctx->builder->getInt8(0), "for.cond.cmp");
     ctx->builder->CreateCondBr(cond, loop_body, loop_exit);
-    loop_body->moveAfter(loop_test);
+    loop_body->moveAfter(ctx->builder->GetInsertBlock());
     ctx->builder->SetInsertPoint(loop_body);
     ctx->continue_targets.emplace_back(loop_update);
     ctx->break_targets.emplace_back(loop_exit);
@@ -172,7 +172,7 @@ void LLVMCodegen::visit(const ForStmt *stmt) {
     }
     ctx->continue_targets.pop_back();
     ctx->break_targets.pop_back();
-    loop_update->moveAfter(loop_body);
+    loop_update->moveAfter(ctx->builder->GetInsertBlock());
     ctx->builder->SetInsertPoint(loop_update);
     auto vt = stmt->variable()->type();
     auto st = stmt->step()->type();
@@ -182,16 +182,16 @@ void LLVMCodegen::visit(const ForStmt *stmt) {
         switch (vt->tag()) {
             case Type::Tag::FLOAT:
                 return ctx->builder->CreateFAdd(
-                    ctx->builder->CreateLoad(t, var, "var"),
-                    ctx->builder->CreateLoad(t, step, "step"), "next");
+                    ctx->builder->CreateLoad(t, var, "for.var"),
+                    ctx->builder->CreateLoad(t, step, "for.var.step"), "for.var.next");
             case Type::Tag::INT:
                 return ctx->builder->CreateNSWAdd(
-                    ctx->builder->CreateLoad(t, var, "var"),
-                    ctx->builder->CreateLoad(t, step, "step"), "next");
+                    ctx->builder->CreateLoad(t, var, "for.var"),
+                    ctx->builder->CreateLoad(t, step, "for.var.step"), "for.var.next");
             case Type::Tag::UINT:
                 return ctx->builder->CreateAdd(
-                    ctx->builder->CreateLoad(t, var, "var"),
-                    ctx->builder->CreateLoad(t, step, "step"), "next");
+                    ctx->builder->CreateLoad(t, var, "for.var"),
+                    ctx->builder->CreateLoad(t, step, "for.var.step"), "for.var.next");
             default: break;
         }
         LUISA_ERROR_WITH_LOCATION(
@@ -200,26 +200,11 @@ void LLVMCodegen::visit(const ForStmt *stmt) {
     }();
     ctx->builder->CreateStore(next, var);
     ctx->builder->CreateBr(loop_test);
-    loop_exit->moveAfter(loop_update);
+    loop_exit->moveAfter(ctx->builder->GetInsertBlock());
     ctx->builder->SetInsertPoint(loop_exit);
 }
 
 void LLVMCodegen::visit(const CommentStmt *stmt) { /* do nothing */ }
-
-void LLVMCodegen::visit(const MetaStmt *stmt) {
-    auto ctx = _current_context();
-    for (auto v : stmt->variables()) {
-        if (v.tag() == Variable::Tag::LOCAL) {
-            auto p = ctx->builder->CreateAlloca(
-                _create_type(v.type()), nullptr,
-                luisa::string_view{_variable_name(v)});
-            ctx->variables.emplace(v.uid(), p);
-            ctx->builder->CreateMemSet(p, ctx->builder->getInt8(0),
-                                       v.type()->size(), ::llvm::MaybeAlign{});
-        }
-    }
-    stmt->scope()->accept(*this);
-}
 
 void LLVMCodegen::_create_assignment(const Type *dst_type, const Type *src_type, ::llvm::Value *p_dst, ::llvm::Value *p_src) noexcept {
     auto p_rhs = _builtin_static_cast(dst_type, src_type, p_src);

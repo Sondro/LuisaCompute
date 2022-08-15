@@ -246,7 +246,7 @@ void StringStateVisitor::visit(const CastExpr *expr) {
 }
 
 void StringStateVisitor::visit(const ConstantExpr *expr) {
-    CodegenUtility::GetConstName(expr->data(), str);
+    CodegenUtility::GetConstName(expr->data().hash(), expr->data(), str);
 }
 
 void StringStateVisitor::visit(const BreakStmt *state) {
@@ -389,35 +389,28 @@ StringStateVisitor::StringStateVisitor(
     vstd::string &str)
     : str(str), f(f) {
 }
-void StringStateVisitor::visit(const MetaStmt *stmt) {
-    auto func = [&]<bool collectShared>() {
-        for (auto &&v : stmt->variables()) {
-            if (v.tag() == Variable::Tag::LOCAL && v.type()->is_structure()) {
-                vstd::string typeName;
-                CodegenUtility::GetTypeName(*v.type(), typeName, f.variable_usage(v.uid()));
-                str << typeName << ' ';
-                CodegenUtility::GetVariableName(v, str);
-                str << "=("sv << typeName << ")0;\n";
-            } else {
-                CodegenUtility::GetTypeName(*v.type(), str, f.variable_usage(v.uid()));
-                str << ' ';
-                CodegenUtility::GetVariableName(v, str);
-                str << ";\n";
-            }
-            if constexpr (collectShared) {
-                if (v.tag() == Variable::Tag::SHARED) {
-                    sharedVariables->emplace(v);
-                }
-            }
-        }
-    };
-    if (sharedVariables) {
-        func.operator()<true>();
-    } else {
-        func.operator()<false>();
-    }
+void StringStateVisitor::VisitFunction(Function func) {
 
-    stmt->scope()->accept(*this);
+    for (auto &&v : func.local_variables()) {
+        if (v.type()->is_structure()) {
+            vstd::string typeName;
+            CodegenUtility::GetTypeName(*v.type(), typeName, f.variable_usage(v.uid()));
+            str << typeName << ' ';
+            CodegenUtility::GetVariableName(v, str);
+            str << "=("sv << typeName << ")0;\n";
+        } else {
+            CodegenUtility::GetTypeName(*v.type(), str, f.variable_usage(v.uid()));
+            str << ' ';
+            CodegenUtility::GetVariableName(v, str);
+            str << ";\n";
+        }
+    }
+    if (sharedVariables) {
+        for (auto&& v : func.shared_variables()) {
+            sharedVariables->emplace(v.first, v.second);
+        }
+    }
+    func.body()->accept(*this);
 }
 StringStateVisitor::~StringStateVisitor() = default;
 }// namespace toolhub::directx

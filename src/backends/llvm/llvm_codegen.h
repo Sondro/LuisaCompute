@@ -14,7 +14,6 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/Host.h>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -22,19 +21,25 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/IPO.h>
+#if LLVM_VERSION_MAJOR >= 14
+#include <llvm/MC/TargetRegistry.h>
+#else
+#include <llvm/Support/TargetRegistry.h>
+#endif
 
 #include <ast/type.h>
 #include <ast/expression.h>
 #include <ast/statement.h>
 #include <ast/function_builder.h>
 #include <backends/llvm/llvm_texture.h>
+#include <backends/llvm/llvm_accel.h>
 
 namespace luisa::compute::llvm {
 
 class LLVMCodegen : public StmtVisitor {
 
 public:
-    static constexpr auto accel_handle_size = sizeof(const void *);
+    static constexpr auto accel_handle_size = sizeof(LLVMAccel::Handle);
     static constexpr auto buffer_handle_size = sizeof(const void *);
     static constexpr auto texture_handle_size = sizeof(LLVMTextureView);
     static constexpr auto bindless_array_handle_size = sizeof(const void *);
@@ -80,6 +85,8 @@ private:
     [[nodiscard]] luisa::unique_ptr<FunctionContext> _create_kernel_context(Function f) noexcept;
     [[nodiscard]] luisa::unique_ptr<FunctionContext> _create_callable_context(Function f) noexcept;
     [[nodiscard]] ::llvm::Type *_create_type(const Type *t) noexcept;
+    [[nodiscard]] ::llvm::Type *_bindless_item_type() noexcept;
+    [[nodiscard]] ::llvm::Type *_bindless_texture_type() noexcept;
     [[nodiscard]] ::llvm::Value *_create_expr(const Expression *expr) noexcept;
     [[nodiscard]] ::llvm::Value *_create_unary_expr(const UnaryExpr *expr) noexcept;
     [[nodiscard]] ::llvm::Value *_create_binary_expr(const BinaryExpr *expr) noexcept;
@@ -90,6 +97,7 @@ private:
     [[nodiscard]] ::llvm::Value *_create_constant_expr(const ConstantExpr *expr) noexcept;
     [[nodiscard]] ::llvm::Value *_create_call_expr(const CallExpr *expr) noexcept;
     [[nodiscard]] ::llvm::Value *_create_cast_expr(const CastExpr *expr) noexcept;
+    [[nodiscard]] ::llvm::Value *_create_alloca(::llvm::Type *t, luisa::string_view name) noexcept;
     [[nodiscard]] ::llvm::Value *_create_stack_variable(::llvm::Value *v, luisa::string_view name = "") noexcept;
     [[nodiscard]] FunctionContext *_current_context() noexcept;
     void _create_assignment(const Type *dst_type, const Type *src_type, ::llvm::Value *p_dst, ::llvm::Value *p_src) noexcept;
@@ -236,6 +244,12 @@ private:
     [[nodiscard]] ::llvm::Value *_builtin_sin(const Type *t, ::llvm::Value *v) noexcept;
     [[nodiscard]] ::llvm::Value *_builtin_cos(const Type *t, ::llvm::Value *v) noexcept;
     [[nodiscard]] ::llvm::Value *_builtin_tan(const Type *t, ::llvm::Value *v) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_sinh(const Type *t, ::llvm::Value *v) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_cosh(const Type *t, ::llvm::Value *v) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_tanh(const Type *t, ::llvm::Value *v) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_asinh(const Type *t, ::llvm::Value *v) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_acosh(const Type *t, ::llvm::Value *v) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_atanh(const Type *t, ::llvm::Value *v) noexcept;
     [[nodiscard]] ::llvm::Value *_builtin_exp(const Type *t, ::llvm::Value *v) noexcept;
     [[nodiscard]] ::llvm::Value *_builtin_exp2(const Type *t, ::llvm::Value *v) noexcept;
     [[nodiscard]] ::llvm::Value *_builtin_exp10(const Type *t, ::llvm::Value *v) noexcept;
@@ -276,6 +290,29 @@ private:
     [[nodiscard]] ::llvm::Value *_builtin_transpose(const Type *t, ::llvm::Value *pm) noexcept;
     [[nodiscard]] ::llvm::Value *_builtin_trace_closest(::llvm::Value *accel, ::llvm::Value *p_ray) noexcept;
     [[nodiscard]] ::llvm::Value *_builtin_trace_any(::llvm::Value *accel, ::llvm::Value *p_ray) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_instance_transform(::llvm::Value *accel, ::llvm::Value *p_index) noexcept;
+    void _builtin_set_instance_transform(::llvm::Value *accel, ::llvm::Value *p_index, ::llvm::Value *p_mat) noexcept;
+    void _builtin_set_instance_visibility(::llvm::Value *accel, ::llvm::Value *p_index, ::llvm::Value *p_vis) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_size2d(::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_level) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_size3d(::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_level) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_buffer_read(const Type *t, ::llvm::Value *p_items,
+                                                               ::llvm::Value *p_buffer_index, ::llvm::Value *p_elem_index) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_read2d(
+        ::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_level, ::llvm::Value *p_uv) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_read3d(
+        ::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_level, ::llvm::Value *p_uvw) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_sample2d(
+        ::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_uv) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_sample3d(
+        ::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_uvw) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_sample2d_level(
+        ::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_uv, ::llvm::Value *p_lod) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_sample3d_level(
+        ::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_uvw, ::llvm::Value *p_lod) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_sample2d_grad(
+        ::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_uv, ::llvm::Value *p_dpdx, ::llvm::Value *p_dpdy) noexcept;
+    [[nodiscard]] ::llvm::Value *_builtin_bindless_texture_sample3d_grad(
+        ::llvm::Value *p_items, ::llvm::Value *p_index, ::llvm::Value *p_uvw, ::llvm::Value *p_dpdx, ::llvm::Value *p_dpdy) noexcept;
 
 public:
     explicit LLVMCodegen(::llvm::LLVMContext &ctx) noexcept;
@@ -292,7 +329,6 @@ public:
     void visit(const AssignStmt *stmt) override;
     void visit(const ForStmt *stmt) override;
     void visit(const CommentStmt *stmt) override;
-    void visit(const MetaStmt *stmt) override;
     [[nodiscard]] std::unique_ptr<::llvm::Module> emit(Function f) noexcept;
 };
 

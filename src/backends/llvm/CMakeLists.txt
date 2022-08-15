@@ -4,6 +4,7 @@ endif ()
 
 if (LLVM_FOUND) # link with llvm for jit
     set(LC_BACKEND_LLVM_SRC
+            llvm_abi.h
             llvm_device.cpp llvm_device.h
             llvm_codegen.cpp llvm_codegen.h
             llvm_codegen_value.cpp
@@ -17,14 +18,19 @@ if (LLVM_FOUND) # link with llvm for jit
             llvm_stream.cpp llvm_stream.h
             llvm_texture.cpp llvm_texture.h
             llvm_mesh.cpp llvm_mesh.h
-            llvm_accel.cpp llvm_accel.h)
+            llvm_accel.cpp llvm_accel.h
+            llvm_bindless_array.cpp llvm_bindless_array.h)
     luisa_compute_add_backend(llvm SOURCES ${LC_BACKEND_LLVM_SRC})
     message(STATUS "Build with LLVM backend")
     llvm_map_components_to_libnames(LLVM_LIBS core executionengine support mcjit nativecodegen irreader passes analysis)
     target_include_directories(luisa-compute-backend-llvm PRIVATE ${LLVM_INCLUDE_DIRS})
     target_link_libraries(luisa-compute-backend-llvm PRIVATE ${LLVM_LIBS})
     if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-        target_compile_options(luisa-compute-backend-llvm PRIVATE /wd4624 /wd4996) # do not complain about LLVM
+        target_compile_options(luisa-compute-backend-llvm PRIVATE
+                /wd4624 /wd4996 # do not complain about LLVM
+                /fp:fast /fp:contract /fp:except-)
+    else ()
+        target_compile_options(luisa-compute-backend-llvm PRIVATE -ffast-math)
     endif ()
 else ()
     message(WARNING "LLVM not found. LLVM backend will not be built.")

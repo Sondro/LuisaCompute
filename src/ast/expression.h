@@ -23,7 +23,7 @@
 namespace luisa::compute {
 
 struct ExprVisitor;
-class AstSerializer;
+
 namespace detail {
 class FunctionBuilder;
 }
@@ -33,7 +33,6 @@ class FunctionBuilder;
  * 
  */
 class LC_AST_API Expression : public concepts::Noncopyable {
-    friend class AstSerializer;
 
 public:
     /// Expression type
@@ -75,11 +74,6 @@ public:
     virtual void accept(ExprVisitor &) const = 0;
     void mark(Usage usage) const noexcept;
     [[nodiscard]] uint64_t hash() const noexcept;
-
-    /// Allow serializetion
-    using is_polymorphically_serialized = void;
-    using polymorphic_tag_type = Tag;
-    static luisa::unique_ptr<Expression> create(Tag tag) noexcept;
 };
 
 class UnaryExpr;
@@ -109,7 +103,6 @@ struct ExprVisitor {
 
 /// Unary expression
 class UnaryExpr final : public Expression {
-    friend class AstSerializer;
 
 private:
     const Expression *_operand;
@@ -140,7 +133,6 @@ public:
 
 /// Binary expression
 class BinaryExpr final : public Expression {
-    friend class AstSerializer;
 
 private:
     const Expression *_lhs;
@@ -178,7 +170,6 @@ public:
 
 /// Access expression
 class AccessExpr final : public Expression {
-    friend class AstSerializer;
 
 private:
     const Expression *_range;
@@ -211,20 +202,20 @@ public:
 
 /// Member expression
 class MemberExpr final : public Expression {
-    friend class AstSerializer;
 
 public:
-    static constexpr auto swizzle_mask = 0xff00000000ull;
-    static constexpr auto swizzle_shift = 32u;
+    static constexpr auto swizzle_mask = 0xff000000u;
+    static constexpr auto swizzle_shift = 24u;
 
 private:
     const Expression *_self;
-    uint64_t _member;
+    uint32_t _swizzle_size;
+    uint32_t _swizzle_code;
 
 protected:
     void _mark(Usage usage) const noexcept override { _self->mark(usage); }
     uint64_t _compute_hash() const noexcept override {
-        return hash64(_member, _self->hash());
+        return hash64(make_uint2(_swizzle_size, _swizzle_code), _self->hash());
     }
 
 public:
@@ -235,8 +226,9 @@ public:
      * @param self where to get member
      * @param member_index index of member
      */
-    MemberExpr(const Type *type, const Expression *self, size_t member_index) noexcept
-        : Expression{Tag::MEMBER, type}, _self{self}, _member{member_index} {}
+    MemberExpr(const Type *type, const Expression *self, uint member_index) noexcept
+        : Expression{Tag::MEMBER, type}, _self{self},
+          _swizzle_size{0u}, _swizzle_code{member_index} {}
 
     /**
      * @brief Construct a new Member Expr object accessing by swizzling
@@ -254,33 +246,40 @@ public:
      * @param swizzle_size swizzle size
      * @param swizzle_code swizzle code
      */
-    MemberExpr(const Type *type, const Expression *self, size_t swizzle_size, uint64_t swizzle_code) noexcept
-        : Expression{Tag::MEMBER, type}, _self{self}, _member{(static_cast<uint64_t>(swizzle_size) << swizzle_shift) | swizzle_code} {}
+    MemberExpr(const Type *type, const Expression *self, uint swizzle_size, uint swizzle_code) noexcept
+        : Expression{Tag::MEMBER, type}, _self{self},
+          _swizzle_size{swizzle_size}, _swizzle_code{swizzle_code} {
+        LUISA_ASSERT(_swizzle_size != 0u && _swizzle_size <= 4u,
+                     "Swizzle size must be in [1, 4]");
+    }
 
-    [[nodiscard]] auto is_swizzle() const noexcept { return (_member & swizzle_mask) != 0u; }
     [[nodiscard]] auto self() const noexcept { return _self; }
 
-    [[nodiscard]] auto member_index() const noexcept {
-        if (is_swizzle()) {
-            LUISA_ERROR_WITH_LOCATION(
-                "Invalid member index in swizzled MemberExpr.");
-        }
-        return static_cast<size_t>(_member);
-    }
-
     [[nodiscard]] auto swizzle_size() const noexcept {
-        auto s = (_member & swizzle_mask) >> swizzle_shift;
-        if (s == 0u || s > 4u) { LUISA_ERROR_WITH_LOCATION("Invalid swizzle size {}.", s); }
-        return static_cast<size_t>(s);
+        LUISA_ASSERT(_swizzle_size != 0u && _swizzle_size <= 4u,
+                     "Invalid swizzle size {}.", _swizzle_size);
+        return _swizzle_size;
     }
 
-    [[nodiscard]] auto swizzle_index(size_t index) const noexcept {
+    [[nodiscard]] auto is_swizzle() const noexcept { return _swizzle_size != 0u; }
+
+    [[nodiscard]] auto swizzle_code() const noexcept {
+        LUISA_ASSERT(is_swizzle(), "MemberExpr is not swizzled.");
+        return _swizzle_code;
+    }
+
+    [[nodiscard]] auto swizzle_index(uint index) const noexcept {
         if (auto s = swizzle_size(); index >= s) {
             LUISA_ERROR_WITH_LOCATION(
                 "Invalid swizzle index {} (count = {}).",
                 index, s);
         }
-        return static_cast<size_t>((_member >> (index * 4u)) & 0x0fu);
+        return (_swizzle_code >> (index * 4u)) & 0x0fu;
+    }
+
+    [[nodiscard]] auto member_index() const noexcept {
+        LUISA_ASSERT(!is_swizzle(), "MemberExpr is not a member");
+        return _swizzle_code;
     }
 
     LUISA_MAKE_EXPRESSION_ACCEPT_VISITOR()
@@ -305,7 +304,6 @@ using make_literal_value_t = typename make_literal_value<T>::type;
 
 /// TODO
 class LiteralExpr final : public Expression {
-    friend class AstSerializer;
 
 public:
     using Value = detail::make_literal_value_t<basic_types>;
@@ -334,7 +332,6 @@ public:
 
 /// Reference expression
 class RefExpr final : public Expression {
-    friend class AstSerializer;
 
 private:
     Variable _variable;
@@ -359,7 +356,6 @@ public:
 
 /// Constant expression
 class ConstantExpr final : public Expression {
-    friend class AstSerializer;
 
 private:
     ConstantData _data;
@@ -385,7 +381,6 @@ public:
 
 /// Call expression
 class CallExpr final : public Expression {
-    friend class AstSerializer;
 
 public:
     using ArgumentList = luisa::vector<const Expression *>;
@@ -444,7 +439,6 @@ enum struct CastOp {
 
 /// Cast expression
 class CastExpr final : public Expression {
-    friend class AstSerializer;
 
 private:
     const Expression *_source;

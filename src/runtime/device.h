@@ -191,9 +191,9 @@ public:
         VBuffer &&vertices, TBuffer &&triangles,
         AccelUsageHint hint = AccelUsageHint::FAST_TRACE,
         bool allow_compact = false, bool allow_update = false) noexcept;// see definition in rtx/mesh.h
-                                                                           
+
     [[nodiscard]] Accel create_accel(AccelUsageHint hint = AccelUsageHint::FAST_TRACE, bool allow_compact = false, bool allow_update = true) noexcept;// see definition in rtx/accel.cpp
-    [[nodiscard]] BindlessArray create_bindless_array(size_t slots = 65536u) noexcept;          // see definition in runtime/bindless_array.cpp
+    [[nodiscard]] BindlessArray create_bindless_array(size_t slots = 65536u) noexcept;                                                                // see definition in runtime/bindless_array.cpp
 
     template<typename T>
     [[nodiscard]] auto create_image(PixelStorage pixel, uint width, uint height, uint mip_levels = 1u) noexcept {

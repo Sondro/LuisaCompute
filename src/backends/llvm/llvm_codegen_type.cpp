@@ -13,15 +13,15 @@ namespace luisa::compute::llvm {
         case Type::Tag::BOOL: return p_src;
         case Type::Tag::FLOAT: return _create_stack_variable(
             builder->CreateFCmpONE(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.float_to_bool.src"),
-                _literal(0.f), "cast.float_to_bool.cmp"),
-            "cast.float_to_bool.addr");
+                builder->CreateLoad(_create_type(src_type), p_src, "cast.float.to.bool.src"),
+                _literal(0.f), "cast.float.to.bool.cmp"),
+            "cast.float.to.bool.addr");
         case Type::Tag::INT:
         case Type::Tag::UINT: return _create_stack_variable(
             builder->CreateICmpNE(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.int_to_bool.src"),
-                _literal(0u), "cast.int_to_bool.cmp"),
-            "cast.int_to_bool.addr");
+                builder->CreateLoad(_create_type(src_type), p_src, "cast.int.to.bool.src"),
+                _literal(0u), "cast.int.to.bool.cmp"),
+            "cast.int.to.bool.addr");
         default: break;
     }
     LUISA_ERROR_WITH_LOCATION("Invalid conversion: {} to bool.",
@@ -34,20 +34,22 @@ namespace luisa::compute::llvm {
     switch (src_type->tag()) {
         case Type::Tag::BOOL: return _create_stack_variable(
             builder->CreateSelect(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.bool_to_float.src"),
-                _literal(1.f), _literal(0.f), "cast.bool_to_float.select"),
-            "cast.bool_to_float.addr");
+                builder->CreateICmpEQ(
+                    builder->CreateLoad(_create_type(src_type), p_src, "cast.bool.to.float.src"),
+                    _literal(true), "cast.bool.to.float.cmp"),
+                _literal(1.f), _literal(0.f), "cast.bool.to.float.select"),
+            "cast.bool.to.float.addr");
         case Type::Tag::FLOAT: return p_src;
         case Type::Tag::INT: return _create_stack_variable(
             builder->CreateSIToFP(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.int_to_float.src"),
-                builder->getFloatTy(), "cast.int_to_float.cast"),
-            "cast.int_to_float.addr");
+                builder->CreateLoad(_create_type(src_type), p_src, "cast.int.to.float.src"),
+                builder->getFloatTy(), "cast.int.to.float.cast"),
+            "cast.int.to.float.addr");
         case Type::Tag::UINT: return _create_stack_variable(
             builder->CreateUIToFP(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.uint_to_float.src"),
-                builder->getFloatTy(), "cast.uint_to_float.cast"),
-            "cast.uint_to_float.addr");
+                builder->CreateLoad(_create_type(src_type), p_src, "cast.uint.to.float.src"),
+                builder->getFloatTy(), "cast.uint.to.float.cast"),
+            "cast.uint.to.float.addr");
         default: break;
     }
     LUISA_ERROR_WITH_LOCATION("Invalid conversion: {} to float.",
@@ -60,14 +62,14 @@ namespace luisa::compute::llvm {
     switch (src_type->tag()) {
         case Type::Tag::BOOL: return _create_stack_variable(
             builder->CreateZExt(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.bool_to_int.src"),
-                builder->getInt32Ty(), "cast.bool_to_int.cast"),
-            "cast.bool_to_int.addr");
+                builder->CreateLoad(_create_type(src_type), p_src, "cast.bool.to.int.src"),
+                builder->getInt32Ty(), "cast.bool.to.int.cast"),
+            "cast.bool.to.int.addr");
         case Type::Tag::FLOAT: return _create_stack_variable(
             builder->CreateFPToSI(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.float_to_int.src"),
-                builder->getInt32Ty(), "cast.float_to_int.cast"),
-            "cast.float_to_int.addr");
+                builder->CreateLoad(_create_type(src_type), p_src, "cast.float.to.int.src"),
+                builder->getInt32Ty(), "cast.float.to.int.cast"),
+            "cast.float.to.int.addr");
         case Type::Tag::INT:
         case Type::Tag::UINT: return p_src;
         default: break;
@@ -82,14 +84,14 @@ namespace luisa::compute::llvm {
     switch (src_type->tag()) {
         case Type::Tag::BOOL: return _create_stack_variable(
             builder->CreateZExt(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.bool_to_uint.src"),
-                builder->getInt32Ty(), "cast.bool_to_uint.cast"),
-            "cast.bool_to_uint.addr");
+                builder->CreateLoad(_create_type(src_type), p_src, "cast.bool.to.uint.src"),
+                builder->getInt32Ty(), "cast.bool.to.uint.cast"),
+            "cast.bool.to.uint.addr");
         case Type::Tag::FLOAT: return _create_stack_variable(
             builder->CreateFPToUI(
-                builder->CreateLoad(_create_type(src_type), p_src, "cast.float_to_uint.src"),
-                builder->getInt32Ty(), "cast.float_to_uint.cast"),
-            "cast.float_to_uint.addr");
+                builder->CreateLoad(_create_type(src_type), p_src, "cast.float.to.uint.src"),
+                builder->getInt32Ty(), "cast.float.to.uint.cast"),
+            "cast.float.to.uint.addr");
         case Type::Tag::INT:
         case Type::Tag::UINT: return p_src;
         default: break;
@@ -107,19 +109,19 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateFCmpONE(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float2_to_bool2.src"),
-                        _literal(make_float2(0.f)), "cast.float2_to_bool2.cmp"),
-                    "cast.float2_to_bool2.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float2.to.bool2.src"),
+                        _literal(make_float2(0.f)), "cast.float2.to.bool2.cmp"),
+                    "cast.float2.to.bool2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateFCmpONE(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float3_to_bool3.src"),
-                        _literal(make_float3(0.f)), "cast.float3_to_bool3.cmp"),
-                    "cast.float3_to_bool3.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float3.to.bool3.src"),
+                        _literal(make_float3(0.f)), "cast.float3.to.bool3.cmp"),
+                    "cast.float3.to.bool3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateFCmpONE(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float4_to_bool4.src"),
-                        _literal(make_float4(0.f)), "cast.float4_to_bool4.cmp"),
-                    "cast.float4_to_bool4.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float4.to.bool4.src"),
+                        _literal(make_float4(0.f)), "cast.float4.to.bool4.cmp"),
+                    "cast.float4.to.bool4.addr");
                 default: break;
             }
             break;
@@ -129,19 +131,19 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateICmpNE(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int2_to_bool2.src"),
-                        _literal(make_uint2(0u)), "cast.int2_to_bool2.cmp"),
-                    "cast.int2_to_bool2.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int2.to.bool2.src"),
+                        _literal(make_uint2(0u)), "cast.int2.to.bool2.cmp"),
+                    "cast.int2.to.bool2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateICmpNE(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int3_to_bool3.src"),
-                        _literal(make_uint3(0u)), "cast.int3_to_bool3.cmp"),
-                    "cast.int3_to_bool3.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int3.to.bool3.src"),
+                        _literal(make_uint3(0u)), "cast.int3.to.bool3.cmp"),
+                    "cast.int3.to.bool3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateICmpNE(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int4_to_bool4.src"),
-                        _literal(make_uint4(0u)), "cast.int4_to_bool4.cmp"),
-                    "cast.int4_to_bool4.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int4.to.bool4.src"),
+                        _literal(make_uint4(0u)), "cast.int4.to.bool4.cmp"),
+                    "cast.int4.to.bool4.addr");
                 default: break;
             }
             break;
@@ -160,19 +162,22 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateSelect(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool2_to_float2.src"),
-                        _literal(make_float2(1.f)), _literal(make_float2(0.f)), "cast.bool2_to_float2.select"),
-                    "cast.bool2_to_float2.addr");
+                        builder->CreateICmpEQ(builder->CreateLoad(_create_type(src_type), p_src, "cast.bool2.to.float2.src"),
+                                              _literal(make_bool2(true)), "cast.bool2.to.float2.cmp"),
+                        _literal(make_float2(1.f)), _literal(make_float2(0.f)), "cast.bool2.to.float2.select"),
+                    "cast.bool2.to.float2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateSelect(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool3_to_float3.src"),
-                        _literal(make_float3(1.f)), _literal(make_float3(0.f)), "cast.bool3_to_float3.select"),
-                    "cast.bool3_to_float3.addr");
+                        builder->CreateICmpEQ(builder->CreateLoad(_create_type(src_type), p_src, "cast.bool3.to.float3.src"),
+                                              _literal(make_bool2(true)), "cast.bool3.to.float3.cmp"),
+                        _literal(make_float3(1.f)), _literal(make_float3(0.f)), "cast.bool3.to.float3.select"),
+                    "cast.bool3.to.float3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateSelect(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool4_to_float4.src"),
-                        _literal(make_float4(1.f)), _literal(make_float4(0.f)), "cast.bool4_to_float4.select"),
-                    "cast.bool4_to_float4.addr");
+                        builder->CreateICmpEQ(builder->CreateLoad(_create_type(src_type), p_src, "cast.bool4.to.float4.src"),
+                                              _literal(make_bool2(true)), "cast.bool4.to.float4.cmp"),
+                        _literal(make_float4(1.f)), _literal(make_float4(0.f)), "cast.bool4.to.float4.select"),
+                    "cast.bool4.to.float4.addr");
                 default: break;
             }
             break;
@@ -182,19 +187,19 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateSIToFP(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int2_to_float2.src"),
-                        _create_type(Type::of<float2>()), "cast.int2_to_float2.cast"),
-                    "cast.int2_to_float2.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int2.to.float2.src"),
+                        _create_type(Type::of<float2>()), "cast.int2.to.float2.cast"),
+                    "cast.int2.to.float2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateSIToFP(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int3_to_float3.src"),
-                        _create_type(Type::of<float3>()), "cast.int3_to_float3.cast"),
-                    "cast.int3_to_float3.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int3.to.float3.src"),
+                        _create_type(Type::of<float3>()), "cast.int3.to.float3.cast"),
+                    "cast.int3.to.float3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateSIToFP(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int4_to_float4.src"),
-                        _create_type(Type::of<float4>()), "cast.int4_to_float4.cast"),
-                    "cast.int4_to_float4.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.int4.to.float4.src"),
+                        _create_type(Type::of<float4>()), "cast.int4.to.float4.cast"),
+                    "cast.int4.to.float4.addr");
                 default: break;
             }
             break;
@@ -203,19 +208,19 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateUIToFP(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.uint2_to_float2.src"),
-                        _create_type(Type::of<float2>()), "cast.uint2_to_float2.cast"),
-                    "cast.uint2_to_float2.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.uint2.to.float2.src"),
+                        _create_type(Type::of<float2>()), "cast.uint2.to.float2.cast"),
+                    "cast.uint2.to.float2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateUIToFP(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.uint3_to_float3.src"),
-                        _create_type(Type::of<float3>()), "cast.uint3_to_float3.cast"),
-                    "cast.uint3_to_float3.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.uint3.to.float3.src"),
+                        _create_type(Type::of<float3>()), "cast.uint3.to.float3.cast"),
+                    "cast.uint3.to.float3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateUIToFP(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.uint4_to_float4.src"),
-                        _create_type(Type::of<float4>()), "cast.uint4_to_float4.cast"),
-                    "cast.uint4_to_float4.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.uint4.to.float4.src"),
+                        _create_type(Type::of<float4>()), "cast.uint4.to.float4.cast"),
+                    "cast.uint4.to.float4.addr");
                 default: break;
             }
             break;
@@ -234,19 +239,19 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateZExt(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool2_to_int2.src"),
-                        _create_type(Type::of<int2>()), "cast.bool2_to_int2.cast"),
-                    "cast.bool2_to_int2.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool2.to.int2.src"),
+                        _create_type(Type::of<int2>()), "cast.bool2.to.int2.cast"),
+                    "cast.bool2.to.int2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateZExt(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool3_to_int3.src"),
-                        _create_type(Type::of<int3>()), "cast.bool3_to_int3.cast"),
-                    "cast.bool3_to_int3.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool3.to.int3.src"),
+                        _create_type(Type::of<int3>()), "cast.bool3.to.int3.cast"),
+                    "cast.bool3.to.int3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateZExt(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool4_to_int4.src"),
-                        _create_type(Type::of<int4>()), "cast.bool4_to_int4.cast"),
-                    "cast.bool4_to_int4.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool4.to.int4.src"),
+                        _create_type(Type::of<int4>()), "cast.bool4.to.int4.cast"),
+                    "cast.bool4.to.int4.addr");
                 default: break;
             }
             break;
@@ -255,19 +260,19 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateFPToSI(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float2_to_int2.src"),
-                        _create_type(Type::of<int2>()), "cast.float2_to_int2.cast"),
-                    "cast.float2_to_int2.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float2.to.int2.src"),
+                        _create_type(Type::of<int2>()), "cast.float2.to.int2.cast"),
+                    "cast.float2.to.int2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateFPToSI(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float3_to_int3.src"),
-                        _create_type(Type::of<int3>()), "cast.float3_to_int3.cast"),
-                    "cast.float3_to_int3.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float3.to.int3.src"),
+                        _create_type(Type::of<int3>()), "cast.float3.to.int3.cast"),
+                    "cast.float3.to.int3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateFPToSI(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float4_to_int4.src"),
-                        _create_type(Type::of<int4>()), "cast.float4_to_int4.cast"),
-                    "cast.float4_to_int4.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float4.to.int4.src"),
+                        _create_type(Type::of<int4>()), "cast.float4.to.int4.cast"),
+                    "cast.float4.to.int4.addr");
                 default: break;
             }
             break;
@@ -288,19 +293,19 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateZExt(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool2_to_uint2.src"),
-                        _create_type(Type::of<uint2>()), "cast.bool2_to_int2.cast"),
-                    "cast.bool2_to_uint2.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool2.to.uint2.src"),
+                        _create_type(Type::of<uint2>()), "cast.bool2.to.int2.cast"),
+                    "cast.bool2.to.uint2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateZExt(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool3_to_uint3.src"),
-                        _create_type(Type::of<uint3>()), "cast.bool3_to_uint3.cast"),
-                    "cast.bool3_to_uint3.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool3.to.uint3.src"),
+                        _create_type(Type::of<uint3>()), "cast.bool3.to.uint3.cast"),
+                    "cast.bool3.to.uint3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateZExt(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool4_to_uint4.src"),
-                        _create_type(Type::of<uint4>()), "cast.bool4_to_uint4.cast"),
-                    "cast.bool4_to_uint4.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.bool4.to.uint4.src"),
+                        _create_type(Type::of<uint4>()), "cast.bool4.to.uint4.cast"),
+                    "cast.bool4.to.uint4.addr");
                 default: break;
             }
             break;
@@ -309,19 +314,19 @@ namespace luisa::compute::llvm {
             switch (src_type->dimension()) {
                 case 2u: return _create_stack_variable(
                     builder->CreateFPToUI(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float2_to_uint2.src"),
-                        _create_type(Type::of<uint2>()), "cast.float2_to_uint2.cast"),
-                    "cast.float2_to_uint2.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float2.to.uint2.src"),
+                        _create_type(Type::of<uint2>()), "cast.float2.to.uint2.cast"),
+                    "cast.float2.to.uint2.addr");
                 case 3u: return _create_stack_variable(
                     builder->CreateFPToUI(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float3_to_uint3.src"),
-                        _create_type(Type::of<uint3>()), "cast.float3_to_uint3.cast"),
-                    "cast.float3_to_uint3.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float3.to.uint3.src"),
+                        _create_type(Type::of<uint3>()), "cast.float3.to.uint3.cast"),
+                    "cast.float3.to.uint3.addr");
                 case 4u: return _create_stack_variable(
                     builder->CreateFPToUI(
-                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float4_to_uint4.src"),
-                        _create_type(Type::of<uint4>()), "cast.float4_to_uint4.cast"),
-                    "cast.float4_to_uint4.addr");
+                        builder->CreateLoad(_create_type(src_type), p_src, "cast.float4.to.uint4.src"),
+                        _create_type(Type::of<uint4>()), "cast.float4.to.uint4.cast"),
+                    "cast.float4.to.uint4.addr");
                 default: break;
             }
             break;
@@ -342,15 +347,14 @@ namespace luisa::compute::llvm {
                                  _builtin_static_cast(dst_type->element(), src_type, p_src));
     }
     auto builder = _current_context()->builder.get();
-    auto src = builder->CreateLoad(_create_type(src_type), p_src, "cast.scalar_to_vector.src");
-    auto dim = dst_type->dimension() == 3u ? 4u : dst_type->dimension();
+    auto src = builder->CreateLoad(_create_type(src_type), p_src, "cast.scalar.to.vector.src");
     switch (src_type->tag()) {
         case Type::Tag::BOOL:
         case Type::Tag::FLOAT:
         case Type::Tag::INT:
         case Type::Tag::UINT: return _create_stack_variable(
-            builder->CreateVectorSplat(dim, src, "cast.scalar_to_vector.splat"),
-            "cast.scalar_to_vector.addr");
+            builder->CreateVectorSplat(dst_type->dimension(), src, "cast.scalar.to.vector.splat"),
+            "cast.scalar.to.vector.addr");
         default: break;
     }
     LUISA_ERROR_WITH_LOCATION("Invalid conversion: {} to vector.",
@@ -362,11 +366,11 @@ namespace luisa::compute::llvm {
     LUISA_ASSERT(dst_type->is_vector(), "Invalid destination type: {}.", dst_type->description());
     auto builder = _current_context()->builder.get();
     if (dst_type->dimension() == 2u && src_type->dimension() > 2u) {
-        auto src = builder->CreateLoad(_create_type(src_type), p_src, "cast.vector_to_vector.src");
-        auto shuffle = builder->CreateShuffleVector(src, {0, 1}, "cast.vector_to_vector.shuffle");
+        auto src = builder->CreateLoad(_create_type(src_type), p_src, "cast.vector.to.vector.src");
+        auto shuffle = builder->CreateShuffleVector(src, {0, 1}, "cast.vector.to.vector.shuffle");
         return _vector_to_vector(
             dst_type, Type::from(luisa::format("vector<{},2>", src_type->element()->description())),
-            _create_stack_variable(shuffle, "cast.vector_to_vector.addr"));
+            _create_stack_variable(shuffle, "cast.vector.to.vector.addr"));
     }
     switch (dst_type->element()->tag()) {
         case Type::Tag::BOOL: return _vector_to_bool_vector(src_type, p_src);
@@ -416,23 +420,23 @@ namespace luisa::compute::llvm {
             if (dst_type->dimension() == 2u) { return p_src; }
             auto col_type = _create_type(Type::of<float2>());
             auto m0 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 0, "cast.matrix_to_matrix.m0.addr"),
-                "cast.matrix_to_matrix.m0");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 0, "cast.matrix.to.matrix.m0.addr"),
+                "cast.matrix.to.matrix.m0");
             auto m1 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 1, "cast.matrix_to_matrix.m1.addr"),
-                "cast.matrix_to_matrix.m1");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 1, "cast.matrix.to.matrix.m1.addr"),
+                "cast.matrix.to.matrix.m1");
             auto m00 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m00"),
-                "cast.matrix_to_matrix.m00.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m00"),
+                "cast.matrix.to.matrix.m00.addr");
             auto m01 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m01"),
-                "cast.matrix_to_matrix.m01.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m01"),
+                "cast.matrix.to.matrix.m01.addr");
             auto m10 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m10"),
-                "cast.matrix_to_matrix.m10.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m10"),
+                "cast.matrix.to.matrix.m10.addr");
             auto m11 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m11"),
-                "cast.matrix_to_matrix.m11.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m11"),
+                "cast.matrix.to.matrix.m11.addr");
             if (dst_type->dimension() == 3u) {
                 return _make_float3x3(
                     _make_float3(m00, m01, zero),
@@ -452,41 +456,41 @@ namespace luisa::compute::llvm {
             if (dst_type->dimension() == 3u) { return p_src; }
             auto col_type = _create_type(Type::of<float3>());
             auto m0 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 0, "cast.matrix_to_matrix.m0.addr"),
-                "cast.matrix_to_matrix.m0");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 0, "cast.matrix.to.matrix.m0.addr"),
+                "cast.matrix.to.matrix.m0");
             auto m1 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 1, "cast.matrix_to_matrix.m1.addr"),
-                "cast.matrix_to_matrix.m1");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 1, "cast.matrix.to.matrix.m1.addr"),
+                "cast.matrix.to.matrix.m1");
             auto m2 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 2, "cast.matrix_to_matrix.m2.addr"),
-                "cast.matrix_to_matrix.m2");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 2, "cast.matrix.to.matrix.m2.addr"),
+                "cast.matrix.to.matrix.m2");
             auto m00 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m00"),
-                "cast.matrix_to_matrix.m00.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m00"),
+                "cast.matrix.to.matrix.m00.addr");
             auto m01 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m01"),
-                "cast.matrix_to_matrix.m01.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m01"),
+                "cast.matrix.to.matrix.m01.addr");
             auto m02 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(2u), "cast.matrix_to_matrix.m02"),
-                "cast.matrix_to_matrix.m02.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(2u), "cast.matrix.to.matrix.m02"),
+                "cast.matrix.to.matrix.m02.addr");
             auto m10 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m10"),
-                "cast.matrix_to_matrix.m10.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m10"),
+                "cast.matrix.to.matrix.m10.addr");
             auto m11 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m11"),
-                "cast.matrix_to_matrix.m11.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m11"),
+                "cast.matrix.to.matrix.m11.addr");
             auto m12 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(2u), "cast.matrix_to_matrix.m12"),
-                "cast.matrix_to_matrix.m12.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(2u), "cast.matrix.to.matrix.m12"),
+                "cast.matrix.to.matrix.m12.addr");
             auto m20 = _create_stack_variable(
-                builder->CreateExtractElement(m2, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m20"),
-                "cast.matrix_to_matrix.m20.addr");
+                builder->CreateExtractElement(m2, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m20"),
+                "cast.matrix.to.matrix.m20.addr");
             auto m21 = _create_stack_variable(
-                builder->CreateExtractElement(m2, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m21"),
-                "cast.matrix_to_matrix.m21.addr");
+                builder->CreateExtractElement(m2, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m21"),
+                "cast.matrix.to.matrix.m21.addr");
             auto m22 = _create_stack_variable(
-                builder->CreateExtractElement(m2, static_cast<uint64_t>(2u), "cast.matrix_to_matrix.m22"),
-                "cast.matrix_to_matrix.m22.addr");
+                builder->CreateExtractElement(m2, static_cast<uint64_t>(2u), "cast.matrix.to.matrix.m22"),
+                "cast.matrix.to.matrix.m22.addr");
             if (dst_type->dimension() == 2u) {
                 return _make_float2x2(
                     _make_float2(m00, m01),
@@ -505,65 +509,65 @@ namespace luisa::compute::llvm {
             if (dst_type->dimension() == 4u) { return p_src; }
             auto col_type = _create_type(Type::of<float4>());
             auto m0 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 0, "cast.matrix_to_matrix.m0.addr"),
-                "cast.matrix_to_matrix.m0");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 0, "cast.matrix.to.matrix.m0.addr"),
+                "cast.matrix.to.matrix.m0");
             auto m1 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 1, "cast.matrix_to_matrix.m1.addr"),
-                "cast.matrix_to_matrix.m1");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 1, "cast.matrix.to.matrix.m1.addr"),
+                "cast.matrix.to.matrix.m1");
             auto m2 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 2, "cast.matrix_to_matrix.m2.addr"),
-                "cast.matrix_to_matrix.m2");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 2, "cast.matrix.to.matrix.m2.addr"),
+                "cast.matrix.to.matrix.m2");
             auto m3 = builder->CreateLoad(
-                col_type, builder->CreateStructGEP(matrix_type, p_src, 3, "cast.matrix_to_matrix.m3.addr"),
-                "cast.matrix_to_matrix.m3");
+                col_type, builder->CreateStructGEP(matrix_type, p_src, 3, "cast.matrix.to.matrix.m3.addr"),
+                "cast.matrix.to.matrix.m3");
             auto m00 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m00"),
-                "cast.matrix_to_matrix.m00.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m00"),
+                "cast.matrix.to.matrix.m00.addr");
             auto m01 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m01"),
-                "cast.matrix_to_matrix.m01.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m01"),
+                "cast.matrix.to.matrix.m01.addr");
             auto m02 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(2u), "cast.matrix_to_matrix.m02"),
-                "cast.matrix_to_matrix.m02.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(2u), "cast.matrix.to.matrix.m02"),
+                "cast.matrix.to.matrix.m02.addr");
             auto m03 = _create_stack_variable(
-                builder->CreateExtractElement(m0, static_cast<uint64_t>(3u), "cast.matrix_to_matrix.m03"),
-                "cast.matrix_to_matrix.m03.addr");
+                builder->CreateExtractElement(m0, static_cast<uint64_t>(3u), "cast.matrix.to.matrix.m03"),
+                "cast.matrix.to.matrix.m03.addr");
             auto m10 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m10"),
-                "cast.matrix_to_matrix.m10.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m10"),
+                "cast.matrix.to.matrix.m10.addr");
             auto m11 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m11"),
-                "cast.matrix_to_matrix.m11.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m11"),
+                "cast.matrix.to.matrix.m11.addr");
             auto m12 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(2u), "cast.matrix_to_matrix.m12"),
-                "cast.matrix_to_matrix.m12.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(2u), "cast.matrix.to.matrix.m12"),
+                "cast.matrix.to.matrix.m12.addr");
             auto m13 = _create_stack_variable(
-                builder->CreateExtractElement(m1, static_cast<uint64_t>(3u), "cast.matrix_to_matrix.m13"),
-                "cast.matrix_to_matrix.m13.addr");
+                builder->CreateExtractElement(m1, static_cast<uint64_t>(3u), "cast.matrix.to.matrix.m13"),
+                "cast.matrix.to.matrix.m13.addr");
             auto m20 = _create_stack_variable(
-                builder->CreateExtractElement(m2, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m20"),
-                "cast.matrix_to_matrix.m20.addr");
+                builder->CreateExtractElement(m2, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m20"),
+                "cast.matrix.to.matrix.m20.addr");
             auto m21 = _create_stack_variable(
-                builder->CreateExtractElement(m2, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m21"),
-                "cast.matrix_to_matrix.m21.addr");
+                builder->CreateExtractElement(m2, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m21"),
+                "cast.matrix.to.matrix.m21.addr");
             auto m22 = _create_stack_variable(
-                builder->CreateExtractElement(m2, static_cast<uint64_t>(2u), "cast.matrix_to_matrix.m22"),
-                "cast.matrix_to_matrix.m22.addr");
+                builder->CreateExtractElement(m2, static_cast<uint64_t>(2u), "cast.matrix.to.matrix.m22"),
+                "cast.matrix.to.matrix.m22.addr");
             auto m23 = _create_stack_variable(
-                builder->CreateExtractElement(m2, static_cast<uint64_t>(3u), "cast.matrix_to_matrix.m23"),
-                "cast.matrix_to_matrix.m23.addr");
+                builder->CreateExtractElement(m2, static_cast<uint64_t>(3u), "cast.matrix.to.matrix.m23"),
+                "cast.matrix.to.matrix.m23.addr");
             auto m30 = _create_stack_variable(
-                builder->CreateExtractElement(m3, static_cast<uint64_t>(0u), "cast.matrix_to_matrix.m30"),
-                "cast.matrix_to_matrix.m30.addr");
+                builder->CreateExtractElement(m3, static_cast<uint64_t>(0u), "cast.matrix.to.matrix.m30"),
+                "cast.matrix.to.matrix.m30.addr");
             auto m31 = _create_stack_variable(
-                builder->CreateExtractElement(m3, static_cast<uint64_t>(1u), "cast.matrix_to_matrix.m31"),
-                "cast.matrix_to_matrix.m31.addr");
+                builder->CreateExtractElement(m3, static_cast<uint64_t>(1u), "cast.matrix.to.matrix.m31"),
+                "cast.matrix.to.matrix.m31.addr");
             auto m32 = _create_stack_variable(
-                builder->CreateExtractElement(m3, static_cast<uint64_t>(2u), "cast.matrix_to_matrix.m32"),
-                "cast.matrix_to_matrix.m32.addr");
+                builder->CreateExtractElement(m3, static_cast<uint64_t>(2u), "cast.matrix.to.matrix.m32"),
+                "cast.matrix.to.matrix.m32.addr");
             auto m33 = _create_stack_variable(
-                builder->CreateExtractElement(m3, static_cast<uint64_t>(3u), "cast.matrix_to_matrix.m33"),
-                "cast.matrix_to_matrix.m33.addr");
+                builder->CreateExtractElement(m3, static_cast<uint64_t>(3u), "cast.matrix.to.matrix.m33"),
+                "cast.matrix.to.matrix.m33.addr");
             if (dst_type->dimension() == 2u) {
                 return _make_float2x2(
                     _make_float2(m00, m01),
@@ -590,8 +594,7 @@ namespace luisa::compute::llvm {
         case Type::Tag::INT: [[fallthrough]];
         case Type::Tag::UINT: return ::llvm::Type::getInt32Ty(_context);
         case Type::Tag::VECTOR: return ::llvm::VectorType::get(
-            _create_type(t->element()),
-            t->dimension() == 3u ? 4u : t->dimension(), false);
+            _create_type(t->element()), t->dimension(), false);
         case Type::Tag::MATRIX: return ::llvm::ArrayType::get(
             _create_type(Type::from(luisa::format(
                 "vector<{},{}>", t->element()->description(), t->dimension()))),
@@ -614,7 +617,8 @@ namespace luisa::compute::llvm {
                     field_types.emplace_back(padding);
                     member_index++;
                 }
-                field_types.emplace_back(_create_type(member));
+                auto member_type = _create_type(member);
+                field_types.emplace_back(member_type);
                 field_indices.emplace_back(member_index++);
                 size = aligned_offset + member->size();
             }
@@ -629,11 +633,29 @@ namespace luisa::compute::llvm {
             return struct_type;
         }
         case Type::Tag::BUFFER: return ::llvm::PointerType::get(_create_type(t->element()), 0);
-        case Type::Tag::TEXTURE: return ::llvm::Type::getInt128Ty(_context);
-        case Type::Tag::BINDLESS_ARRAY: /* TODO: implement */ break;
-        case Type::Tag::ACCEL: return ::llvm::Type::getInt64Ty(_context);
+        case Type::Tag::TEXTURE: return ::llvm::StructType::get(
+            ::llvm::Type::getInt64Ty(_context), ::llvm::Type::getInt64Ty(_context));
+        case Type::Tag::BINDLESS_ARRAY: return _bindless_item_type()->getPointerTo();
+        case Type::Tag::ACCEL: return ::llvm::StructType::get(
+            ::llvm::Type::getInt64Ty(_context),
+            _create_type(Type::of<LLVMAccelInstance>())->getPointerTo());
     }
     LUISA_ERROR_WITH_LOCATION("Invalid type: {}.", t->description());
+}
+
+::llvm::Type *LLVMCodegen::_bindless_item_type() noexcept {
+    return ::llvm::StructType::get(
+        ::llvm::Type::getInt8PtrTy(_context),
+        _bindless_texture_type()->getPointerTo(),
+        _bindless_texture_type()->getPointerTo(),
+        ::llvm::Type::getInt32Ty(_context),
+        ::llvm::Type::getInt32Ty(_context));
+}
+
+::llvm::Type *LLVMCodegen::_bindless_texture_type() noexcept {
+    return ::llvm::StructType::get(
+        ::llvm::Type::getInt64Ty(_context),
+        ::llvm::FixedVectorType::get(::llvm::Type::getInt16Ty(_context), 4));
 }
 
 }// namespace luisa::compute::llvm

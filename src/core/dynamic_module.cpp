@@ -1,6 +1,7 @@
 #include <core/dynamic_module.h>
 #include <core/clock.h>
 #include <core/logging.h>
+
 namespace luisa {
 
 DynamicModule &DynamicModule::operator=(DynamicModule &&rhs) noexcept {
@@ -15,13 +16,6 @@ DynamicModule::DynamicModule(DynamicModule &&another) noexcept
     : _handle{another._handle} { another._handle = nullptr; }
 
 DynamicModule::~DynamicModule() noexcept { dynamic_module_destroy(_handle); }
-std::optional<DynamicModule> DynamicModule::load(const std::filesystem::path &folder, std::string_view name) {
-    Clock clock;
-    auto p = folder / dynamic_module_name(name);
-    auto handle = dynamic_module_load(p);
-    if (handle == nullptr) return std::nullopt;
-    return DynamicModule(handle);
-}
 
 DynamicModule::DynamicModule(const std::filesystem::path &folder, std::string_view name) noexcept {
     Clock clock;
@@ -44,26 +38,6 @@ std::mutex &DynamicModule::_search_path_mutex() noexcept {
 luisa::vector<std::pair<std::filesystem::path, size_t>> &DynamicModule::_search_paths() noexcept {
     static luisa::vector<std::pair<std::filesystem::path, size_t>> paths;
     return paths;
-}
-std::optional<DynamicModule> DynamicModule::load(std::string_view name) {
-    void *handle = nullptr;
-    std::scoped_lock lock{_search_path_mutex()};
-    Clock clock;
-    auto &&paths = _search_paths();
-    // TODO: use ranges...
-    for (auto iter = paths.crbegin(); iter != paths.crend(); iter++) {
-        auto p = iter->first / dynamic_module_name(name);
-        if ((handle = dynamic_module_load(p)) != nullptr) {
-            LUISA_INFO(
-                "Loaded dynamic module '{}' in {} ms.",
-                p.string(), clock.toc());
-            return DynamicModule(handle);
-        }
-    }
-    if ((handle = dynamic_module_load(dynamic_module_name(name))) == nullptr) {
-        return std::nullopt;
-    }
-    return DynamicModule(handle);
 }
 
 DynamicModule::DynamicModule(std::string_view name) noexcept {
@@ -116,6 +90,41 @@ void DynamicModule::remove_search_path(const std::filesystem::path &path) noexce
             paths.erase(iter);
         }
     }
+}
+
+luisa::optional<DynamicModule> DynamicModule::load(std::string_view name) noexcept {
+    std::scoped_lock lock{_search_path_mutex()};
+    Clock clock;
+    auto &&paths = _search_paths();
+    for (auto iter = paths.crbegin(); iter != paths.crend(); iter++) {
+        auto p = iter->first / dynamic_module_name(name);
+        if (auto handle = dynamic_module_load(p)) {
+            LUISA_INFO(
+                "Loaded dynamic module '{}' in {} ms.",
+                p.string(), clock.toc());
+            return DynamicModule{handle};
+        }
+    }
+    auto module_name = dynamic_module_name(name);
+    if (auto handle = dynamic_module_load(module_name)) {
+        LUISA_INFO(
+            "Loaded dynamic module '{}' in {} ms.",
+            module_name, clock.toc());
+        return DynamicModule{handle};
+    }
+    return luisa::nullopt;
+}
+
+luisa::optional<DynamicModule> DynamicModule::load(const std::filesystem::path &folder, std::string_view name) noexcept {
+    Clock clock;
+    auto p = folder / dynamic_module_name(name);
+    if (auto handle = dynamic_module_load(p)) {
+        LUISA_INFO(
+            "Loaded dynamic module '{}' in {} ms.",
+            p.string(), clock.toc());
+        return DynamicModule{handle};
+    }
+    return luisa::nullopt;
 }
 
 }// namespace luisa

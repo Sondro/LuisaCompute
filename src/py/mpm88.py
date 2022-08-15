@@ -6,9 +6,9 @@ import luisa as lc
 from luisa.mathtypes import *
 
 if len(argv) > 1:
-    luisa.init(argv[1])
+    lc.init(argv[1])
 else:
-    luisa.init()
+    lc.init()
 
 n_grid = 128
 n_steps = 16
@@ -34,7 +34,8 @@ grid_m = lc.Buffer.empty(n_grid * n_grid, dtype=float)
 
 @lc.func
 def encode(pos: int2):
-    return pos.x + pos.y * n_grid
+    p = clamp(pos, int2(0), int2(n_grid - 1))
+    return p.x + p.y * n_grid
 
 
 @lc.func

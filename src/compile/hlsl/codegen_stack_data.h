@@ -28,16 +28,14 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     StructGenerator *rayDesc = nullptr;
     StructGenerator *hitDesc = nullptr;
     vstd::HashMap<vstd::string, vstd::string> structReplaceName;
-    DefinitionAnalysis::VariableSet sharedVariable;
-    DefinitionAnalysis::VariableSet allVariables;
+    luisa::unordered_map<uint64, Variable> sharedVariable;
     Expression const *tempSwitchExpr;
     size_t tempSwitchCounter = 0;
     CodegenStackData();
     void Clear();
     uint AddBindlessType(Type const *type);
     StructGenerator *CreateStruct(Type const *t);
-    uint64 GetConstCount(uint64 data);
-    vstd::optional<uint64> GetNewConstCount(uint64 data);
+    std::pair<uint64, bool> GetConstCount(uint64 data);
     uint64 GetFuncCount(uint64 data);
     uint64 GetTypeCount(Type const *t);
     ~CodegenStackData();

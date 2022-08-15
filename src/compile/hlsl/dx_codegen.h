@@ -34,7 +34,7 @@ public:
     static constexpr vstd::string_view rayTypeDesc = "struct<16,array<float,3>,float,array<float,3>,float>"sv;
     static constexpr vstd::string_view hitTypeDesc = "struct<16,uint,uint,vector<float,2>>"sv;
     static uint IsBool(Type const &type);
-    static void GetConstName(ConstantData const &data, vstd::string &str);
+    static bool GetConstName(uint64 hash, ConstantData const &data, vstd::string &str);
     static void GetVariableName(Variable const &type, vstd::string &str);
     static void GetVariableName(Variable::Tag type, uint id, vstd::string &str);
     static void GetTypeName(Type const &type, vstd::string &str, Usage usage);
@@ -78,7 +78,7 @@ class StringStateVisitor final : public StmtVisitor, public ExprVisitor {
     Function f;
 
 public:
-    DefinitionAnalysis::VariableSet *sharedVariables = nullptr;
+    luisa::unordered_map<uint64, Variable> *sharedVariables = nullptr;
     void visit(const UnaryExpr *expr) override;
     void visit(const BinaryExpr *expr) override;
     void visit(const MemberExpr *expr) override;
@@ -101,7 +101,7 @@ public:
     void visit(const SwitchDefaultStmt *) override;
     void visit(const AssignStmt *) override;
     void visit(const ForStmt *) override;
-    void visit(const MetaStmt *stmt) override;
+    void VisitFunction(Function func);
     void visit(const CommentStmt *) override;
     StringStateVisitor(
         Function f,

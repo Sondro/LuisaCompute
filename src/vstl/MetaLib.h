@@ -1330,4 +1330,43 @@ void reset(T& v, Args&&... args) {
 	v.~T();
 	new (&v) T(std::forward<Args>(args)...);
 }
+#define DECLARE_VENGINE_OVERRIDE_OPERATOR_NEW           \
+    static void *operator new(                          \
+        size_t size) noexcept {                         \
+        return vengine_malloc(size);                    \
+    }                                                   \
+    static void *operator new(                          \
+        size_t,                                         \
+        void *place) noexcept {                         \
+        return place;                                   \
+    }                                                   \
+    static void *operator new[](                        \
+        size_t size) noexcept {                         \
+        return vengine_malloc(size);                    \
+    }                                                   \
+    static void *operator new(                          \
+        size_t size, const std::nothrow_t &) noexcept { \
+        return vengine_malloc(size);                    \
+    }                                                   \
+    static void *operator new(                          \
+        size_t,                                         \
+        void *place, const std::nothrow_t &) noexcept { \
+        return place;                                   \
+    }                                                   \
+    static void *operator new[](                        \
+        size_t size, const std::nothrow_t &) noexcept { \
+        return vengine_malloc(size);                    \
+    }                                                   \
+    static void operator delete(                        \
+        void *pdead) noexcept {                         \
+        vengine_free(pdead);                            \
+    }                                                   \
+    static void operator delete[](                      \
+        void *pdead) noexcept {                         \
+        vengine_free(pdead);                            \
+    }
+class IOperatorNewBase {
+public:
+    DECLARE_VENGINE_OVERRIDE_OPERATOR_NEW
+};
 }// namespace vstd

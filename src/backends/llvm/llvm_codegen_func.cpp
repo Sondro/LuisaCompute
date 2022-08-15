@@ -54,22 +54,33 @@ unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_kernel_context(Fun
         field_indices.emplace_back(member_index++);
         ::llvm::ArrayRef<::llvm::Type *> fields_ref{field_types.data(), field_types.size()};
         return std::make_pair(
-            ::llvm::StructType::get(_context, fields_ref),
+            ::llvm::StructType::create(_context, fields_ref),
             std::move(field_indices));
     };
     auto [arg_struct_type, arg_struct_indices] = create_argument_struct();
+    auto arg_struct_name = luisa::format("arg.buffer.struct.{:016x}", f.hash());
+    arg_struct_type->setName(::llvm::StringRef{arg_struct_name.data(), arg_struct_name.size()});
     auto arg_buffer_type = ::llvm::PointerType::get(arg_struct_type, 0);
-    ::llvm::SmallVector<::llvm::Type *, 2u> arg_types;
+    ::llvm::SmallVector<::llvm::Type *, 7u> arg_types;
     arg_types.emplace_back(arg_buffer_type);
-    arg_types.emplace_back(::llvm::PointerType::get(_create_type(Type::of<uint3>()), 0));
+    auto i32_type = ::llvm::Type::getInt32Ty(_context);
+    // dispatch size
+    arg_types.emplace_back(i32_type);
+    arg_types.emplace_back(i32_type);
+    arg_types.emplace_back(i32_type);
+    // block id
+    arg_types.emplace_back(i32_type);
+    arg_types.emplace_back(i32_type);
+    arg_types.emplace_back(i32_type);
     LUISA_ASSERT(f.return_type() == nullptr,
                  "Invalid return type '{}' for kernel. Only void is allowed.",
                  f.return_type()->description());
     auto function_type = ::llvm::FunctionType::get(
         ::llvm::Type::getVoidTy(_context), arg_types, false);
+    auto main_name = luisa::format("kernel.{:016x}.main", f.hash());
     auto ir = ::llvm::Function::Create(
         function_type, ::llvm::Function::ExternalLinkage,
-        "kernel_main", _module);
+        ::llvm::StringRef{main_name.data(), main_name.size()}, _module);
     auto builder = luisa::make_unique<::llvm::IRBuilder<>>(_context);
     auto body_block = ::llvm::BasicBlock::Create(_context, "entry", ir);
     builder->SetInsertPoint(body_block);
@@ -83,10 +94,13 @@ unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_kernel_context(Fun
             case Variable::Tag::BINDLESS_ARRAY:
             case Variable::Tag::ACCEL: {
                 auto arg_name = _variable_name(arg);
-                auto pr = builder->CreateStructGEP(arg_struct_type, ir->getArg(0u), arg_struct_indices[arg_id],
-                                                   luisa::string_view{luisa::format("{}.addr", arg_name)});
-                auto r = builder->CreateAlignedLoad(_create_type(arg.type()), pr, ::llvm::Align{16ull},
-                                                    luisa::string_view{arg_name});
+                auto addr_name = luisa::format("{}.addr", arg_name);
+                auto pr = builder->CreateStructGEP(
+                    arg_struct_type, ir->getArg(0u), arg_struct_indices[arg_id],
+                    ::llvm::StringRef{addr_name.data(), addr_name.size()});
+                auto r = builder->CreateAlignedLoad(
+                    _create_type(arg.type()), pr, ::llvm::Align{16ull},
+                    ::llvm::StringRef{arg_name.data(), arg_name.size()});
                 arguments.emplace_back(r);
                 break;
             }
@@ -102,60 +116,39 @@ unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_kernel_context(Fun
     // create simple schedule...
     builder->SetInsertPoint(body_block);
     // block id
-    auto block_id = builder->CreateLoad(
-        _create_type(Type::of<uint3>()), ir->getArg(1), "block_id");
-    // dispatch size
-    auto p_dispatch_size = builder->CreateStructGEP(
-        arg_struct_type, ir->getArg(0),
-        arg_struct_indices.back(), "dispatch_size.addr");
-    auto dispatch_size = builder->CreateAlignedLoad(
-        _create_type(Type::of<uint3>()), p_dispatch_size,
-        ::llvm::Align{16u}, "dispatch_size");
+    auto block_id = static_cast<::llvm::Value *>(
+        ::llvm::UndefValue::get(::llvm::FixedVectorType::get(i32_type, 3u)));
+    auto dispatch_size = static_cast<::llvm::Value *>(
+        ::llvm::UndefValue::get(::llvm::FixedVectorType::get(i32_type, 3u)));
+    for (auto i = 0u; i < 3u; i++) {
+        using namespace std::string_literals;
+        std::array elements{"x", "y", "z"};
+        auto block_id_i = ir->getArg(i + 4u);
+        auto dispatch_size_i = ir->getArg(i + 1u);
+        block_id_i->setName("block.id."s.append(elements[i]));
+        dispatch_size_i->setName("dispatch.size."s.append(elements[i]));
+        block_id = builder->CreateInsertElement(block_id, block_id_i, i);
+        dispatch_size = builder->CreateInsertElement(dispatch_size, dispatch_size_i, i);
+    }
     // loop
-    auto p_index = builder->CreateAlloca(::llvm::Type::getInt32Ty(_context), nullptr, "index.addr");
+    auto p_index = builder->CreateAlloca(::llvm::Type::getInt32Ty(_context), nullptr, "loop.index.addr");
+    p_index->setAlignment(::llvm::Align{16});
     builder->CreateStore(builder->getInt32(0u), p_index);
-    auto loop_block = ::llvm::BasicBlock::Create(_context, "loop", ir, exit_block);
+    auto loop_block = ::llvm::BasicBlock::Create(_context, "loop.head", ir, exit_block);
     builder->CreateBr(loop_block);
     builder->SetInsertPoint(loop_block);
-    auto index = builder->CreateLoad(::llvm::Type::getInt32Ty(_context), p_index, "index");
-    auto thread_x = builder->CreateBinOp(::llvm::Instruction::URem, index, builder->getInt32(f.block_size().x), "thread_x");
-    auto thread_yz = builder->CreateBinOp(::llvm::Instruction::UDiv, index, builder->getInt32(f.block_size().x), "thread_yx");
-    auto thread_y = builder->CreateBinOp(::llvm::Instruction::URem, thread_yz, builder->getInt32(f.block_size().y), "thread_y");
-    auto thread_z = builder->CreateBinOp(::llvm::Instruction::UDiv, thread_yz, builder->getInt32(f.block_size().y), "thread_z");
-    auto thread_id = static_cast<::llvm::Value *>(
-        ::llvm::UndefValue::get(_create_type(Type::of<uint3>())));
-    thread_id = builder->CreateInsertElement(thread_id, thread_x, static_cast<uint64_t>(0u), "thread_x");
-    thread_id = builder->CreateInsertElement(thread_id, thread_y, static_cast<uint64_t>(1u), "thread_xy");
-    thread_id = builder->CreateInsertElement(thread_id, thread_z, static_cast<uint64_t>(2u), "thread_id");
-    auto dispatch_x = builder->CreateNUWAdd(
-        thread_x,
-        builder->CreateNUWMul(
-            builder->CreateExtractElement(block_id, static_cast<uint64_t>(0ull), "block.x"),
-            builder->getInt32(f.block_size().x), "block_offset.x"),
-        "dispatch.x");
-    auto dispatch_y = builder->CreateNUWAdd(
-        thread_y,
-        builder->CreateNUWMul(
-            builder->CreateExtractElement(block_id, static_cast<uint64_t>(1ull), "block.y"),
-            builder->getInt32(f.block_size().y), "block_offset.y"),
-        "dispatch.y");
-    auto dispatch_z = builder->CreateNUWAdd(
-        thread_z,
-        builder->CreateNUWMul(
-            builder->CreateExtractElement(block_id, static_cast<uint64_t>(2ull), "block.z"),
-            builder->getInt32(f.block_size().z), "block_offset.z"),
-        "dispatch.z");
-    auto dispatch_id = static_cast<::llvm::Value *>(::llvm::UndefValue::get(_create_type(Type::of<uint3>())));
-    dispatch_id = builder->CreateInsertElement(dispatch_id, dispatch_x, static_cast<uint64_t>(0u), "dispatch.x");
-    dispatch_id = builder->CreateInsertElement(dispatch_id, dispatch_y, static_cast<uint64_t>(1u), "dispatch.xy");
-    dispatch_id = builder->CreateInsertElement(dispatch_id, dispatch_z, static_cast<uint64_t>(2u), "dispatch.id");
-    auto valid_thread_xyz = builder->CreateICmpULT(thread_id, dispatch_size, "valid_thread_xyz");
-    auto valid_thread = builder->CreateLogicalAnd(
-        builder->CreateLogicalAnd(
-            builder->CreateExtractElement(valid_thread_xyz, static_cast<uint64_t>(0ull), "valid_thread_x"),
-            builder->CreateExtractElement(valid_thread_xyz, static_cast<uint64_t>(1ull), "valid_thread_y"), "valid_thread_xy"),
-        builder->CreateExtractElement(valid_thread_xyz, static_cast<uint64_t>(2ull), "valid_thread_z"), "valid_thread");
-    auto call_block = ::llvm::BasicBlock::Create(_context, "work", ir, exit_block);
+    auto index = builder->CreateLoad(::llvm::Type::getInt32Ty(_context), p_index, "loop.index");
+    auto thread_yz = builder->CreateUDiv(index, builder->getInt32(f.block_size().x));
+    auto thread_x = builder->CreateURem(index, builder->getInt32(f.block_size().x), "thread.id.x");
+    auto thread_y = builder->CreateURem(thread_yz, builder->getInt32(f.block_size().y), "thread.id.y");
+    auto thread_z = builder->CreateUDiv(thread_yz, builder->getInt32(f.block_size().y), "thread.id.z");
+    auto thread_id = static_cast<::llvm::Value *>(::llvm::UndefValue::get(_create_type(Type::of<uint3>())));
+    thread_id = builder->CreateInsertElement(thread_id, thread_x, static_cast<uint64_t>(0u));
+    thread_id = builder->CreateInsertElement(thread_id, thread_y, static_cast<uint64_t>(1u));
+    thread_id = builder->CreateInsertElement(thread_id, thread_z, static_cast<uint64_t>(2u), "thread.id");
+    auto dispatch_id = builder->CreateNUWAdd(builder->CreateNUWMul(block_id, _literal(f.block_size())), thread_id, "dispatch.id");
+    auto valid_thread = builder->CreateAndReduce(builder->CreateICmpULT(dispatch_id, dispatch_size, "thread.id.cmp"));
+    auto call_block = ::llvm::BasicBlock::Create(_context, "loop.kernel", ir, exit_block);
     auto loop_update_block = ::llvm::BasicBlock::Create(_context, "loop.update", ir, exit_block);
     builder->CreateCondBr(valid_thread, call_block, loop_update_block);
     builder->SetInsertPoint(call_block);
@@ -169,10 +162,10 @@ unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_kernel_context(Fun
     // update
     builder->CreateBr(loop_update_block);
     builder->SetInsertPoint(loop_update_block);
-    auto next_index = builder->CreateAdd(index, builder->getInt32(1u), "next_index");
+    auto next_index = builder->CreateAdd(index, builder->getInt32(1u), "loop.index.next");
     builder->CreateStore(next_index, p_index);
     auto thread_count = f.block_size().x * f.block_size().y * f.block_size().z;
-    auto should_continue = builder->CreateICmpULT(next_index, builder->getInt32(thread_count), "should_continue");
+    auto should_continue = builder->CreateICmpULT(next_index, builder->getInt32(thread_count));
     builder->CreateCondBr(should_continue, loop_block, exit_block);
     return ctx;
 }
@@ -210,7 +203,10 @@ luisa::unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_kernel_prog
     builder->SetInsertPoint(body_block);
     luisa::unordered_map<uint, ::llvm::Value *> variables;
     auto make_alloca = [&](::llvm::Value *x, luisa::string_view name = "") noexcept {
-        auto p = builder->CreateAlloca(x->getType(), nullptr, name);
+        auto p = builder->CreateAlloca(
+            x->getType(), nullptr,
+            ::llvm::StringRef{name.data(), name.size()});
+        p->setAlignment(::llvm::Align{16});
         builder->CreateStore(x, p);
         return p;
     };
@@ -219,7 +215,6 @@ luisa::unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_kernel_prog
         auto arg_name = _variable_name(lc_arg);
         auto arg = static_cast<::llvm::Value *>(ir->getArg(i));
         if (lc_arg.tag() == Variable::Tag::LOCAL) { arg = make_alloca(arg); }
-        arg->setName(luisa::string_view{_variable_name(lc_arg)});
         arg->setName(::llvm::StringRef{arg_name.data(), arg_name.size()});
         variables.emplace(lc_arg.uid(), arg);
     }
@@ -288,6 +283,7 @@ unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_callable_context(F
                     break;
                 default: {
                     auto p_arg = builder->CreateAlloca(arg.getType());
+                    p_arg->setAlignment(::llvm::Align{16});
                     builder->CreateStore(&arg, p_arg);
                     variables.emplace(lc_arg.uid(), p_arg);
                     break;
@@ -298,7 +294,9 @@ unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_callable_context(F
     ::llvm::Value *ret = nullptr;
     if (auto ret_type = f.return_type()) {
         builder->SetInsertPoint(body_block);
-        ret = builder->CreateAlloca(return_type, nullptr, "retval.addr");
+        auto p_ret = builder->CreateAlloca(return_type, nullptr, "retval.addr");
+        p_ret->setAlignment(::llvm::Align{16});
+        ret = p_ret;
         builder->SetInsertPoint(exit_block);
         builder->CreateRet(builder->CreateLoad(return_type, ret));
     } else {// return void
@@ -329,6 +327,13 @@ unique_ptr<LLVMCodegen::FunctionContext> LLVMCodegen::_create_callable_context(F
 
 void LLVMCodegen::_emit_function() noexcept {
     auto ctx = _current_context();
+    for (auto v : ctx->function.local_variables()) {
+        auto p = _create_alloca(_create_type(v.type()), _variable_name(v));
+        ctx->variables.emplace(v.uid(), p);
+        ctx->builder->CreateMemSet(
+            p, ctx->builder->getInt8(0),
+            v.type()->size(), ::llvm::Align{16});
+    }
     ctx->function.body()->accept(*this);
 }
 

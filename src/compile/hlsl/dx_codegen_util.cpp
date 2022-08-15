@@ -111,13 +111,14 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
 void CodegenUtility::GetVariableName(Variable const &type, vstd::string &str) {
     GetVariableName(type.tag(), type.uid(), str);
 }
-void CodegenUtility::GetConstName(ConstantData const &data, vstd::string &str) {
-    uint64 constCount = opt->GetConstCount(data.hash());
+bool CodegenUtility::GetConstName(uint64 hash, ConstantData const &data, vstd::string &str) {
+    auto constCount = opt->GetConstCount(hash);
     str << "c";
-    vstd::to_string((constCount), str);
+    vstd::to_string((constCount.first), str);
+    return constCount.second;
 }
 void CodegenUtility::GetConstantStruct(ConstantData const &data, vstd::string &str) {
-    uint64 constCount = opt->GetConstCount(data.hash());
+    uint64 constCount = opt->GetConstCount(data.hash()).first;
     //auto typeName = CodegenUtility::GetBasicTypeName(view.index());
     str << "struct tc";
     vstd::to_string((constCount), str);
@@ -135,7 +136,7 @@ void CodegenUtility::GetConstantStruct(ConstantData const &data, vstd::string &s
 }
 void CodegenUtility::GetConstantData(ConstantData const &data, vstd::string &str) {
     auto &&view = data.view();
-    uint64 constCount = opt->GetConstCount(data.hash());
+    uint64 constCount = opt->GetConstCount(data.hash()).first;
 
     vstd::string name = vstd::to_string((constCount));
     str << "uniform const tc" << name << " c" << name;
@@ -970,33 +971,33 @@ void CodegenUtility::GetBasicTypeName(uint64 typeIndex, vstd::string &str) {
         typeIndex);
 }
 void CodegenUtility::CodegenFunction(Function func, vstd::string &result) {
-    auto constants = func.constants();
-    for (auto &&i : constants) {
-        auto constIdx = opt->GetNewConstCount(i.data.hash());
-        if (!constIdx) continue;
-        vstd::string constValueName = "c";
-        vstd::to_string(*constIdx, constValueName);
-        result << "static const "sv;
-        GetTypeName(*i.type->element(), result, Usage::READ);
-        result << ' ' << constValueName << '[';
-        vstd::to_string(i.type->dimension(), result);
-        result << "]={"sv;
-        auto &&dataView = i.data.view();
-        eastl::visit(
-            [&]<typename T>(eastl::span<T> const &sp) {
-                for (auto i : vstd::range(sp.size())) {
-                    auto &&value = sp[i];
-                    PrintValue<std::remove_cvref_t<T>>()(value, result);
-                    if (i != (sp.size() - 1)) {
-                        result << ',';
-                    }
-                }
-            },
-            dataView);
-        //TODO: constants
-        result << "};\n"sv;
-    }
+    
     auto codegenOneFunc = [&](Function func) {
+        auto constants = func.constants();
+        for (auto &&kv : constants) {
+            auto &&i = kv.second;
+            vstd::string constValueName;
+            if (!GetConstName(kv.first, i.data, constValueName)) continue;
+            result << "static const "sv;
+            GetTypeName(*i.type->element(), result, Usage::READ);
+            result << ' ' << constValueName << '[';
+            vstd::to_string(i.type->dimension(), result);
+            result << "]={"sv;
+            auto &&dataView = i.data.view();
+            eastl::visit(
+                [&]<typename T>(eastl::span<T> const &sp) {
+                    for (auto i : vstd::range(sp.size())) {
+                        auto &&value = sp[i];
+                        PrintValue<std::remove_cvref_t<T>>()(value, result);
+                        if (i != (sp.size() - 1)) {
+                            result << ',';
+                        }
+                    }
+                },
+                dataView);
+            result << "};\n"sv;
+        }
+
         if (func.tag() == Function::Tag::KERNEL) {
             result << "[numthreads("
                    << vstd::to_string(func.block_size().x)
@@ -1031,7 +1032,7 @@ if(any(dspId >= a.dsp_c)) return;
         StringStateVisitor vis(func, result);
         vis.sharedVariables = &opt->sharedVariable;
         // vis.variableSet = &opt->allVariables;
-        func.body()->accept(vis);
+        vis.VisitFunction(func);
         result << "}\n"sv;
     };
     vstd::HashMap<void const *> callableMap;
@@ -1271,7 +1272,8 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
                         << v->GetStructDesc() << "};\n";
         }
     }
-    for (auto &&i : opt->sharedVariable) {
+    for (auto &&kv : opt->sharedVariable) {
+        auto &&i = kv.second;
         finalResult << "groupshared "sv;
         GetTypeName(*i.type()->element(), finalResult, Usage::READ);
         finalResult << ' ';

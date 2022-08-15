@@ -6,14 +6,13 @@
 #include <chrono>
 #include <numeric>
 
+#include <core/json.h>
 #include <core/clock.h>
 #include <core/dynamic_module.h>
 #include <runtime/device.h>
 #include <runtime/context.h>
 #include <ast/interface.h>
-#include <compile/cpp_codegen.h>
 #include <dsl/syntax.h>
-#include <rtx/ray.h>
 
 using namespace luisa;
 using namespace luisa::compute;
@@ -32,17 +31,14 @@ int main(int argc, char *argv[]) {
     luisa::log_level_verbose();
 
     Context context{argv[0]};
-    if (argc <= 1) {
-        LUISA_INFO("Usage: {} <backend>. <backend>: cuda, dx, ispc, metal", argv[0]);
-        exit(1);
-    }
-    auto device = context.create_device(argv[1]);
+
+    auto device = context.create_device("dx");
 
     auto buffer = device.create_buffer<float4>(1024u);
     auto float_buffer = device.create_buffer<float>(1024u);
 
     Callable c1 = [&](UInt a) noexcept {
-        return buffer.read(a);// captures buffer
+        return buffer.read(a + thread_x());// captures buffer
     };
 
     Callable c2 = [&](UInt b) noexcept {
@@ -70,7 +66,7 @@ int main(int argc, char *argv[]) {
 
     // binding to template lambdas
     Callable<int(int, int)> add = [&]<typename T>(Var<T> a, Var<T> b) noexcept {
-        return a + b;
+        return cast<int>(c1(cast<uint>(a + b)).x);
     };
 
     Clock clock;
@@ -155,16 +151,23 @@ int main(int argc, char *argv[]) {
     auto kernel = device.compile(kernel_def);
     auto command = kernel(float_buffer, 12u).dispatch(1024u);
     auto launch_command = static_cast<ShaderDispatchCommand *>(command);
-    LUISA_INFO("Command: kernel = {}, args = {}", hash_to_string(launch_command->kernel().hash()), launch_command->argument_count());
-//    command->recycle();
-//    launch_command->recycle();
+    LUISA_INFO("Command: kernel = {}, args = {}",
+               hash_to_string(launch_command->kernel().hash()),
+               launch_command->argument_count());
 
-    //    clock.tic();
-    //    Codegen::Scratch scratch;
-    //    CppCodegen codegen{scratch};
-    //    codegen.emit(launch_command->kernel());
-    //    auto t2 = clock.toc();
-    //
-    //    std::cout << scratch.view() << std::endl;
-    //    LUISA_INFO("AST: {} ms, Codegen: {} ms", t1, t2);
+    clock.tic();
+    FunctionSerializer serializer;
+    auto j = serializer.to_json(kernel_def.function());
+    LUISA_INFO("Serialize: {} ms", clock.toc());
+    clock.tic();
+    auto s = j.dump(2);
+    LUISA_INFO("Dump: {} ms", clock.toc());
+    {
+        std::ofstream dump{"kernel.bin", std::ios::binary};
+        json::to_msgpack(j, dump);
+    }
+    clock.tic();
+    auto deserialized = serializer.from_json(j);
+    LUISA_INFO("Deserialize (before = {:016x}, after = {:016x}): {} ms",
+               kernel_def.function()->hash(), deserialized->hash(), clock.toc());
 }

@@ -683,7 +683,7 @@ void LCCmdBuffer::CompressBC(
     float alphaImportance,
     IGpuAllocator *allocator,
     size_t maxAlloc) {
-    alphaImportance = clamp<float>(alphaImportance, 0, 1);
+	alphaImportance = std::max<float>(std::min<float>(alphaImportance, 1), 0);// clamp<float>(alphaImportance, 0, 1);
     struct BCCBuffer {
         uint g_tex_width;
         uint g_num_block_x;

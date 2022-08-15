@@ -31,8 +31,8 @@ void FunctionBuilder::pop(FunctionBuilder *func) noexcept {
         f->_return_type.value_or(nullptr) != nullptr) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION("Kernels cannot have non-void return types.");
     }
-    if (f->_raytracing &&
-        (f->_using_shared_storage ||
+    if (f->raytracing() &&
+        (!f->_shared_variables.empty() ||
          f->_used_builtin_callables.test(
              CallOp::SYNCHRONIZE_BLOCK))) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
@@ -110,7 +110,7 @@ LoopStmt *FunctionBuilder::loop_() noexcept {
 }
 
 void FunctionBuilder::_void_expr(const Expression *expr) noexcept {
-    _create_and_append_statement<ExprStmt>(expr);
+    if (expr != nullptr) { _create_and_append_statement<ExprStmt>(expr); }
 }
 
 SwitchStmt *FunctionBuilder::switch_(const Expression *expr) noexcept {
@@ -135,22 +135,13 @@ const LiteralExpr *FunctionBuilder::literal(const Type *type, LiteralExpr::Value
 
 const RefExpr *FunctionBuilder::local(const Type *type) noexcept {
     Variable v{type, Variable::Tag::LOCAL, _next_variable_uid()};
-    if (_meta_stack.empty()) [[unlikely]] {
-        LUISA_ERROR_WITH_LOCATION(
-            "Empty meta stack when adding local variable.");
-    }
-    _meta_stack.back()->add(v);
+    _local_variables.emplace_back(v);
     return _ref(v);
 }
 
 const RefExpr *FunctionBuilder::shared(const Type *type) noexcept {
     Variable sv{type, Variable::Tag::SHARED, _next_variable_uid()};
-    if (_meta_stack.empty()) [[unlikely]] {
-        LUISA_ERROR_WITH_LOCATION(
-            "Empty meta stack when adding shared variable.");
-    }
-    _meta_stack.back()->add(sv);
-    _using_shared_storage = true;
+    _shared_variables.emplace(sv.uid(), std::move(sv));
     return _ref(sv);
 }
 
@@ -261,7 +252,8 @@ const RefExpr *FunctionBuilder::_ref(Variable v) noexcept {
 
 const ConstantExpr *FunctionBuilder::constant(const Type *type, ConstantData data) noexcept {
     if (!type->is_array()) [[unlikely]] { LUISA_ERROR_WITH_LOCATION("Constant data must be array."); }
-    _captured_constants.emplace_back(Constant{type, data});
+    auto c = Constant{type, data};
+    _captured_constants.emplace(data.hash(), std::move(c));
     return _create_expression<ConstantExpr>(type, data);
 }
 
@@ -291,7 +283,7 @@ FunctionBuilder::~FunctionBuilder() noexcept {
     LUISA_VERBOSE("FunctionBuilder destructor called");
 }
 FunctionBuilder::FunctionBuilder(FunctionBuilder::Tag tag) noexcept
-    : _body{"__function_body"}, _hash{0ul}, _tag{tag} {
+    : _hash{0ul}, _tag{tag} {
     LUISA_VERBOSE("FunctionBuilder constructor called");
 }
 
@@ -335,18 +327,18 @@ const CallExpr *FunctionBuilder::call(const Type *type, Function custom, std::in
 }
 
 void FunctionBuilder::call(CallOp call_op, std::initializer_list<const Expression *> args) noexcept {
-    _void_expr(call(nullptr, call_op, args));
+    static_cast<void>(call(nullptr, call_op, args));
 }
 
 void FunctionBuilder::call(Function custom, std::initializer_list<const Expression *> args) noexcept {
-    _void_expr(call(nullptr, custom, args));
+    static_cast<void>(call(nullptr, custom, args));
 }
 
 void FunctionBuilder::_compute_hash() noexcept {
     _hash = hash64(_body.hash(), hash64(_tag, hash64("__hash_function")));
     _hash = hash64(_return_type ? _return_type.value()->description() : "void", _hash);
     for (auto &&arg : _arguments) { _hash = hash64(arg.hash(), _hash); }
-    for (auto &&c : _captured_constants) { _hash = hash64(c.hash(), _hash); }
+    for (auto &&c : _captured_constants) { _hash = hash64(c.first, _hash); }
     _hash = hash64(_block_size, _hash);
 }
 
@@ -411,15 +403,14 @@ const CallExpr *FunctionBuilder::call(const Type *type, CallOp call_op, luisa::s
             "Custom functions are not allowed to "
             "be called with enum CallOp.");
     }
-    if (call_op == CallOp::TRACE_CLOSEST || call_op == CallOp::TRACE_ANY) {
-        _raytracing = true;
-    }
     _used_builtin_callables.mark(call_op);
-    return _create_expression<CallExpr>(
-        type, call_op,
-        CallExpr::ArgumentList{
-            args.begin(),
-            args.end()});
+    auto expr = _create_expression<CallExpr>(
+        type, call_op, CallExpr::ArgumentList{args.begin(), args.end()});
+    if (type == nullptr) {
+        _void_expr(expr);
+        return nullptr;
+    }
+    return expr;
 }
 
 // call custom functions
@@ -429,7 +420,6 @@ const CallExpr *FunctionBuilder::call(const Type *type, Function custom, luisa::
             "Calling non-callable function in device code.");
     }
     auto f = custom.builder();
-    if (f->raytracing()) { _raytracing = true; }
     CallExpr::ArgumentList call_args(f->_arguments.size(), nullptr);
     auto in_iter = args.begin();
     for (auto i = 0u; i < f->_arguments.size(); i++) {
@@ -459,15 +449,32 @@ const CallExpr *FunctionBuilder::call(const Type *type, Function custom, luisa::
     }
     if (in_iter != args.end()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
-            "Invalid call arguments for custom callable #{}.",
+            "Invalid call arguments for custom callable #{:016x}.",
             custom.hash());
     }
     auto expr = _create_expression<CallExpr>(type, custom, std::move(call_args));
     if (auto iter = std::find_if(
             _used_custom_callables.cbegin(), _used_custom_callables.cend(),
-            [c = custom.builder()](auto &&p) noexcept { return c == p.get(); });
+            [&](auto &&p) noexcept { return f->hash() == p->hash(); });
         iter == _used_custom_callables.cend()) {
         _used_custom_callables.emplace_back(custom.shared_builder());
+        // propagate used builtin/custom callables and constants
+        //_used_builtin_callables.propagate(f->_used_builtin_callables);
+        //for (auto c : f->_captured_constants) {
+        //    _captured_constants.emplace(c.first, c.second);
+        //}
+        for (auto &&c : f->_used_custom_callables) {
+            if (auto it = std::find_if(
+                    _used_custom_callables.begin(), _used_custom_callables.end(),
+                    [&](auto &&f) { return f->hash() == c->hash(); });
+                it == _used_custom_callables.end()) {
+                _used_custom_callables.push_back(c);
+            }
+        }
+    }
+    if (type == nullptr) {
+        _void_expr(expr);
+        return nullptr;
     }
     return expr;
 }
@@ -491,30 +498,6 @@ void FunctionBuilder::comment_(luisa::string comment) noexcept {
     _create_and_append_statement<CommentStmt>(std::move(comment));
 }
 
-MetaStmt *FunctionBuilder::meta(luisa::string info) noexcept {
-    auto meta = _create_and_append_statement<MetaStmt>(std::move(info));
-    if (_meta_stack.empty()) [[unlikely]] {
-        LUISA_ERROR_WITH_LOCATION("Invalid meta stack state.");
-    }
-    _meta_stack.back()->add(meta);
-    return meta;
-}
-
-void FunctionBuilder::push_meta(MetaStmt *meta) noexcept {
-    _meta_stack.emplace_back(meta);
-    push_scope(meta->scope());
-}
-
-void FunctionBuilder::pop_meta(const MetaStmt *meta) noexcept {
-    if (meta != nullptr) {// checks required
-        pop_scope(meta->scope());
-        if (_meta_stack.empty() || _meta_stack.back() != meta) [[unlikely]] {
-            LUISA_ERROR_WITH_LOCATION("Invalid meta stack pop.");
-        }
-    }
-    _meta_stack.pop_back();
-}
-
 void FunctionBuilder::set_block_size(uint3 size) noexcept {
     if (_tag == Tag::KERNEL) {
         _block_size = size;
@@ -524,6 +507,11 @@ void FunctionBuilder::set_block_size(uint3 size) noexcept {
             "Ignoring the `set_block_size({}, {}, {})` call.",
             size.x, size.y, size.z);
     }
+}
+
+bool FunctionBuilder::raytracing() const noexcept {
+    return _used_builtin_callables.test(CallOp::TRACE_CLOSEST) ||
+           _used_builtin_callables.test(CallOp::TRACE_ANY);
 }
 
 }// namespace luisa::compute::detail

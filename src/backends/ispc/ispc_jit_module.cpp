@@ -8,7 +8,6 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/Host.h>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -16,6 +15,11 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/IPO.h>
+#if LLVM_VERSION_MAJOR >= 14
+#include <llvm/MC/TargetRegistry.h>
+#else
+#include <llvm/Support/TargetRegistry.h>
+#endif
 
 #include <core/logging.h>
 #include <runtime/context.h>
@@ -49,11 +53,13 @@ ISPCJITModule::~ISPCJITModule() noexcept = default;
     }
     llvm::TargetOptions options;
     options.AllowFPOpFusion = llvm::FPOpFusion::Fast;
+    options.AllowFPOpFusion = ::llvm::FPOpFusion::Fast;
     options.UnsafeFPMath = true;
     options.NoInfsFPMath = true;
     options.NoNaNsFPMath = true;
     options.NoTrappingFPMath = true;
-    options.GuaranteedTailCallOpt = true;
+    options.EnableIPRA = true;
+    options.StackSymbolOrdering = true;
     auto mcpu = llvm::sys::getHostCPUName();
     auto machine = target->createTargetMachine(
         target_triple, mcpu,

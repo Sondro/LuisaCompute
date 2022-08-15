@@ -178,7 +178,11 @@ int main(int argc, char *argv[]) {
     LUISA_INFO("Recorded AST in {} ms.", clock.toc());
 
     Context context{argv[0]};
-    auto device = context.create_device("dx");
+    if (argc <= 1) {
+        LUISA_INFO("Usage: {} <backend>. <backend>: cuda, dx, ispc, metal", argv[0]);
+        exit(1);
+    }
+    auto device = context.create_device(argv[1]);
     auto render = device.compile(render_kernel);
 //    exit(0);
 

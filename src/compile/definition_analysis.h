@@ -4,7 +4,7 @@
 
 #pragma once
 
-
+#include "core/hash.h"
 #include <core/stl.h>
 #include <ast/interface.h>
 
@@ -14,7 +14,7 @@ class DefinitionAnalysis final : public StmtVisitor, public ExprVisitor {
 
 public:
     struct VariableHash {
-        [[nodiscard]] uint64_t operator()(Variable v) const noexcept { return v.uid(); }
+        [[nodiscard]] uint64_t operator()(Variable v) const noexcept { return v.hash(); }
     };
 
     using VariableSet = luisa::unordered_set<Variable, VariableHash>;
@@ -61,7 +61,6 @@ public:
     void visit(const AssignStmt *stmt) override;
     void visit(const ForStmt *stmt) override;
     void visit(const CommentStmt *stmt) override;
-    void visit(const MetaStmt *stmt) override;
 
 public:
     void analyze(Function f) noexcept;

@@ -14,5 +14,5 @@ function(luisa_compute_add_backend name)
             UNITY_BUILD ${LUISA_COMPUTE_ENABLE_UNITY_BUILD}
             DEBUG_POSTFIX "")
 endfunction()
-add_subdirectory(dx)
 
+add_subdirectory(dx)

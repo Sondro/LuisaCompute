@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 
     Context context{argv[0]};
 
-    if(argc <= 1){
+    if (argc <= 1) {
         LUISA_INFO("Usage: {} <backend>. <backend>: cuda, dx, ispc, metal", argv[0]);
         exit(1);
     }
@@ -33,7 +33,9 @@ int main(int argc, char *argv[]) {
     };
 
     Callable sample = [](BindlessVar heap, Float2 uv, Float mip) noexcept {
-        return heap.tex2d(0u).sample(uv);
+        auto dx = normalize(uv);
+        auto dy = make_float2(-dx.y, dx.x);
+        return heap.tex2d(0u).sample(uv, .01f * mip * dx, .01f * mip * dy);
     };
 
     Kernel1D useless_kernel = [](BindlessVar heap) noexcept {
@@ -56,7 +58,7 @@ int main(int argc, char *argv[]) {
     auto image_width = 0;
     auto image_height = 0;
     auto image_channels = 0;
-    auto image_pixels = stbi_load("src/tests/logo.png", &image_width, &image_height, &image_channels, 4);
+    auto image_pixels = stbi_load("test_path_tracing.png", &image_width, &image_height, &image_channels, 4);
     auto texture = device.create_image<float>(PixelStorage::BYTE4, uint2(image_width, image_height), 0u);
     auto device_image = device.create_image<float>(PixelStorage::BYTE4, 1024u, 1024u);
     std::vector<uint8_t> host_image(1024u * 1024u * 4u);
@@ -70,7 +72,7 @@ int main(int argc, char *argv[]) {
 
     // generate mip-maps
     auto cmd = upload_stream.command_buffer();
-    cmd << heap.emplace(0u, texture, Sampler::linear_linear_edge()).update()
+    cmd << heap.emplace(0u, texture, Sampler::anisotropic_mirror()).update()
         << texture.copy_from(image_pixels);
 
     for (auto i = 1u; i < texture.mip_levels(); i++) {
@@ -95,7 +97,7 @@ int main(int argc, char *argv[]) {
 
     stream << clear_image(device_image).dispatch(1024u, 1024u)
            << event.wait()
-           << fill_image(heap,device_image).dispatch(1024u, 1024u)
+           << fill_image(heap, device_image).dispatch(1024u, 1024u)
            << device_image.copy_to(host_image.data())
            << event.signal()
            << synchronize();

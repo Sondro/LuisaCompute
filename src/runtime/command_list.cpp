@@ -4,8 +4,6 @@
 
 #include <runtime/command.h>
 #include <runtime/command_list.h>
-#include <nlohmann/json.hpp>
-
 
 namespace luisa::compute {
 
@@ -36,7 +34,7 @@ CommandList &CommandList::operator=(CommandList &&rhs) noexcept {
 }
 
 CommandList::~CommandList() noexcept { _recycle(); }
-/*
+
 class CommandDumpVisitor : CommandVisitor {
 
 private:
@@ -226,7 +224,7 @@ nlohmann::json CommandList::dump_json() const noexcept {
     CommandDumpVisitor visitor;
     return visitor.dump(*this);
 }
-*/
+
 void CommandList::reserve(size_t size) noexcept {
     _commands.reserve(size);
 }

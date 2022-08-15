@@ -44,7 +44,7 @@ uint CodegenStackData::AddBindlessType(Type const *type) {
         .Value();
 }
 static thread_local bool gIsCodegenSpirv = false;
-bool& CodegenStackData::ThreadLocalSpirv(){
+bool &CodegenStackData::ThreadLocalSpirv() {
     return gIsCodegenSpirv;
 }
 
@@ -70,29 +70,20 @@ StructGenerator *CodegenStackData::CreateStruct(Type const *t) {
         hitDesc = newPtr;
         newPtr->SetStructName(vstd::string("RayPayload"sv));
     } else {
-        customStructVector.emplace_back(newPtr); 
+        customStructVector.emplace_back(newPtr);
     }
     return newPtr;
 }
-uint64 CodegenStackData::GetConstCount(uint64 data) {
+std::pair<uint64, bool> CodegenStackData::GetConstCount(uint64 data) {
+    bool newValue = false;
     auto ite = constTypes.Emplace(
         data,
         vstd::LazyEval(
             [&] {
+                newValue = true;
                 return constCount++;
             }));
-    return ite.Value();
-}
-vstd::optional<uint64> CodegenStackData::GetNewConstCount(uint64 data) {
-    vstd::optional<uint64> result;
-    constTypes.Emplace(
-        data,
-        vstd::LazyEval(
-            [&] {
-                result.New(constCount++);
-                return *result;
-            }));
-    return result;
+    return {ite.Value(), newValue};
 }
 
 uint64 CodegenStackData::GetFuncCount(uint64 data) {
@@ -138,7 +129,7 @@ CodegenStackData::~CodegenStackData() {}
 vstd::unique_ptr<CodegenStackData> CodegenStackData::Allocate() {
     return detail::codegenGlobalPool.Allocate();
 }
-void CodegenStackData::DeAllocate(vstd::unique_ptr<CodegenStackData>&& v) {
+void CodegenStackData::DeAllocate(vstd::unique_ptr<CodegenStackData> &&v) {
     detail::codegenGlobalPool.DeAllocate(std::move(v));
 }
 }// namespace toolhub::directx

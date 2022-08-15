@@ -9,6 +9,7 @@
 #include <backends/llvm/llvm_texture.h>
 #include <backends/llvm/llvm_mesh.h>
 #include <backends/llvm/llvm_accel.h>
+#include <backends/llvm/llvm_bindless_array.h>
 
 namespace luisa::compute::llvm {
 
@@ -65,15 +66,13 @@ void LLVMStream::visit(const BufferToTextureCopyCommand *command) noexcept {
     _pool.async([cmd = *command] {
         auto src = reinterpret_cast<const void *>(cmd.buffer() + cmd.buffer_offset());
         auto tex = reinterpret_cast<LLVMTexture *>(cmd.texture())->view(cmd.level());
-        auto size_bytes = cmd.size().x * cmd.size().y * cmd.size().z *
-                          pixel_storage_size(cmd.storage());
-        std::memcpy(tex.data(), src, size_bytes);
+        tex.copy_from(src);
     });
 }
 
 void LLVMStream::visit(const ShaderDispatchCommand *command) noexcept {
     auto shader = reinterpret_cast<const LLVMShader *>(command->handle());
-    luisa::vector<std::byte> argument_buffer(shader->argument_buffer_size() + sizeof(uint3) /* dispatch size */);
+    luisa::vector<std::byte> argument_buffer(shader->argument_buffer_size());
     command->decode([&](auto argument) noexcept {
         auto ptr = argument_buffer.data() + shader->argument_offset(argument.variable_uid);
         using T = decltype(argument);
@@ -85,11 +84,11 @@ void LLVMStream::visit(const ShaderDispatchCommand *command) noexcept {
             auto handle = texture->view(argument.level);
             std::memcpy(ptr, &handle, sizeof(handle));
         } else if constexpr (std::is_same_v<T, ShaderDispatchCommand::BindlessArrayArgument>) {
-            //            auto array = reinterpret_cast<const LLVMBindlessArray *>(argument.handle);
-            //            auto handle = array->handle();
-            //            std::memcpy(ptr, &handle, sizeof(handle));
+            auto array = reinterpret_cast<const LLVMBindlessArray *>(argument.handle);
+            auto handle = array->handle();
+            std::memcpy(ptr, &handle, sizeof(handle));
         } else if constexpr (std::is_same_v<T, ShaderDispatchCommand::AccelArgument>) {
-            auto handle = argument.handle;
+            auto handle = reinterpret_cast<LLVMAccel *>(argument.handle)->handle();
             std::memcpy(ptr, &handle, sizeof(handle));
         } else {// uniform
             static_assert(std::same_as<T, ShaderDispatchCommand::UniformArgument>);
@@ -98,14 +97,12 @@ void LLVMStream::visit(const ShaderDispatchCommand *command) noexcept {
     });
     auto shared_buffer = luisa::make_shared<luisa::vector<std::byte>>(std::move(argument_buffer));
     auto dispatch_size = command->dispatch_size();
-    std::memcpy(shared_buffer->data() + shader->argument_buffer_size(),
-                &dispatch_size, sizeof(uint3));
     auto block_size = command->kernel().block_size();
     auto grid_size = (dispatch_size + block_size - 1u) / block_size;
     _pool.parallel(
         grid_size.x, grid_size.y, grid_size.z,
-        [shared_buffer, shader](auto bx, auto by, auto bz) noexcept {
-            shader->invoke(shared_buffer->data(), make_uint3(bx, by, bz));
+        [shared_buffer, shader, dispatch_size](auto bx, auto by, auto bz) noexcept {
+            shader->invoke(shared_buffer->data(), dispatch_size, make_uint3(bx, by, bz));
         });
 }
 
@@ -116,16 +113,14 @@ void LLVMStream::visit(const TextureUploadCommand *command) noexcept {
     std::memcpy(temp_buffer->data(), command->data(), byte_size);
     _pool.async([cmd = *command, temp_buffer = std::move(temp_buffer)] {
         auto tex = reinterpret_cast<LLVMTexture *>(cmd.handle())->view(cmd.level());
-        std::memcpy(tex.data(), temp_buffer->data(), temp_buffer->size());
+        tex.copy_from(temp_buffer->data());
     });
 }
 
 void LLVMStream::visit(const TextureDownloadCommand *command) noexcept {
     _pool.async([cmd = *command] {
         auto tex = reinterpret_cast<LLVMTexture *>(cmd.handle())->view(cmd.level());
-        auto size_bytes = cmd.size().x * cmd.size().y * cmd.size().z *
-                          pixel_storage_size(cmd.storage());
-        std::memcpy(cmd.data(), tex.data(), size_bytes);
+        tex.copy_to(cmd.data());
     });
 }
 
@@ -133,8 +128,7 @@ void LLVMStream::visit(const TextureCopyCommand *command) noexcept {
     _pool.async([cmd = *command] {
         auto src_tex = reinterpret_cast<LLVMTexture *>(cmd.src_handle())->view(cmd.src_level());
         auto dst_tex = reinterpret_cast<LLVMTexture *>(cmd.dst_handle())->view(cmd.dst_level());
-        auto size_bytes = cmd.size().x * cmd.size().y * cmd.size().z * pixel_storage_size(cmd.storage());
-        std::memcpy(dst_tex.data(), src_tex.data(), size_bytes);
+        dst_tex.copy_from(src_tex);
     });
 }
 
@@ -142,8 +136,7 @@ void LLVMStream::visit(const TextureToBufferCopyCommand *command) noexcept {
     _pool.async([cmd = *command] {
         auto tex = reinterpret_cast<LLVMTexture *>(cmd.texture())->view(cmd.level());
         auto dst = reinterpret_cast<void *>(cmd.buffer() + cmd.buffer_offset());
-        auto size_bytes = cmd.size().x * cmd.size().y * cmd.size().z * pixel_storage_size(cmd.storage());
-        std::memcpy(dst, tex.data(), size_bytes);
+        tex.copy_to(dst);
     });
 }
 
@@ -159,7 +152,7 @@ void LLVMStream::visit(const MeshBuildCommand *command) noexcept {
 }
 
 void LLVMStream::visit(const BindlessArrayUpdateCommand *command) noexcept {
-    //        reinterpret_cast<LLVMBindlessArray *>(command->handle())->update(_pool);
+    reinterpret_cast<LLVMBindlessArray *>(command->handle())->update(_pool);
 }
 
 void LLVMStream::dispatch(luisa::move_only_function<void()> &&f) noexcept {

@@ -1,3 +1,7 @@
+//
+// Created by Mike Smith on 2021/6/23.
+//
+
 #include <iostream>
 
 #include <stb/stb_image_write.h>
@@ -19,7 +23,6 @@ int main(int argc, char *argv[]) {
 
     Context context{argv[0]};
     auto device = context.create_device("dx");
-
 
     std::array vertices{
         float3(-0.5f, -0.5f, 0.0f),
@@ -97,11 +100,10 @@ int main(int argc, char *argv[]) {
 
     auto accel = device.create_accel();
     auto mesh = device.create_mesh(vertex_buffer, triangle_buffer,
-                                   AccelUsageHint::FAST_BUILD, false, false);
+                                   AccelUsageHint::FAST_BUILD);
     accel.emplace_back(mesh, scaling(1.5f));
-    auto m = translation(float3(-0.25f, 0.0f, 0.1f)) *
-             rotation(float3(0.0f, 0.0f, 1.0f), 0.5f);
-    accel.emplace_back(mesh,m);
+    accel.emplace_back(mesh, translation(float3(-0.25f, 0.0f, 0.1f)) *
+                                 rotation(float3(0.0f, 0.0f, 1.0f), 0.5f));
     stream << mesh.build()
            << accel.build();
 
@@ -120,8 +122,8 @@ int main(int argc, char *argv[]) {
     for (auto i = 0u; i < spp; i++) {
         auto t = static_cast<float>(i) * (1.0f / spp);
         vertices[2].y = 0.5f - 0.2f * t;
-        m = translation(float3(-0.25f + t * 0.15f, 0.0f, 0.1f)) *
-            rotation(float3(0.0f, 0.0f, 1.0f), 0.5f + t * 0.5f);
+        auto m = translation(float3(-0.25f + t * 0.15f, 0.0f, 0.1f)) *
+                 rotation(float3(0.0f, 0.0f, 1.0f), 0.5f + t * 0.5f);
         accel.set_transform_on_update(1u, m);
         stream << vertex_buffer.copy_from(vertices.data())
                << mesh.build()

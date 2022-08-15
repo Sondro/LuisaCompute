@@ -2,28 +2,31 @@
 // Created by Mike Smith on 2022/5/23.
 //
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cppcoreguidelines-pro-type-static-cast-downcast"
+
 #include <backends/llvm/llvm_codegen.h>
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cppcoreguidelines-pro-type-static-cast-downcast"
 
 namespace luisa::compute::llvm {
 
 ::llvm::Value *LLVMCodegen::_literal(int x) noexcept {
-    auto b = _current_context()->builder.get();
-    return b->getInt32(x);
+    return ::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x);
 }
 
 ::llvm::Value *LLVMCodegen::_literal(uint x) noexcept {
-    auto b = _current_context()->builder.get();
-    return b->getInt32(x);
+    return ::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x);
 }
 
 ::llvm::Value *LLVMCodegen::_literal(bool x) noexcept {
-    auto b = _current_context()->builder.get();
-    return b->getInt8(x);
+    return ::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                    static_cast<uint8_t>(x));
 }
 
 ::llvm::Value *LLVMCodegen::_literal(float x) noexcept {
-    auto b = _current_context()->builder.get();
-    return ::llvm::ConstantFP::get(b->getFloatTy(), x);
+    return ::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x);
 }
 
 ::llvm::Value *LLVMCodegen::_literal(int2 x) noexcept {
@@ -31,19 +34,20 @@ namespace luisa::compute::llvm {
 }
 
 ::llvm::Value *LLVMCodegen::_literal(uint2 x) noexcept {
-    return ::llvm::ConstantDataVector::get(
-        _context, std::array{x.x, x.y});
+    return ::llvm::ConstantVector::get({::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.x),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.y)});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(bool2 x) noexcept {
-    return ::llvm::ConstantDataVector::get(
-        _context, std::array{static_cast<uint8_t>(x.x),
-                             static_cast<uint8_t>(x.y)});
+    return ::llvm::ConstantVector::get({::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.x)),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.y))});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(float2 x) noexcept {
-    return ::llvm::ConstantDataVector::get(
-        _context, std::array{x.x, x.y});
+    return ::llvm::ConstantVector::get({::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.x),
+                                        ::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.y)});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(int3 x) noexcept {
@@ -51,15 +55,24 @@ namespace luisa::compute::llvm {
 }
 
 ::llvm::Value *LLVMCodegen::_literal(uint3 x) noexcept {
-    return _literal(make_uint4(x, 0u));
+    return ::llvm::ConstantVector::get({::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.x),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.y),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.z)});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(bool3 x) noexcept {
-    return _literal(make_bool4(x, false));
+    return ::llvm::ConstantVector::get({::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.x)),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.y)),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.z))});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(float3 x) noexcept {
-    return _literal(make_float4(x, 0.0f));
+    return ::llvm::ConstantVector::get({::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.x),
+                                        ::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.y),
+                                        ::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.z)});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(int4 x) noexcept {
@@ -67,21 +80,28 @@ namespace luisa::compute::llvm {
 }
 
 ::llvm::Value *LLVMCodegen::_literal(uint4 x) noexcept {
-    return ::llvm::ConstantDataVector::get(
-        _context, std::array{x.x, x.y, x.z, x.w});
+    return ::llvm::ConstantVector::get({::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.x),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.y),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.z),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(_context), x.w)});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(bool4 x) noexcept {
-    return ::llvm::ConstantDataVector::get(
-        _context, std::array{static_cast<uint8_t>(x.x),
-                             static_cast<uint8_t>(x.y),
-                             static_cast<uint8_t>(x.z),
-                             static_cast<uint8_t>(x.w)});
+    return ::llvm::ConstantVector::get({::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.x)),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.y)),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.z)),
+                                        ::llvm::ConstantInt::get(::llvm::Type::getInt8Ty(_context),
+                                                                 static_cast<uint8_t>(x.w))});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(float4 x) noexcept {
-    return ::llvm::ConstantDataVector::get(
-        _context, std::array{x.x, x.y, x.z, x.w});
+    return ::llvm::ConstantVector::get({::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.x),
+                                        ::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.y),
+                                        ::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.z),
+                                        ::llvm::ConstantFP::get(::llvm::Type::getFloatTy(_context), x.w)});
 }
 
 ::llvm::Value *LLVMCodegen::_literal(float2x2 x) noexcept {
@@ -108,6 +128,13 @@ namespace luisa::compute::llvm {
         static_cast<::llvm::Constant *>(_literal(x[3])));
 }
 
+::llvm::Value *LLVMCodegen::_create_alloca(::llvm::Type *t, luisa::string_view name) noexcept {
+    auto ctx = _current_context();
+    auto p = ctx->builder->CreateAlloca(t, nullptr, ::llvm::StringRef{name.data(), name.size()});
+    p->setAlignment(::llvm::Align{16u});
+    return p;
+}
+
 ::llvm::Value *LLVMCodegen::_create_stack_variable(::llvm::Value *x, luisa::string_view name) noexcept {
     auto builder = _current_context()->builder.get();
     auto t = x->getType();
@@ -122,8 +149,7 @@ namespace luisa::compute::llvm {
         auto dst_type = ::llvm::VectorType::get(builder->getInt8Ty(), dim);
         return _create_stack_variable(builder->CreateZExt(x, dst_type, "bit_to_bool"), name);
     }
-    auto p = builder->CreateAlloca(x->getType(), nullptr, name);
-    p->setAlignment(::llvm::Align{16u});
+    auto p = _create_alloca(t, name);
     builder->CreateStore(x, p);
     return p;
 }
@@ -135,19 +161,23 @@ namespace luisa::compute::llvm {
     }
     auto value = luisa::visit(
         [this](auto s) noexcept {
+            std::vector<::llvm::Constant *> elements;
+            elements.reserve(s.size());
+            for (auto x : s) { elements.push_back(static_cast<::llvm::Constant *>(_literal(x))); }
             using T = std::remove_cvref_t<decltype(s[0])>;
-            ::llvm::StringRef ref{reinterpret_cast<const char *>(s.data()), s.size_bytes()};
-            return ::llvm::ConstantDataArray::getRaw(ref, s.size(), _create_type(Type::of<T>()));
+            auto array_type = ::llvm::ArrayType::get(
+                _create_type(Type::of<T>()), static_cast<unsigned>(elements.size()));
+            return ::llvm::ConstantArray::get(array_type, elements);
         },
         c.view());
     auto name = luisa::format("constant_{:016x}", key);
-    _module->getOrInsertGlobal(luisa::string_view{name}, value->getType());
-    auto global = _module->getNamedGlobal(luisa::string_view{name});
+    _module->getOrInsertGlobal(::llvm::StringRef{name.data(), name.size()}, value->getType());
+    auto global = _module->getNamedGlobal(::llvm::StringRef{name.data(), name.size()});
     global->setConstant(true);
     global->setLinkage(::llvm::GlobalValue::InternalLinkage);
     global->setInitializer(value);
     global->setUnnamedAddr(::llvm::GlobalValue::UnnamedAddr::Global);
-    return _constants.emplace(key, global).first->second;
+    return _constants.emplace(key, static_cast<::llvm::Value *>(global)).first->second;
 }
 
 ::llvm::Value *LLVMCodegen::_make_int2(::llvm::Value *px, ::llvm::Value *py) noexcept {
@@ -270,7 +300,7 @@ namespace luisa::compute::llvm {
 ::llvm::Value *LLVMCodegen::_make_float2x2(::llvm::Value *p0, ::llvm::Value *p1) noexcept {
     auto b = _current_context()->builder.get();
     auto t = _create_type(Type::of<float2x2>());
-    auto m = b->CreateAlloca(t, nullptr, "float2x2.addr");
+    auto m = _create_alloca(t, "float2x2.addr");
     auto m0 = b->CreateStructGEP(t, m, 0u, "float2x2.a");
     auto m1 = b->CreateStructGEP(t, m, 1u, "float2x2.b");
     auto col_type = _create_type(Type::of<float2>());
@@ -282,7 +312,7 @@ namespace luisa::compute::llvm {
 ::llvm::Value *LLVMCodegen::_make_float3x3(::llvm::Value *p0, ::llvm::Value *p1, ::llvm::Value *p2) noexcept {
     auto b = _current_context()->builder.get();
     auto t = _create_type(Type::of<float3x3>());
-    auto m = b->CreateAlloca(t, nullptr, "float3x3.addr");
+    auto m = _create_alloca(t, "float3x3.addr");
     auto m0 = b->CreateStructGEP(t, m, 0u, "float3x3.a");
     auto m1 = b->CreateStructGEP(t, m, 1u, "float3x3.b");
     auto m2 = b->CreateStructGEP(t, m, 2u, "float3x3.c");
@@ -296,7 +326,7 @@ namespace luisa::compute::llvm {
 ::llvm::Value *LLVMCodegen::_make_float4x4(::llvm::Value *p0, ::llvm::Value *p1, ::llvm::Value *p2, ::llvm::Value *p3) noexcept {
     auto b = _current_context()->builder.get();
     auto t = _create_type(Type::of<float4x4>());
-    auto m = b->CreateAlloca(t, nullptr, "float4x4.addr");
+    auto m = _create_alloca(t, "float4x4.addr");
     auto m0 = b->CreateStructGEP(t, m, 0u, "float4x4.a");
     auto m1 = b->CreateStructGEP(t, m, 1u, "float4x4.b");
     auto m2 = b->CreateStructGEP(t, m, 2u, "float4x4.c");
@@ -318,12 +348,14 @@ luisa::string LLVMCodegen::_variable_name(Variable v) const noexcept {
         case Variable::Tag::TEXTURE: return luisa::format("v{}.texture", v.uid());
         case Variable::Tag::BINDLESS_ARRAY: return luisa::format("v{}.bindless", v.uid());
         case Variable::Tag::ACCEL: return luisa::format("v{}.accel", v.uid());
-        case Variable::Tag::THREAD_ID: return "tid";
-        case Variable::Tag::BLOCK_ID: return "bid";
-        case Variable::Tag::DISPATCH_ID: return "did";
-        case Variable::Tag::DISPATCH_SIZE: return "ls";
+        case Variable::Tag::THREAD_ID: return "thread.id";
+        case Variable::Tag::BLOCK_ID: return "block.id";
+        case Variable::Tag::DISPATCH_ID: return "dispatch.id";
+        case Variable::Tag::DISPATCH_SIZE: return "dispatch.size";
     }
     LUISA_ERROR_WITH_LOCATION("Invalid variable.");
 }
 
 }// namespace luisa::compute::llvm
+
+#pragma clang diagnostic pop

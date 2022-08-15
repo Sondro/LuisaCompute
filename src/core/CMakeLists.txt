@@ -20,7 +20,9 @@ set(LUISA_COMPUTE_CORE_SOURCES
         first_fit.cpp first_fit.h
         observer.cpp observer.h
         thread_pool.cpp thread_pool.h
-        thread_safety.h)
+        thread_safety.h
+        json_fwd.h json.h
+        binary_buffer.h)
 
 find_package(Threads REQUIRED)
 add_library(luisa-compute-core SHARED ${LUISA_COMPUTE_CORE_SOURCES})
@@ -35,6 +37,7 @@ target_link_libraries(luisa-compute-core PUBLIC
 set_target_properties(luisa-compute-core PROPERTIES
         WINDOWS_EXPORT_ALL_SYMBOLS ON
         UNITY_BUILD ${LUISA_COMPUTE_ENABLE_UNITY_BUILD})
+add_dependencies(luisa-compute-core luisa-compute-ext)
 
 if (APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(luisa-compute-core INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)

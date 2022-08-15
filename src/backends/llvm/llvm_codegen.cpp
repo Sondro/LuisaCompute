@@ -14,12 +14,13 @@ std::unique_ptr<::llvm::Module> LLVMCodegen::emit(Function f) noexcept {
     auto module = std::make_unique<::llvm::Module>(
         ::llvm::StringRef{module_name.data(), module_name.size()}, _context);
     _module = module.get();
-    auto _ = _create_function(f);
+    static_cast<void>(_create_function(f));
     for (auto &&func : _module->functions()) {
         for (auto &&bb : func) {
             for (auto &&inst : bb) {
-                inst.setFast(true);
-                inst.setIsExact(false);
+                if (::llvm::isa<::llvm::FPMathOperator>(&inst)) {
+                    inst.setFast(true);
+                }
             }
         }
     }

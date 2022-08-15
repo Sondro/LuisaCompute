@@ -20,8 +20,8 @@ void DefinitionAnalysis::visit(const ScopeStmt *stmt) {
     for (auto s : stmt->statements()) { s->accept(*this); }
     _scope_stack.back().finalize();
     auto variables = std::move(_scope_stack.back().variables());
-    _scoped_variables.emplace(stmt, variables);
     _scope_stack.pop_back();
+    _scoped_variables.emplace(stmt, std::move(variables));
 }
 
 void DefinitionAnalysis::visit(const IfStmt *stmt) {
@@ -65,10 +65,6 @@ void DefinitionAnalysis::visit(const ForStmt *stmt) {
 }
 
 void DefinitionAnalysis::visit(const CommentStmt *stmt) {}
-
-void DefinitionAnalysis::visit(const MetaStmt *stmt) {
-    stmt->scope()->accept(*this);
-}
 
 void DefinitionAnalysis::analyze(Function f) noexcept {
     // initialize states
@@ -146,7 +142,8 @@ void DefinitionAnalysis::ScopeRecord::reference(Variable v) noexcept {
 }
 
 void DefinitionAnalysis::ScopeRecord::propagate(Variable v, const ScopeStmt *scope) {
-    _propagated.try_emplace(v, ScopeSet{}).first->second.emplace(scope);
+    auto iter = _propagated.emplace(v, ScopeSet{}).first;
+    iter->second.emplace(scope);
 }
 
 void DefinitionAnalysis::ScopeRecord::finalize() noexcept {

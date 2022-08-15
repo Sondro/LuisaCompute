@@ -3,7 +3,6 @@
 //
 
 #include <EASTL/allocator.h>
-#include <core/platform.h>
 #include <core/stl.h>
 
 namespace luisa::detail {
