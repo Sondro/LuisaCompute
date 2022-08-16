@@ -7,7 +7,7 @@ ComputeShader* BuiltinKernel::LoadAccelSetKernel(Device* device, ShaderPaths con
 	auto func = [&] {
 		CodegenResult code;
 		code.bdlsBufferCount = 0;
-		code.result = vstd::string(ReadInternalHLSLFile("accel_process", ctx.dataFolder));
+		code.result = ReadInternalHLSLFile("accel_process", ctx.dataFolder);
 		code.properties.resize(3);
 		auto& Global = code.properties[0];
 		Global.arrSize = 0;
@@ -39,14 +39,16 @@ ComputeShader* BuiltinKernel::LoadAccelSetKernel(Device* device, ShaderPaths con
 namespace detail {
 static ComputeShader* LoadBCKernel(
 	Device* device,
-	vstd::string_view includeCode,
-	vstd::string_view kernelCode,
+	vstd::function<vstd::string_view()> const& includeCode,
+	vstd::function<vstd::string_view()> const& kernelCode,
 	vstd::string&& codePath,
 	ShaderPaths const& ctx) {
 	auto func = [&] {
 		CodegenResult code;
-		code.result.reserve(includeCode.size() + kernelCode.size());
-		code.result << includeCode << kernelCode;
+		auto incCode = includeCode();
+		auto kerCode = kernelCode();
+		code.result.reserve(incCode.size() + kerCode.size());
+		code.result << incCode << kerCode;
 		code.bdlsBufferCount = 0;
 		code.properties.resize(4);
 		auto& globalBuffer = code.properties[0];
@@ -90,6 +92,7 @@ static vstd::string const& Bc6Header(ShaderPaths const& ctx) {
 }
 static vstd::string const& Bc7Header(ShaderPaths const& ctx) {
 	static vstd::string bc7Header = ReadInternalHLSLFile("bc7_header", ctx.dataFolder);
+	return bc7Header;
 }
 
 static vstd::string bc7Header;
@@ -97,56 +100,56 @@ static vstd::string bc7Header;
 ComputeShader* BuiltinKernel::LoadBC6TryModeG10CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
-		detail::Bc6Header(ctx),
-		ReadInternalHLSLFile("bc6_trymode_g10cs", ctx.dataFolder),
+		[&] { return detail::Bc6Header(ctx); },
+		[&] { return ReadInternalHLSLFile("bc6_trymode_g10cs", ctx.dataFolder); },
 		vstd::string("bc6_trymodeg10"sv),
 		ctx);
 }
 ComputeShader* BuiltinKernel::LoadBC6TryModeLE10CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
-		detail::Bc6Header(ctx),
-		ReadInternalHLSLFile("bc6_trymode_le10cs", ctx.dataFolder),
+		[&] { return detail::Bc6Header(ctx); },
+		[&] { return ReadInternalHLSLFile("bc6_trymode_le10cs", ctx.dataFolder); },
 		vstd::string("bc6_trymodele10"sv),
 		ctx);
 }
 ComputeShader* BuiltinKernel::LoadBC6EncodeBlockCSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
-		detail::Bc6Header(ctx),
-		ReadInternalHLSLFile("bc6_encode_block", ctx.dataFolder),
+		[&] { return detail::Bc6Header(ctx); },
+		[&] { return ReadInternalHLSLFile("bc6_encode_block", ctx.dataFolder); },
 		vstd::string("bc6_encodeblock"sv),
 		ctx);
 }
 ComputeShader* BuiltinKernel::LoadBC7TryMode456CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
-		detail::Bc7Header(ctx),
-		ReadInternalHLSLFile("bc7_trymode_456cs", ctx.dataFolder),
+		[&] { return detail::Bc7Header(ctx); },
+		[&] { return ReadInternalHLSLFile("bc7_trymode_456cs", ctx.dataFolder); },
 		vstd::string("bc7_trymode456"sv),
 		ctx);
 }
 ComputeShader* BuiltinKernel::LoadBC7TryMode137CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
-		detail::Bc7Header(ctx),
-		ReadInternalHLSLFile("bc7_trymode_137cs", ctx.dataFolder),
+		[&] { return detail::Bc7Header(ctx); },
+		[&] { return ReadInternalHLSLFile("bc7_trymode_137cs", ctx.dataFolder); },
 		vstd::string("bc7_trymode137"sv),
 		ctx);
 }
 ComputeShader* BuiltinKernel::LoadBC7TryMode02CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
-		detail::Bc7Header(ctx),
-		ReadInternalHLSLFile("bc7_trymode_02cs", ctx.dataFolder),
+		[&] { return detail::Bc7Header(ctx); },
+		[&] { return ReadInternalHLSLFile("bc7_trymode_02cs", ctx.dataFolder); },
 		vstd::string("bc7_trymode02"sv),
 		ctx);
 }
 ComputeShader* BuiltinKernel::LoadBC7EncodeBlockCSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
-		detail::Bc7Header(ctx),
-		ReadInternalHLSLFile("bc7_encode_block", ctx.dataFolder),
+		[&] { return detail::Bc7Header(ctx); },
+		[&] { return ReadInternalHLSLFile("bc7_encode_block", ctx.dataFolder); },
 		vstd::string("bc7_encodeblock"sv),
 		ctx);
 }
