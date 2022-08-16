@@ -59,6 +59,8 @@ public:
     struct BindlessHandle : public ResourceHandle {
         ResourceView view;
     };
+    using IsResInBindless = vstd::funcPtr_t<bool(uint64_t, uint64_t)>;
+    using GetArgUsage = vstd::funcPtr_t<Usage(uint64_t, size_t)>;
 
 private:
     template<typename Func>
@@ -126,19 +128,19 @@ private:
         int64_t layer);
     luisa::vector<std::pair<Range, ResourceHandle *>> dispatchReadHandle;
     luisa::vector<std::pair<Range, ResourceHandle *>> dispatchWriteHandle;
-    Variable const *arg;
-    Function f;
+    size_t argIndex;
+    uint64_t shaderHandle;
     size_t dispatchLayer;
     void AddDispatchHandle(
         uint64_t handle,
         ResourceType type,
         Range range,
         bool isWrite);
-    using IsResInBindless = vstd::funcPtr_t<bool(uint64_t, uint64_t)>;
     IsResInBindless isResInBindless;
+    GetArgUsage getUsage;
 
 public:
-    explicit CommandReorderVisitor(IsResInBindless isResInBindless) noexcept;
+    explicit CommandReorderVisitor(IsResInBindless isResInBindless, GetArgUsage getUsage) noexcept;
     ~CommandReorderVisitor() noexcept = default;
     void clear() noexcept;
     [[nodiscard]] auto command_lists() const noexcept {

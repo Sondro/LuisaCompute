@@ -44,6 +44,9 @@ class Volume;
 template<size_t dim, typename... Args>
 class Shader;
 
+template<size_t dim, typename... Args>
+class AOTShader;
+
 template<size_t N, typename... Args>
 class Kernel;
 
@@ -136,7 +139,8 @@ public:
         virtual PixelStorage swap_chain_pixel_storage(uint64_t handle) noexcept = 0;
         virtual void present_display_in_stream(uint64_t stream_handle, uint64_t swapchain_handle, uint64_t image_handle) noexcept = 0;
         // kernel
-        [[nodiscard]] virtual uint64_t create_shader(Function kernel, std::string_view meta_options) noexcept = 0;
+        [[nodiscard]] virtual uint64_t create_shader(Function kernel, luisa::string_view ser_path) noexcept = 0;
+        [[nodiscard]] virtual uint64_t load_shader(luisa::string_view ser_path, luisa::span<Type const *const> types) noexcept = 0;
         virtual void destroy_shader(uint64_t handle) noexcept = 0;
 
         // event
@@ -221,21 +225,24 @@ public:
     }
 
     template<size_t N, typename... Args>
-    [[nodiscard]] auto compile(const Kernel<N, Args...> &kernel, luisa::string_view meta_options = {}) noexcept {
-        return _create<Shader<N, Args...>>(kernel.function(), meta_options);
+    [[nodiscard]] auto compile(const Kernel<N, Args...> &kernel, luisa::string_view shader_path = {}) noexcept {
+        return _create<Shader<N, Args...>>(kernel.function(), shader_path);
     }
-
     template<size_t N, typename... Args>
-    [[nodiscard]] auto compile_async(const Kernel<N, Args...> &kernel, luisa::string_view meta_options = {}) noexcept {
-        return ThreadPool::global().async([this, f = kernel.function(), opt = luisa::string{meta_options}] {
-            return _create<Shader<N, Args...>>(f, opt);
-        });
+    [[nodiscard]] auto load_shader(luisa::string_view shader_path) noexcept {
+        std::array<Type const *, sizeof...(Args)> typeArr;
+        size_t argIdx = 0;
+        auto func = [&]<typename Arg>() {
+            typeArr[argIdx] = Type::of<Arg>();
+            argIdx++;
+        };
+        auto execFunc = {(func.template operator()<Args>(), 0)...};
+        return _create<AOTShader<N, Args...>>(shader_path, typeArr);
     }
 
-    // clang-format off
     template<size_t N, typename Func>
         requires std::negation_v<detail::is_dsl_kernel<std::remove_cvref_t<Func>>>
-    [[nodiscard]] auto compile(Func &&f, std::string_view meta_options = {}) noexcept {
+    [[nodiscard]] auto compile(Func &&f, std::string_view shader_path = {}) noexcept {
         if constexpr (N == 1u) {
             return compile(Kernel1D{std::forward<Func>(f)});
         } else if constexpr (N == 2u) {
@@ -246,20 +253,6 @@ public:
             static_assert(always_false_v<Func>, "Invalid kernel dimension.");
         }
     }
-    template<size_t N, typename Func>
-        requires std::negation_v<detail::is_dsl_kernel<std::remove_cvref_t<Func>>>
-    [[nodiscard]] auto compile_async(Func &&f, std::string_view meta_options = {}) noexcept {
-        if constexpr (N == 1u) {
-            return compile_async(Kernel1D{std::forward<Func>(f)});
-        } else if constexpr (N == 2u) {
-            return compile_async(Kernel2D{std::forward<Func>(f)});
-        } else if constexpr (N == 3u) {
-            return compile_async(Kernel3D{std::forward<Func>(f)});
-        } else {
-            static_assert(always_false_v<Func>, "Invalid kernel dimension.");
-        }
-    }
-    // clang-format on
 
     [[nodiscard]] auto query(std::string_view meta_expr) const noexcept {
         return _impl->query(meta_expr);

@@ -12,7 +12,7 @@ void Command::recycle() {
 }
 
 inline void ShaderDispatchCommand::_encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept {
-    if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
+    /*if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Invalid buffer argument at index {}.",
             _argument_count);
@@ -30,8 +30,8 @@ inline void ShaderDispatchCommand::_encode_buffer(uint64_t handle, size_t offset
             t->description(), _argument_count);
     }
     auto variable_uid = _kernel.arguments()[_argument_count].uid();
-    auto usage = _kernel.variable_usage(variable_uid);
-    BufferArgument argument{variable_uid, handle, offset, size};
+    auto usage = _kernel.variable_usage(variable_uid);*/
+    BufferArgument argument{handle, offset, size};
     std::memcpy(
         _argument_buffer->data() + _argument_buffer_size,
         &argument, sizeof(BufferArgument));
@@ -40,7 +40,7 @@ inline void ShaderDispatchCommand::_encode_buffer(uint64_t handle, size_t offset
 }
 
 inline void ShaderDispatchCommand::_encode_texture(uint64_t handle, uint32_t level) noexcept {
-    if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
+    /*if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Invalid texture argument at index {}.",
             _argument_count);
@@ -58,8 +58,8 @@ inline void ShaderDispatchCommand::_encode_texture(uint64_t handle, uint32_t lev
             t->description(), _argument_count);
     }
     auto variable_uid = _kernel.arguments()[_argument_count].uid();
-    auto usage = _kernel.variable_usage(variable_uid);
-    TextureArgument argument{variable_uid, handle, level};
+    auto usage = _kernel.variable_usage(variable_uid);*/
+    TextureArgument argument{handle, level};
     std::memcpy(
         _argument_buffer->data() + _argument_buffer_size,
         &argument, sizeof(TextureArgument));
@@ -68,7 +68,7 @@ inline void ShaderDispatchCommand::_encode_texture(uint64_t handle, uint32_t lev
 }
 
 inline void ShaderDispatchCommand::_encode_uniform(const void *data, size_t size) noexcept {
-    if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
+    /*if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Invalid uniform argument at index {}.",
             _argument_count);
@@ -88,10 +88,10 @@ inline void ShaderDispatchCommand::_encode_uniform(const void *data, size_t size
             size, _argument_count,
             t->description(), t->size());
     }
-    auto variable_uid = _kernel.arguments()[_argument_count].uid();
+    auto variable_uid = _kernel.arguments()[_argument_count].uid();*/
     auto arg_ptr = _argument_buffer->data() + _argument_buffer_size;
     auto data_ptr = arg_ptr + sizeof(UniformArgument);
-    UniformArgument argument{variable_uid, data_ptr, size};
+    UniformArgument argument{data_ptr, size};
     std::memcpy(arg_ptr, &argument, sizeof(UniformArgument));
     std::memcpy(data_ptr, data, size);
     _argument_buffer_size += sizeof(UniformArgument) + size;
@@ -99,40 +99,42 @@ inline void ShaderDispatchCommand::_encode_uniform(const void *data, size_t size
 }
 
 void ShaderDispatchCommand::set_dispatch_size(uint3 launch_size) noexcept {
+    /*
     if (_argument_count != _kernel.arguments().size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Not all arguments are encoded (expected {}, got {}).",
             _kernel.arguments().size(), _argument_count);
     }
+    */
     _dispatch_size[0] = launch_size.x;
     _dispatch_size[1] = launch_size.y;
     _dispatch_size[2] = launch_size.z;
 }
 
 ShaderDispatchCommand::ShaderDispatchCommand(uint64_t handle, Function kernel) noexcept
-    : Command{Command::Tag::EShaderDispatchCommand}, _handle{handle}, _kernel{kernel},
+    : Command{Command::Tag::EShaderDispatchCommand}, _handle{handle}, _kernel(kernel),
       _argument_buffer{luisa::make_unique<ArgumentBuffer>()} { _encode_pending_bindings(); }
 
 inline void ShaderDispatchCommand::_encode_bindless_array(uint64_t handle) noexcept {
-    if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
+    /*if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Invalid bindless array argument at index {}.",
             _argument_count);
-    }
+    }*/
     if (_argument_buffer_size + sizeof(BindlessArrayArgument) > _argument_buffer->size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Failed to encode bindless array. "
             "Shader argument buffer exceeded size limit {}.",
             _argument_buffer->size());
     }
+    /*
     if (auto t = _kernel.arguments()[_argument_count].type();
         !t->is_bindless_array()) {
         LUISA_ERROR_WITH_LOCATION(
             "Expected {} but got bindless array for argument {}.",
             t->description(), _argument_count);
-    }
-    auto v = _kernel.arguments()[_argument_count].uid();
-    BindlessArrayArgument argument{v, handle};
+    }*/
+    BindlessArrayArgument argument{handle};
     std::memcpy(
         _argument_buffer->data() + _argument_buffer_size,
         &argument, sizeof(BindlessArrayArgument));
@@ -141,13 +143,13 @@ inline void ShaderDispatchCommand::_encode_bindless_array(uint64_t handle) noexc
 }
 
 inline void ShaderDispatchCommand::_encode_accel(uint64_t handle) noexcept {
-    if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
+    /*if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Invalid accel argument at index {}.",
             _argument_count);
-    }
+    }*/
     constexpr auto size = sizeof(AccelArgument);
-    if (_argument_buffer_size + size > _argument_buffer->size()) [[unlikely]] {
+    /*if (_argument_buffer_size + size > _argument_buffer->size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Failed to encode accel. "
             "Shader argument buffer exceeded size limit {}.",
@@ -158,16 +160,17 @@ inline void ShaderDispatchCommand::_encode_accel(uint64_t handle) noexcept {
         LUISA_ERROR_WITH_LOCATION(
             "Expected {} but got accel for argument {}.",
             t->description(), _argument_count);
-    }
-    auto v = _kernel.arguments()[_argument_count].uid();
-    AccelArgument argument{v, handle};
+    }*/
+    AccelArgument argument{handle};
     std::memcpy(_argument_buffer->data() + _argument_buffer_size, &argument, size);
     _argument_buffer_size += size;
     _argument_count++;
 }
 
 inline void ShaderDispatchCommand::_encode_pending_bindings() noexcept {
-    auto bindings = _kernel.builder()->argument_bindings();
+    auto builder = _kernel.builder();
+    if (builder == nullptr) return;
+    auto bindings = builder->argument_bindings();
     while (_argument_count < _kernel.arguments().size() &&
            !luisa::holds_alternative<luisa::monostate>(bindings[_argument_count])) {
         luisa::visit(

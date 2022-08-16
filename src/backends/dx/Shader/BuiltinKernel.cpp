@@ -4,36 +4,37 @@
 #include <compile/hlsl/shader_header.h>
 namespace toolhub::directx {
 ComputeShader* BuiltinKernel::LoadAccelSetKernel(Device* device, ShaderPaths const& ctx) {
-	CodegenResult code;
-	code.bdlsBufferCount = 0;
-	code.result = vstd::string(ReadInternalHLSLFile("accel_process", ctx.dataFolder));
-	code.properties.resize(3);
-	code.md5 = vstd::MD5(code.result);
-	auto& Global = code.properties[0];
-	Global.arrSize = 0;
-	Global.registerIndex = 0;
-	Global.spaceIndex = 0;
-	Global.type = ShaderVariableType::ConstantBuffer;
-	auto& SetBuffer = code.properties[1];
-	SetBuffer.arrSize = 0;
-	SetBuffer.registerIndex = 0;
-	SetBuffer.spaceIndex = 0;
-	SetBuffer.type = ShaderVariableType::StructuredBuffer;
-	auto& InstBuffer = code.properties[2];
-	InstBuffer.arrSize = 0;
-	InstBuffer.registerIndex = 0;
-	InstBuffer.spaceIndex = 0;
-	InstBuffer.type = ShaderVariableType::RWStructuredBuffer;
+	auto func = [&] {
+		CodegenResult code;
+		code.bdlsBufferCount = 0;
+		code.result = vstd::string(ReadInternalHLSLFile("accel_process", ctx.dataFolder));
+		code.properties.resize(3);
+		auto& Global = code.properties[0];
+		Global.arrSize = 0;
+		Global.registerIndex = 0;
+		Global.spaceIndex = 0;
+		Global.type = ShaderVariableType::ConstantBuffer;
+		auto& SetBuffer = code.properties[1];
+		SetBuffer.arrSize = 0;
+		SetBuffer.registerIndex = 0;
+		SetBuffer.spaceIndex = 0;
+		SetBuffer.type = ShaderVariableType::StructuredBuffer;
+		auto& InstBuffer = code.properties[2];
+		InstBuffer.arrSize = 0;
+		InstBuffer.registerIndex = 0;
+		InstBuffer.spaceIndex = 0;
+		InstBuffer.type = ShaderVariableType::RWStructuredBuffer;
+		return code;
+	};
 	return ComputeShader::CompileCompute(
 		device,
-		code,
+		{},
+		func,
 		uint3(64, 1, 1),
 		60,
 		ctx.shaderCacheFolder,
 		ctx.psoFolder,
-		{
-			"set_accel_kernel"sv,
-		});
+		"set_accel_kernel"sv, true);
 }
 namespace detail {
 static ComputeShader* LoadBCKernel(
@@ -42,43 +43,46 @@ static ComputeShader* LoadBCKernel(
 	vstd::string_view kernelCode,
 	vstd::string&& codePath,
 	ShaderPaths const& ctx) {
-	CodegenResult code;
-	code.result.reserve(includeCode.size() + kernelCode.size());
-	code.result << includeCode << kernelCode;
-	code.bdlsBufferCount = 0;
-	code.properties.resize(4);
-	code.md5 = vstd::MD5(code.result);
-	auto& globalBuffer = code.properties[0];
-	globalBuffer.arrSize = 0;
-	globalBuffer.registerIndex = 0;
-	globalBuffer.spaceIndex = 0;
-	globalBuffer.type = ShaderVariableType::ConstantBuffer;
+	auto func = [&] {
+		CodegenResult code;
+		code.result.reserve(includeCode.size() + kernelCode.size());
+		code.result << includeCode << kernelCode;
+		code.bdlsBufferCount = 0;
+		code.properties.resize(4);
+		auto& globalBuffer = code.properties[0];
+		globalBuffer.arrSize = 0;
+		globalBuffer.registerIndex = 0;
+		globalBuffer.spaceIndex = 0;
+		globalBuffer.type = ShaderVariableType::ConstantBuffer;
 
-	auto& gInput = code.properties[1];
-	gInput.arrSize = 0;
-	gInput.registerIndex = 0;
-	gInput.spaceIndex = 0;
-	gInput.type = ShaderVariableType::SRVDescriptorHeap;
+		auto& gInput = code.properties[1];
+		gInput.arrSize = 0;
+		gInput.registerIndex = 0;
+		gInput.spaceIndex = 0;
+		gInput.type = ShaderVariableType::SRVDescriptorHeap;
 
-	auto& gInBuff = code.properties[2];
-	gInBuff.arrSize = 0;
-	gInBuff.registerIndex = 1;
-	gInBuff.spaceIndex = 0;
-	gInBuff.type = ShaderVariableType::StructuredBuffer;
+		auto& gInBuff = code.properties[2];
+		gInBuff.arrSize = 0;
+		gInBuff.registerIndex = 1;
+		gInBuff.spaceIndex = 0;
+		gInBuff.type = ShaderVariableType::StructuredBuffer;
 
-	auto& gOutBuff = code.properties[3];
-	gOutBuff.arrSize = 0;
-	gOutBuff.registerIndex = 0;
-	gOutBuff.spaceIndex = 0;
-	gOutBuff.type = ShaderVariableType::RWStructuredBuffer;
+		auto& gOutBuff = code.properties[3];
+		gOutBuff.arrSize = 0;
+		gOutBuff.registerIndex = 0;
+		gOutBuff.spaceIndex = 0;
+		gOutBuff.type = ShaderVariableType::RWStructuredBuffer;
+		return code;
+	};
 	return ComputeShader::CompileCompute(
 		device,
-		code,
+		{},
+		func,
 		uint3(1, 1, 1),
 		60,
 		ctx.shaderCacheFolder,
 		ctx.psoFolder,
-		{std::move(codePath)});
+		codePath, true);
 }
 static vstd::string const& Bc6Header(ShaderPaths const& ctx) {
 	static vstd::string bc6Header = ReadInternalHLSLFile("bc6_header", ctx.dataFolder);

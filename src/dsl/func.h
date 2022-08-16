@@ -218,8 +218,9 @@ public:
      */
     template<typename Def>
         requires std::negation_v<is_callable<std::remove_cvref_t<Def>>> &&
-                 std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
-    Kernel(Def &&def) noexcept {
+            std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
+            Kernel(Def &&def)
+    noexcept {
         static_assert(std::is_invocable_r_v<void, Def, detail::prototype_to_creation_t<Args>...>);
         _builder = detail::FunctionBuilder::define_kernel([&def] {
             detail::FunctionBuilder::current()->set_block_size(detail::kernel_default_block_size<N>());
@@ -360,8 +361,9 @@ public:
      */
     template<typename Def>
         requires std::negation_v<is_callable<std::remove_cvref_t<Def>>> &&
-                 std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
-    Callable(Def &&f) noexcept
+            std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
+            Callable(Def &&f)
+    noexcept
         : _builder{detail::FunctionBuilder::define_callable([&f] {
               static_assert(std::is_invocable_v<Def, detail::prototype_to_creation_t<Args>...>);
               auto create = []<size_t... i>(auto &&def, std::index_sequence<i...>) noexcept {

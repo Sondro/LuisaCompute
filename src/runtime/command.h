@@ -310,51 +310,50 @@ public:
         };
 
         Tag tag;
-        uint32_t variable_uid;
 
         Argument() noexcept = default;
-        Argument(Tag tag, uint32_t vid) noexcept
-            : tag{tag}, variable_uid{vid} {}
+        Argument(Tag tag) noexcept
+            : tag{tag} {}
     };
 
     struct BufferArgument : Argument {
         uint64_t handle{};
         size_t offset{};
         size_t size{};
-        BufferArgument() noexcept : Argument{Tag::BUFFER, 0u} {}
-        BufferArgument(uint32_t vid, uint64_t handle, size_t offset, size_t size) noexcept
-            : Argument{Tag::BUFFER, vid}, handle{handle}, offset{offset}, size{size} {}
+        BufferArgument() noexcept : Argument{Tag::BUFFER} {}
+        BufferArgument(uint64_t handle, size_t offset, size_t size) noexcept
+            : Argument{Tag::BUFFER}, handle{handle}, offset{offset}, size{size} {}
     };
 
     struct TextureArgument : Argument {
         uint64_t handle{};
         uint32_t level{};
-        TextureArgument() noexcept : Argument{Tag::TEXTURE, 0u} {}
-        TextureArgument(uint32_t vid, uint64_t handle, uint32_t level) noexcept
-            : Argument{Tag::TEXTURE, vid}, handle{handle}, level{level} {}
+        TextureArgument() noexcept : Argument{Tag::TEXTURE} {}
+        TextureArgument(uint64_t handle, uint32_t level) noexcept
+            : Argument{Tag::TEXTURE}, handle{handle}, level{level} {}
     };
 
     struct UniformArgument : Argument {
         size_t size{};
         const std::byte *data{};
-        UniformArgument() noexcept : Argument{Tag::UNIFORM, 0u} {}
-        UniformArgument(uint32_t vid, const std::byte *data, size_t size) noexcept
-            : Argument{Tag::UNIFORM, vid}, size{size}, data{data} {}
+        UniformArgument() noexcept : Argument{Tag::UNIFORM} {}
+        UniformArgument(const std::byte *data, size_t size) noexcept
+            : Argument{Tag::UNIFORM}, size{size}, data{data} {}
         [[nodiscard]] auto span() const noexcept { return luisa::span{data, size}; }
     };
 
     struct BindlessArrayArgument : Argument {
         uint64_t handle{};
-        BindlessArrayArgument() noexcept : Argument{Tag::BINDLESS_ARRAY, 0u} {}
-        BindlessArrayArgument(uint32_t vid, uint64_t handle) noexcept
-            : Argument{Tag::BINDLESS_ARRAY, vid}, handle{handle} {}
+        BindlessArrayArgument() noexcept : Argument{Tag::BINDLESS_ARRAY} {}
+        BindlessArrayArgument(uint64_t handle) noexcept
+            : Argument{Tag::BINDLESS_ARRAY}, handle{handle} {}
     };
 
     struct AccelArgument : Argument {
         uint64_t handle{};
-        AccelArgument() noexcept : Argument{Tag::ACCEL, 0u} {}
-        AccelArgument(uint32_t vid, uint64_t handle) noexcept
-            : Argument{Tag::ACCEL, vid}, handle{handle} {}
+        AccelArgument() noexcept : Argument{Tag::ACCEL} {}
+        AccelArgument(uint64_t handle) noexcept
+            : Argument{Tag::ACCEL}, handle{handle} {}
     };
 
     using ArgumentBuffer = std::array<std::byte, 4000u>;
@@ -444,8 +443,8 @@ public:
 };
 
 enum struct AccelUsageHint : uint32_t {
-    FAST_TRACE, // build with best quality
-    FAST_BUILD  // optimize for frequent rebuild, maybe without compaction
+    FAST_TRACE,// build with best quality
+    FAST_BUILD // optimize for frequent rebuild, maybe without compaction
 };
 
 enum struct AccelBuildRequest : uint32_t {

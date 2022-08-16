@@ -50,7 +50,8 @@ public:
     void *stream_native_handle(uint64_t handle) const noexcept override;
 
     // kernel
-    uint64_t create_shader(Function kernel, std::string_view meta_options) noexcept override;
+    uint64_t create_shader(Function kernel, vstd::string_view file_name) noexcept override;
+    uint64_t load_shader(vstd::string_view file_name, vstd::span<Type const* const> types) noexcept override;
     void destroy_shader(uint64_t handle) noexcept override;
 
     // event

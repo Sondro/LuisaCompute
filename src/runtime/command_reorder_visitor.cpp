@@ -98,8 +98,8 @@ size_t CommandReorderVisitor::GetLastLayerRead(NoRangeHandle *handle) {
 size_t CommandReorderVisitor::GetLastLayerRead(BindlessHandle *handle) {
     return handle->view.writeLayer + 1;
 }
-CommandReorderVisitor::CommandReorderVisitor(IsResInBindless isResInBindless) noexcept
-    : isResInBindless(isResInBindless), rangePool(256, true), bindlessHandlePool(32, true), noRangePool(256, true) {
+CommandReorderVisitor::CommandReorderVisitor(IsResInBindless isResInBindless, GetArgUsage getUsage) noexcept
+    : isResInBindless(isResInBindless), rangePool(256, true), bindlessHandlePool(32, true), noRangePool(256, true), getUsage(getUsage) {
     resMap.reserve(256);
     bindlessMap.reserve(256);
 }
@@ -337,8 +337,8 @@ void CommandReorderVisitor::visit(const ShaderDispatchCommand *command) noexcept
     dispatchWriteHandle.clear();
     useBindlessInPass = false;
     useAccelInPass = false;
-    f = command->kernel();
-    arg = command->kernel().arguments().data();
+    argIndex = 0;
+    shaderHandle = command->handle();
     dispatchLayer = 0;
     command->decode(*this);
     for (auto &&i : dispatchReadHandle) {
@@ -498,19 +498,19 @@ void CommandReorderVisitor::operator()(ShaderDispatchCommand::TextureArgument co
         bf.handle,
         ResourceType::Texture,
         Range(bf.level),
-        ((uint)f.variable_usage(arg->uid()) & (uint)Usage::WRITE) != 0);
-    arg++;
+        ((uint)getUsage(shaderHandle, argIndex) & (uint)Usage::WRITE) != 0);
+    ++argIndex;
 }
 void CommandReorderVisitor::operator()(ShaderDispatchCommand::BufferArgument const &bf) {
     AddDispatchHandle(
         bf.handle,
         ResourceType::Buffer,
         Range(bf.offset, bf.size),
-        ((uint)f.variable_usage(arg->uid()) & (uint)Usage::WRITE) != 0);
-    arg++;
+        ((uint)getUsage(shaderHandle, argIndex) & (uint)Usage::WRITE) != 0);
+    ++argIndex;
 }
 void CommandReorderVisitor::operator()(ShaderDispatchCommand::UniformArgument const &) {
-    arg++;
+    ++argIndex;
 }
 void CommandReorderVisitor::operator()(ShaderDispatchCommand::BindlessArrayArgument const &bf) {
     useBindlessInPass = true;
@@ -519,7 +519,7 @@ void CommandReorderVisitor::operator()(ShaderDispatchCommand::BindlessArrayArgum
         ResourceType::Bindless,
         Range(),
         false);
-    arg++;
+    ++argIndex;
 }
 void CommandReorderVisitor::operator()(ShaderDispatchCommand::AccelArgument const &bf) {
     useAccelInPass = true;
@@ -528,7 +528,7 @@ void CommandReorderVisitor::operator()(ShaderDispatchCommand::AccelArgument cons
         ResourceType::Accel,
         Range(),
         false);
-    arg++;
+    ++argIndex;
 }
 
 }// namespace luisa::compute

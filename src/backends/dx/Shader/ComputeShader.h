@@ -14,31 +14,34 @@ protected:
 	ComputeShader(
 		uint3 blockSize,
 		Device* device,
-		vstd::span<Property const> prop,
+		vstd::vector<Property>&& prop,
+		vstd::vector<SavedArgument>&& args,
 		ComPtr<ID3D12RootSignature>&& rootSig,
 		ComPtr<ID3D12PipelineState>&& pso);
 
 public:
-
 	Tag GetTag() const { return Tag::ComputeShader; }
 	uint3 BlockSize() const { return blockSize; }
 	static ComputeShader* CompileCompute(
 		Device* device,
-		CodegenResult const& str,
+		Function kernel,
+		vstd::function<CodegenResult()> const& codegen,
 		uint3 blockSize,
 		uint shaderModel,
 		vstd::string_view cacheFolder,
 		vstd::string_view psoFolder,
-		vstd::optional<vstd::string>&& fileName);
+		vstd::string_view fileName,
+		bool tryLoadOld);
 	static ComputeShader* LoadPresetCompute(
 		Device* device,
-		uint3 blockSize,
+		vstd::span<Type const* const> types,
 		vstd::string_view cacheFolder,
 		vstd::string_view psoFolder,
 		vstd::string_view fileName);
 	ComputeShader(
 		uint3 blockSize,
-		vstd::span<Property const> properties,
+		vstd::vector<Property>&& properties,
+		vstd::vector<SavedArgument>&& args,
 		vstd::span<vbyte const> binData,
 		Device* device);
 	ID3D12PipelineState* Pso() const { return pso.Get(); }

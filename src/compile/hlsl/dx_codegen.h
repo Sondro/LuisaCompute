@@ -20,13 +20,11 @@ struct CodegenResult {
     vstd::string result;
     Properties properties;
     uint64 bdlsBufferCount;
-    vstd::MD5 md5;
     CodegenResult() {}
     template<typename A, typename B>
-    CodegenResult(A &&a, B &&b, uint64 c, vstd::MD5 md5)
+    CodegenResult(A &&a, B &&b, uint64 c)
         : result(std::forward<A>(a)),
-          properties(std::forward<B>(b)), bdlsBufferCount(c),
-          md5(md5) {}
+          properties(std::forward<B>(b)), bdlsBufferCount(c) {}
 };
 class CodegenUtility {
 
@@ -65,7 +63,7 @@ public:
     static void GenerateBindless(
         CodegenResult::Properties &properties,
         vstd::string &str);
-    static vstd::optional<CodegenResult> Codegen(Function kernel, vstd::string_view internalDataPath);
+    static CodegenResult Codegen(Function kernel, vstd::string_view internalDataPath);
 #ifdef USE_SPIRV
     static void GenerateBindlessSpirv(
         vstd::string &str);

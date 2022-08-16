@@ -34,7 +34,7 @@ CommandList &CommandList::operator=(CommandList &&rhs) noexcept {
 }
 
 CommandList::~CommandList() noexcept { _recycle(); }
-
+/*
 class CommandDumpVisitor : CommandVisitor {
 
 private:
@@ -219,10 +219,11 @@ public:
         return json;
     }
 };
-
+*/
 nlohmann::json CommandList::dump_json() const noexcept {
-    CommandDumpVisitor visitor;
-    return visitor.dump(*this);
+    //CommandDumpVisitor visitor;
+    //return visitor.dump(*this);
+    return {};
 }
 
 void CommandList::reserve(size_t size) noexcept {

@@ -5,42 +5,44 @@
 namespace toolhub::directx {
 namespace shader_ser {
 struct Header {
-	vstd::MD5 md5;
 	uint64 rootSigBytes;
 	uint64 codeBytes;
 	uint3 blockSize;
 	uint propertyCount;
 	uint bindlessCount;
+	uint kernelArgCount;
 };
 }// namespace shader_ser
 vstd::vector<vbyte>
 ShaderSerializer::Serialize(
 	vstd::span<Property const> properties,
+	vstd::span<SavedArgument const> kernelArgs,
 	vstd::span<vbyte> binByte,
-	vstd::MD5 md5,
 	uint bindlessCount,
 	uint3 blockSize) {
 	using namespace shader_ser;
 	vstd::vector<vbyte> result;
 	result.reserve(65500);
 	result.resize(sizeof(Header));
-	Header header{
-		md5,
+	Header header = {
 		(uint64)SerializeRootSig(properties, result),
 		(uint64)binByte.size(),
 		blockSize,
 		static_cast<uint>(properties.size()),
-		bindlessCount};
-	memcpy(result.data(), &header, sizeof(Header));
+		bindlessCount,
+		static_cast<uint>(kernelArgs.size())};
+	*reinterpret_cast<Header*>(result.data()) = header;
 	result.push_back_all(binByte);
 	result.push_back_all(
 		reinterpret_cast<vbyte const*>(properties.data()),
 		properties.size_bytes());
+	result.push_back_all(
+		reinterpret_cast<vbyte const*>(kernelArgs.data()),
+		kernelArgs.size_bytes());
 	return result;
 }
 ComputeShader* ShaderSerializer::DeSerialize(
 	Device* device,
-	vstd::optional<vstd::MD5>&& md5,
 	Visitor& visitor) {
 	using namespace shader_ser;
 	vbyte const* ptr = nullptr;
@@ -49,8 +51,6 @@ ComputeShader* ShaderSerializer::DeSerialize(
 		return *reinterpret_cast<T const*>(ptr);
 	};
 	auto header = Get.operator()<Header>();
-	if (md5 && header.md5 != *md5)
-		return nullptr;
 	ptr = visitor.ReadFile(header.rootSigBytes);
 	auto rootSig = DeSerializeRootSig(
 		device->device.Get(),
@@ -79,15 +79,21 @@ ComputeShader* ShaderSerializer::DeSerialize(
 			IID_PPV_ARGS(pso.GetAddressOf())));
 	}
 	vstd::vector<Property> properties;
+	vstd::vector<SavedArgument> kernelArgs;
 	properties.resize(header.propertyCount);
+	kernelArgs.resize(header.kernelArgCount);
 	visitor.ReadFile(
 		properties.data(),
-		sizeof(Property) * header.propertyCount);
+		properties.byte_size());
+	visitor.ReadFile(
+		kernelArgs.data(),
+		kernelArgs.byte_size());
 
 	auto cs = new ComputeShader(
 		header.blockSize,
 		device,
-		properties,
+		std::move(properties),
+		std::move(kernelArgs),
 		std::move(rootSig),
 		std::move(pso));
 	cs->bindlessCount = header.bindlessCount;
@@ -180,5 +186,17 @@ ComPtr<ID3D12RootSignature> ShaderSerializer::DeSerializeRootSig(
 		bytes.size(),
 		IID_PPV_ARGS(rootSig.GetAddressOf())));
 	return rootSig;
+}
+vstd::vector<SavedArgument> ShaderSerializer::SerializeKernel(Function kernel) {
+	if (kernel.builder() == nullptr) return {};
+	assert(kernel.tag() == Function::Tag::KERNEL);
+	auto&& args = kernel.arguments();
+	vstd::vector<SavedArgument> result;
+	result.push_back_func(args.size(), [&](size_t i) {
+		auto&& var = args[i];
+		auto type = var.type();
+		return SavedArgument(kernel, var);
+	});
+	return result;
 }
 }// namespace toolhub::directx

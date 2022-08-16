@@ -971,7 +971,7 @@ void CodegenUtility::GetBasicTypeName(uint64 typeIndex, vstd::string &str) {
         typeIndex);
 }
 void CodegenUtility::CodegenFunction(Function func, vstd::string &result) {
-    
+
     auto codegenOneFunc = [&](Function func) {
         auto constants = func.constants();
         for (auto &&kv : constants) {
@@ -1125,7 +1125,7 @@ void CodegenUtility::GenerateBindless(
                 0u, 0u});
     }
 }
-vstd::optional<CodegenResult> CodegenUtility::Codegen(
+CodegenResult CodegenUtility::Codegen(
     Function kernel, vstd::string_view internalDataPath) {
     assert(kernel.tag() == Function::Tag::KERNEL);
     opt = CodegenStackData::Allocate();
@@ -1144,8 +1144,6 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
     if (kernel.raytracing()) {
         finalResult << detail::RayTracingHeader(internalDataPath);
     }
-    size_t unChangedOffset = finalResult.size();
-
     opt->isKernel = false;
     GenerateCBuffer(kernel, kernel.arguments(), varData);
     CodegenResult::Properties properties;
@@ -1284,14 +1282,11 @@ vstd::optional<CodegenResult> CodegenUtility::Codegen(
     }
 
     finalResult << varData << codegenData;
-    auto md5Strv = vstd::string_view(finalResult.c_str() + unChangedOffset, finalResult.size() - unChangedOffset);
 
-    auto md5 = vstd::MD5(md5Strv);
     return {
         std::move(finalResult),
         std::move(properties),
-        opt->bindlessBufferCount,
-        md5};
+        opt->bindlessBufferCount};
 }
 #ifdef USE_SPIRV
 

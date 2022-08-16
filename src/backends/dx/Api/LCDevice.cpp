@@ -22,11 +22,11 @@ LCDevice::LCDevice(const Context& ctx)
 	: LCDeviceInterface(ctx), nativeDevice(shaderPaths) {
 	shaderPaths.shaderCacheFolder = ctx.cache_directory().string().c_str();
 	shaderPaths.dataFolder = ctx.data_directory().string().c_str();
-	auto ProcessPath = [](vstd::string& str){
-		for(auto&& i : str){
-		if (i == '\\') i = '/';
+	auto ProcessPath = [](vstd::string& str) {
+		for (auto&& i : str) {
+			if (i == '\\') i = '/';
 		}
-		if(*(str.end() - 1) != '/') str << '/';
+		if (*(str.end() - 1) != '/') str << '/';
 	};
 	ProcessPath(shaderPaths.shaderCacheFolder);
 	ProcessPath(shaderPaths.dataFolder);
@@ -40,7 +40,7 @@ LCDevice::~LCDevice() {
 void* LCDevice::native_handle() const noexcept {
 	return nativeDevice.device.Get();
 }
-uint64_t LCDevice::create_buffer(size_t size_bytes) noexcept {
+uint64 LCDevice::create_buffer(size_t size_bytes) noexcept {
 	return reinterpret_cast<uint64>(
 		static_cast<Buffer*>(
 			new DefaultBuffer(
@@ -48,13 +48,13 @@ uint64_t LCDevice::create_buffer(size_t size_bytes) noexcept {
 				size_bytes,
 				nativeDevice.defaultAllocator.get())));
 }
-void LCDevice::destroy_buffer(uint64_t handle) noexcept {
+void LCDevice::destroy_buffer(uint64 handle) noexcept {
 	delete reinterpret_cast<Buffer*>(handle);
 }
-void* LCDevice::buffer_native_handle(uint64_t handle) const noexcept {
+void* LCDevice::buffer_native_handle(uint64 handle) const noexcept {
 	return reinterpret_cast<Buffer*>(handle)->GetResource();
 }
-uint64_t LCDevice::create_texture(
+uint64 LCDevice::create_texture(
 	PixelFormat format,
 	uint dimension,
 	uint width,
@@ -82,49 +82,49 @@ uint64_t LCDevice::create_texture(
 			allowUAV,
 			nativeDevice.defaultAllocator.get()));
 }
-void LCDevice::destroy_texture(uint64_t handle) noexcept {
+void LCDevice::destroy_texture(uint64 handle) noexcept {
 	delete reinterpret_cast<RenderTexture*>(handle);
 }
-void* LCDevice::texture_native_handle(uint64_t handle) const noexcept {
+void* LCDevice::texture_native_handle(uint64 handle) const noexcept {
 	return reinterpret_cast<RenderTexture*>(handle)->GetResource();
 }
-uint64_t LCDevice::create_bindless_array(size_t size) noexcept {
+uint64 LCDevice::create_bindless_array(size_t size) noexcept {
 	return reinterpret_cast<uint64>(
 		new BindlessArray(&nativeDevice, size));
 }
-void LCDevice::destroy_bindless_array(uint64_t handle) noexcept {
+void LCDevice::destroy_bindless_array(uint64 handle) noexcept {
 	delete reinterpret_cast<BindlessArray*>(handle);
 }
-void LCDevice::emplace_buffer_in_bindless_array(uint64_t array, size_t index, uint64_t handle, size_t offset_bytes) noexcept {
+void LCDevice::emplace_buffer_in_bindless_array(uint64 array, size_t index, uint64 handle, size_t offset_bytes) noexcept {
 	auto buffer = reinterpret_cast<Buffer*>(handle);
 	reinterpret_cast<BindlessArray*>(array)
 		->Bind(handle, BufferView(buffer, offset_bytes), index);
 }
-void LCDevice::emplace_tex2d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept {
+void LCDevice::emplace_tex2d_in_bindless_array(uint64 array, size_t index, uint64 handle, Sampler sampler) noexcept {
 	auto tex = reinterpret_cast<RenderTexture*>(handle);
 	reinterpret_cast<BindlessArray*>(array)
 		->Bind(handle, std::pair<TextureBase const*, Sampler>(tex, sampler), index);
 }
-void LCDevice::emplace_tex3d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept {
+void LCDevice::emplace_tex3d_in_bindless_array(uint64 array, size_t index, uint64 handle, Sampler sampler) noexcept {
 	emplace_tex2d_in_bindless_array(array, index, handle, sampler);
 }
 /*
-bool LCDevice::is_resource_in_bindless_array(uint64_t array, uint64_t handle) const noexcept {
+bool LCDevice::is_resource_in_bindless_array(uint64 array, uint64 handle) const noexcept {
 
 }*/
-void LCDevice::remove_buffer_in_bindless_array(uint64_t array, size_t index) noexcept {
+void LCDevice::remove_buffer_in_bindless_array(uint64 array, size_t index) noexcept {
 	reinterpret_cast<BindlessArray*>(array)
 		->UnBind(BindlessArray::BindTag::Buffer, index);
 }
-void LCDevice::remove_tex2d_in_bindless_array(uint64_t array, size_t index) noexcept {
+void LCDevice::remove_tex2d_in_bindless_array(uint64 array, size_t index) noexcept {
 	reinterpret_cast<BindlessArray*>(array)
 		->UnBind(BindlessArray::BindTag::Tex2D, index);
 }
-void LCDevice::remove_tex3d_in_bindless_array(uint64_t array, size_t index) noexcept {
+void LCDevice::remove_tex3d_in_bindless_array(uint64 array, size_t index) noexcept {
 	reinterpret_cast<BindlessArray*>(array)
 		->UnBind(BindlessArray::BindTag::Tex3D, index);
 }
-uint64_t LCDevice::create_stream(bool allowPresent) noexcept {
+uint64 LCDevice::create_stream(bool allowPresent) noexcept {
 	return reinterpret_cast<uint64>(
 		new LCCmdBuffer(
 			&nativeDevice,
@@ -132,66 +132,73 @@ uint64_t LCDevice::create_stream(bool allowPresent) noexcept {
 			allowPresent ? D3D12_COMMAND_LIST_TYPE_DIRECT : D3D12_COMMAND_LIST_TYPE_COMPUTE));
 }
 
-void LCDevice::destroy_stream(uint64_t handle) noexcept {
+void LCDevice::destroy_stream(uint64 handle) noexcept {
 	delete reinterpret_cast<LCCmdBuffer*>(handle);
 }
-void LCDevice::synchronize_stream(uint64_t stream_handle) noexcept {
+void LCDevice::synchronize_stream(uint64 stream_handle) noexcept {
 	reinterpret_cast<LCCmdBuffer*>(stream_handle)->Sync();
 }
-void LCDevice::dispatch(uint64_t stream_handle, CommandList&& list) noexcept {
+void LCDevice::dispatch(uint64 stream_handle, CommandList&& list) noexcept {
 	reinterpret_cast<LCCmdBuffer*>(stream_handle)
 		->Execute(std::move(list), maxAllocatorCount);
 }
-void LCDevice::dispatch(uint64_t stream_handle, luisa::move_only_function<void()>&& func) noexcept {
+void LCDevice::dispatch(uint64 stream_handle, luisa::move_only_function<void()>&& func) noexcept {
 	reinterpret_cast<LCCmdBuffer*>(stream_handle)->queue.Callback(std::move(func));
 }
 
-void* LCDevice::stream_native_handle(uint64_t handle) const noexcept {
+void* LCDevice::stream_native_handle(uint64 handle) const noexcept {
 	return reinterpret_cast<LCCmdBuffer*>(handle)
 		->queue.Queue();
 }
-uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options) noexcept {
-
-	auto str = CodegenUtility::Codegen(kernel, shaderPaths.dataFolder);
-	if (str) {
-		return reinterpret_cast<uint64_t>(
-			ComputeShader::CompileCompute(
-				&nativeDevice,
-				*str,
-				kernel.block_size(),
-				65u,
-				shaderPaths.shaderCacheFolder,
-				shaderPaths.psoFolder,
-				{}));
-	}
-	return 0;
+uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noexcept {
+	return reinterpret_cast<uint64>(
+		ComputeShader::CompileCompute(
+			&nativeDevice,
+			kernel,
+			[&] { return CodegenUtility::Codegen(kernel, shaderPaths.dataFolder); },
+			kernel.block_size(),
+			65u,
+			shaderPaths.shaderCacheFolder,
+			shaderPaths.psoFolder,
+			file_name, false));
+}
+uint64 LCDevice::load_shader(
+	vstd::string_view file_name,
+	vstd::span<Type const* const> types) noexcept {
+	return reinterpret_cast<uint64>(
+		ComputeShader::LoadPresetCompute(
+			&nativeDevice,
+			types,
+			shaderPaths.shaderCacheFolder,
+			shaderPaths.psoFolder,
+			file_name));
 }
 
-void LCDevice::destroy_shader(uint64_t handle) noexcept {
+void LCDevice::destroy_shader(uint64 handle) noexcept {
 	auto shader = reinterpret_cast<Shader*>(handle);
 	delete shader;
 }
-uint64_t LCDevice::create_event() noexcept {
+uint64 LCDevice::create_event() noexcept {
 	return reinterpret_cast<uint64>(
 		new LCEvent(&nativeDevice));
 }
-void LCDevice::destroy_event(uint64_t handle) noexcept {
+void LCDevice::destroy_event(uint64 handle) noexcept {
 	delete reinterpret_cast<LCEvent*>(handle);
 }
-void LCDevice::signal_event(uint64_t handle, uint64_t stream_handle) noexcept {
+void LCDevice::signal_event(uint64 handle, uint64 stream_handle) noexcept {
 	reinterpret_cast<LCEvent*>(handle)->Signal(
 		&reinterpret_cast<LCCmdBuffer*>(stream_handle)->queue);
 }
 
-void LCDevice::wait_event(uint64_t handle, uint64_t stream_handle) noexcept {
+void LCDevice::wait_event(uint64 handle, uint64 stream_handle) noexcept {
 	reinterpret_cast<LCEvent*>(handle)->Wait(
 		&reinterpret_cast<LCCmdBuffer*>(stream_handle)->queue);
 }
-void LCDevice::synchronize_event(uint64_t handle) noexcept {
+void LCDevice::synchronize_event(uint64 handle) noexcept {
 	reinterpret_cast<LCEvent*>(handle)->Sync();
 }
 
-uint64_t LCDevice::create_mesh(
+uint64 LCDevice::create_mesh(
 	AccelUsageHint hint,
 	bool allow_compact, bool allow_update) noexcept {
 	return reinterpret_cast<uint64>(
@@ -202,20 +209,20 @@ uint64_t LCDevice::create_mesh(
 				allow_compact,
 				allow_update)));
 }
-void LCDevice::destroy_mesh(uint64_t handle) noexcept {
+void LCDevice::destroy_mesh(uint64 handle) noexcept {
 	delete reinterpret_cast<BottomAccel*>(handle);
 }
-uint64_t LCDevice::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
+uint64 LCDevice::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
 	return reinterpret_cast<uint64>(new TopAccel(
 		&nativeDevice,
 		hint,
 		allow_compact,
 		allow_update));
 }
-void LCDevice::destroy_accel(uint64_t handle) noexcept {
+void LCDevice::destroy_accel(uint64 handle) noexcept {
 	delete reinterpret_cast<TopAccel*>(handle);
 }
-uint64_t LCDevice::create_swap_chain(
+uint64 LCDevice::create_swap_chain(
 	uint64 window_handle,
 	uint64 stream_handle,
 	uint width,
@@ -233,13 +240,13 @@ uint64_t LCDevice::create_swap_chain(
 			allow_hdr,
 			back_buffer_size));
 }
-void LCDevice::destroy_swap_chain(uint64_t handle) noexcept {
+void LCDevice::destroy_swap_chain(uint64 handle) noexcept {
 	delete reinterpret_cast<LCSwapChain*>(handle);
 }
-PixelStorage LCDevice::swap_chain_pixel_storage(uint64_t handle) noexcept {
+PixelStorage LCDevice::swap_chain_pixel_storage(uint64 handle) noexcept {
 	return PixelStorage::BYTE4;
 }
-void LCDevice::present_display_in_stream(uint64_t stream_handle, uint64_t swapchain_handle, uint64_t image_handle) noexcept {
+void LCDevice::present_display_in_stream(uint64 stream_handle, uint64 swapchain_handle, uint64 image_handle) noexcept {
 	reinterpret_cast<LCCmdBuffer*>(stream_handle)
 		->Present(
 			reinterpret_cast<LCSwapChain*>(swapchain_handle),

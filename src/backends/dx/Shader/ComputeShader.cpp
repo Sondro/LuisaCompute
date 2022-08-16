@@ -24,9 +24,9 @@ struct SerializeVisitor : ShaderSerializer::Visitor {
 		csoReader.Read(reinterpret_cast<char*>(readCache.data()), size);
 		return readCache.data();
 	}
-    void ReadFile(void* ptr, size_t size) override{
-        csoReader.Read(ptr, size);
-    }
+	void ReadFile(void* ptr, size_t size) override {
+		csoReader.Read(ptr, size);
+	}
 	ShaderSerializer::ReadResult ReadFileAndPSO(
 		size_t fileSize) override {
 		BinaryReader psoReader(psoPath);
@@ -68,7 +68,7 @@ static void SavePSO(vstd::string const& psoPath, ComputeShader const* cs) {
 }// namespace ComputeShaderDetail
 ComputeShader* ComputeShader::LoadPresetCompute(
 	Device* device,
-	uint3 blockSize,
+	vstd::span<Type const* const> types,
 	vstd::string_view cacheFolder,
 	vstd::string_view psoFolder,
 	vstd::string_view fileName) {
@@ -84,9 +84,26 @@ ComputeShader* ComputeShader::LoadPresetCompute(
 	if (visitor.csoReader) {
 		auto result = ShaderSerializer::DeSerialize(
 			device,
-			{},
 			visitor);
 		if (result) {
+			// args check
+			auto args = result->Args();
+			auto DeleteFunc = [&] {
+				delete result;
+				return nullptr;
+			};
+			if (args.size() != types.size()) {
+				return DeleteFunc();
+			} else {
+				for (auto i : vstd::range(args.size())) {
+					auto& srcType = args[i];
+					auto dstType = SavedArgument{types[i]};
+					if (srcType.structSize != dstType.structSize ||
+						srcType.tag != dstType.tag) {
+						return DeleteFunc();
+					}
+				}
+			}
 			if (visitor.oldDeleted) {
 				SavePSO(psoPath, result);
 			}
@@ -97,98 +114,105 @@ ComputeShader* ComputeShader::LoadPresetCompute(
 }
 ComputeShader* ComputeShader::CompileCompute(
 	Device* device,
-	CodegenResult const& str,
+	Function kernel,
+	vstd::function<CodegenResult()> const& codegen,
 	uint3 blockSize,
 	uint shaderModel,
 	vstd::string_view cacheFolder,
 	vstd::string_view psoFolder,
-	vstd::optional<vstd::string>&& fileName) {
+	vstd::string_view fileName,
+	bool tryLoadOld) {
 	using namespace ComputeShaderDetail;
+	bool saveCacheFile;
+	static constexpr bool PRINT_CODE = false;
 
-	auto ProcessPath = [](vstd::string_view folder, vstd::string_view fileName, vstd::optional<vstd::string>& prePath) {
-		vstd::string p(folder);
-		if (prePath) {
-			p << *prePath;
-		} else {
-			p << fileName;
-		}
-		return p;
-	};
-	auto md5Str = str.md5.ToString();
-	vstd::string path = ProcessPath(cacheFolder, md5Str, fileName);
-	vstd::string psoPath = ProcessPath(psoFolder, md5Str, fileName);
-	static constexpr bool USE_CACHE = true;
-	if constexpr (USE_CACHE) {
-		SerializeVisitor visitor(
-			path,
-			psoPath);
-		//Cached
-		if (visitor.csoReader) {
-			auto result = ShaderSerializer::DeSerialize(
-				device,
-				{str.md5},
-				visitor);
-			if (result) {
-				if (visitor.oldDeleted) {
-					SavePSO(psoPath, result);
-				}
-				return result;
-			}
-		}
-	}
-
-	auto compResult = [&] {
-		if constexpr (!USE_CACHE) {
+	auto CompileNewCompute = [&]<bool WriteCache>(vstd::string const* path, vstd::string const* psoPath) {
+		auto str = codegen();
+		if constexpr (PRINT_CODE) {
 			std::cout
 				<< "\n===============================\n"
 				<< str.result
 				<< "\n===============================\n";
 		}
-		return Device::Compiler()->CompileCompute(
+		auto compResult = Device::Compiler()->CompileCompute(
 			str.result,
 			true,
 			shaderModel);
-	}();
-	return compResult.multi_visit_or(
-		(ComputeShader*)nullptr,
-		[&](vstd::unique_ptr<DXByteBlob> const& buffer) {
-			auto f = fopen(path.c_str(), "wb");
-			if (f) {
-				if constexpr (USE_CACHE) {
-					auto disp = vstd::create_disposer([&] { fclose(f); });
-					auto serData = ShaderSerializer::Serialize(
-						str.properties,
-						{buffer->GetBufferPtr(), buffer->GetBufferSize()},
-						str.md5,
-                        str.bdlsBufferCount,
-						blockSize);
-					fwrite(serData.data(), serData.size(), 1, f);
+		return compResult.multi_visit_or(
+			vstd::UndefEval<ComputeShader*>{},
+			[&](vstd::unique_ptr<DXByteBlob> const& buffer) {
+				auto kernelArgs = ShaderSerializer::SerializeKernel(kernel);
+				if constexpr (WriteCache) {
+					auto f = fopen(path->c_str(), "wb");
+					if (f) {
+						auto disp = vstd::create_disposer([&] { fclose(f); });
+						auto serData = ShaderSerializer::Serialize(
+							str.properties,
+							kernelArgs,
+							{buffer->GetBufferPtr(), buffer->GetBufferSize()},
+							str.bdlsBufferCount,
+							blockSize);
+						fwrite(serData.data(), serData.size(), 1, f);
+					}
+				}
+				auto cs = new ComputeShader(
+					blockSize,
+					std::move(str.properties),
+					std::move(kernelArgs),
+					{buffer->GetBufferPtr(),
+					 buffer->GetBufferSize()},
+					device);
+				cs->bindlessCount = str.bdlsBufferCount;
+				if constexpr (WriteCache) {
+					SavePSO(*psoPath, cs);
+				}
+				return cs;
+			},
+			[](auto&& err) {
+				std::cout << err << '\n';
+				VSTL_ABORT();
+				return nullptr;
+			});
+	};
+	if (!fileName.empty()) {
+		auto ProcessPath = [&](vstd::string_view folder) {
+			vstd::string p(folder);
+			p << fileName;
+			return p;
+		};
+		vstd::string path = ProcessPath(cacheFolder);
+		vstd::string psoPath = ProcessPath(psoFolder);
+		if (tryLoadOld) {
+			SerializeVisitor visitor(
+				path,
+				psoPath);
+			//Cached
+			if (visitor.csoReader) {
+				auto result = ShaderSerializer::DeSerialize(
+					device,
+					visitor);
+				if (result) {
+					if (visitor.oldDeleted) {
+						SavePSO(psoPath, result);
+					}
+					return result;
 				}
 			}
-			auto cs = new ComputeShader(
-				blockSize,
-				str.properties,
-				{buffer->GetBufferPtr(),
-				 buffer->GetBufferSize()},
-				device);
-			cs->bindlessCount = str.bdlsBufferCount;
-			if constexpr (USE_CACHE) {
-				SavePSO(psoPath, cs);
-			}
-			return cs;
-		},
-		[](auto&& err) {
-			std::cout << err << '\n';
-			VSTL_ABORT();
-			return nullptr;
-		});
+		}
+		return CompileNewCompute.operator()<true>(&path, &psoPath);
+	} else {
+
+		return CompileNewCompute.operator()<false>(nullptr, nullptr);
+	}
 }
+
 ComputeShader::ComputeShader(
 	uint3 blockSize,
-	vstd::span<Property const> properties,
+	vstd::vector<Property>&& prop,
+	vstd::vector<SavedArgument>&& args,
 	vstd::span<vbyte const> binData,
 	Device* device)
-	: Shader(std::move(properties), device->device.Get()),
+	: Shader(std::move(prop), std::move(args), device->device.Get()),
 	  blockSize(blockSize),
 	  device(device) {
 	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
@@ -201,12 +225,13 @@ ComputeShader::ComputeShader(
 ComputeShader::ComputeShader(
 	uint3 blockSize,
 	Device* device,
-	vstd::span<Property const> prop,
+	vstd::vector<Property>&& prop,
+	vstd::vector<SavedArgument>&& args,
 	ComPtr<ID3D12RootSignature>&& rootSig,
 	ComPtr<ID3D12PipelineState>&& pso)
 	: device(device),
 	  blockSize(blockSize),
-	  Shader(prop, std::move(rootSig)),
+	  Shader(std::move(prop), std::move(args), std::move(rootSig)),
 	  pso(std::move(pso)) {
 }
 

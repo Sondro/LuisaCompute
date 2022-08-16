@@ -5,6 +5,7 @@
 #include <luisa-compute.h>
 #include <api/runtime.h>
 
+/*
 namespace luisa::compute {
 
 struct BufferResource final : public Resource {
@@ -22,11 +23,12 @@ struct TextureResource final : public Resource {
 };
 
 struct ShaderResource : public Resource {
-    ShaderResource(Device::Interface *device, Function f, luisa::string_view opts) noexcept
-        : Resource{device, Tag::SHADER, device->create_shader(f, opts)} {}
+    ShaderResource(Device::Interface *device, Function f) noexcept
+        : Resource{device, Tag::SHADER, device->create_shader(f)} {}
 };
 
 }
+*/
 
 // TODO: rewrite with runtime constructs, e.g., Stream, Event, BindlessArray...
 
@@ -267,10 +269,11 @@ void *luisa_compute_command_download_texture(
 void *luisa_compute_command_dispatch_shader(uint64_t handle, const void *kernel) LUISA_NOEXCEPT {
     return ShaderDispatchCommand::create(handle, Function{static_cast<const luisa::compute::detail::FunctionBuilder *>(kernel)});
 }
-
+/*
 void luisa_compute_command_dispatch_shader_set_size(void *cmd, uint32_t sx, uint32_t sy, uint32_t sz) LUISA_NOEXCEPT {
     static_cast<ShaderDispatchCommand *>(cmd)->set_dispatch_size(make_uint3(sx, sy, sz));
 }
+*/
 
 void luisa_compute_command_dispatch_shader_encode_buffer(void *cmd, uint32_t vid, uint64_t buffer, size_t offset, uint32_t usage) LUISA_NOEXCEPT {
     static_cast<ShaderDispatchCommand *>(cmd)->encode_buffer(vid, buffer, offset, static_cast<Usage>(usage));
