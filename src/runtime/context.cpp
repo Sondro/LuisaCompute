@@ -22,7 +22,7 @@ struct Context::Impl {
     luisa::vector<Device::Creator *> device_creators;
     luisa::vector<Device::Deleter *> device_deleters;
     luisa::vector<luisa::string> installed_backends;
-    FileIO *fileIo = nullptr;
+    BinaryIOVisitor *fileIo = nullptr;
 };
 
 namespace detail {
@@ -135,10 +135,10 @@ Device Context::create_default_device() noexcept {
     LUISA_ASSERT(!installed_backends().empty(), "No backends installed.");
     return create_device(installed_backends().front());
 }
-FileIO *Context::get_fileio_visitor() const noexcept {
+BinaryIOVisitor *Context::get_fileio_visitor() const noexcept {
     return _impl->fileIo;
 }
-void Context::set_fileio_visitor(FileIO *file_io) noexcept {
+void Context::set_fileio_visitor(BinaryIOVisitor *file_io) noexcept {
     _impl->fileIo = file_io;
 }
 }// namespace luisa::compute

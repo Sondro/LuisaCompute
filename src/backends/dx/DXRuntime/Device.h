@@ -5,9 +5,9 @@
 #include <vstl/VGuid.h>
 #include <dxgi1_4.h>
 #include <DXRuntime/ShaderPaths.h>
-#include <core/file_io.h>
+#include <core/binary_io_visitor.h>
 namespace luisa::compute {
-class FileIO;
+class BinaryIOVisitor;
 }
 class ElementAllocator;
 using Microsoft::WRL::ComPtr;
@@ -17,7 +17,7 @@ class DescriptorHeap;
 class ComputeShader;
 class PipelineLibrary;
 class DXShaderCompiler;
-struct SerializeVisitor : public luisa::compute::FileIO {
+struct SerializeVisitor : public luisa::compute::BinaryIOVisitor {
 	ShaderPaths const& path;
 	SerializeVisitor(
 		ShaderPaths const& path);
@@ -29,15 +29,10 @@ struct SerializeVisitor : public luisa::compute::FileIO {
 	void write_cache(luisa::string_view name, luisa::span<std::byte const> data) override;
 };
 class Device {
-	luisa::compute::FileIO* fileIo = nullptr;
-	mutable SerializeVisitor serVisitor;
-
 public:
 	ShaderPaths const& path;
-	void SetFileIO(luisa::compute::FileIO* fileIo) { this->fileIo = fileIo; }
-	luisa::compute::FileIO* FileIO() const {
-		return fileIo ? fileIo : &serVisitor;
-	}
+	std::atomic<luisa::compute::BinaryIOVisitor*> fileIo = nullptr;
+	mutable SerializeVisitor serVisitor;
 	struct LazyLoadShader {
 	public:
 		using LoadFunc = vstd::funcPtr_t<ComputeShader*(Device*, ShaderPaths const&)>;

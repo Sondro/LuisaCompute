@@ -27,7 +27,7 @@ ComputeShader* BuiltinKernel::LoadAccelSetKernel(Device* device, ShaderPaths con
 		return code;
 	};
 	return ComputeShader::CompileCompute(
-		device->FileIO(),
+		device->fileIo,
 		device,
 		{},
 		func,
@@ -78,7 +78,7 @@ static ComputeShader* LoadBCKernel(
 		return code;
 	};
 	return ComputeShader::CompileCompute(
-		device->FileIO(),
+		device->fileIo,
 		device,
 		{},
 		func,

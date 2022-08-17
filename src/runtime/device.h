@@ -29,6 +29,7 @@ class Stream;
 class Mesh;
 class Accel;
 class SwapChain;
+class BinaryIOVisitor;
 class BindlessArray;
 class IUtil;
 
@@ -112,6 +113,7 @@ public:
 
         // bindless array
         [[nodiscard]] virtual uint64_t create_bindless_array(size_t size) noexcept = 0;
+        virtual void set_io_visitor(BinaryIOVisitor * visitor) noexcept = 0;
         virtual void destroy_bindless_array(uint64_t handle) noexcept = 0;
         virtual void emplace_buffer_in_bindless_array(uint64_t array, size_t index, uint64_t handle, size_t offset_bytes) noexcept = 0;
         virtual void emplace_tex2d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept = 0;
@@ -223,7 +225,9 @@ public:
     [[nodiscard]] auto create_buffer(size_t size) noexcept {
         return _create<Buffer<T>>(size);
     }
-
+    void set_io_visitor(BinaryIOVisitor* visitor) noexcept {
+        _impl->set_io_visitor(visitor);
+    }
     template<size_t N, typename... Args>
     [[nodiscard]] auto compile(const Kernel<N, Args...> &kernel, luisa::string_view shader_path = {}) noexcept {
         return _create<Shader<N, Args...>>(kernel.function(), shader_path);

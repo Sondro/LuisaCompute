@@ -7,14 +7,14 @@
 #include <vstl/MD5.h>
 namespace toolhub::directx {
 namespace ComputeShaderDetail {
-static void SavePSO(vstd::string_view fileName, FileIO* fileStream, ComputeShader const* cs) {
+static void SavePSO(vstd::string_view fileName, BinaryIOVisitor* fileStream, ComputeShader const* cs) {
 	ComPtr<ID3DBlob> psoCache;
 	cs->Pso()->GetCachedBlob(&psoCache);
 	fileStream->write_cache(fileName, {reinterpret_cast<std::byte const*>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
 };
 }// namespace ComputeShaderDetail
 ComputeShader* ComputeShader::LoadPresetCompute(
-	FileIO* fileIo,
+	BinaryIOVisitor* fileIo,
 	Device* device,
 	vstd::span<Type const* const> types,
 	vstd::string_view cacheFolder,
@@ -55,7 +55,7 @@ ComputeShader* ComputeShader::LoadPresetCompute(
 	return result;
 }
 ComputeShader* ComputeShader::CompileCompute(
-	FileIO* fileIo,
+	BinaryIOVisitor* fileIo,
 	Device* device,
 	Function kernel,
 	vstd::function<CodegenResult()> const& codegen,

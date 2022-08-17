@@ -1,9 +1,9 @@
 #pragma once
 #include <core/stl.h>
 namespace luisa::compute {
-class FileIO {
+class BinaryIOVisitor {
 protected:
-	~FileIO() = default;
+	~BinaryIOVisitor() = default;
 
 public:
 	using AllocateFunc = luisa::move_only_function<void*(size_t byte_size)>;

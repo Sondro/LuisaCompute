@@ -45,13 +45,13 @@ ShaderSerializer::Serialize(
 ComputeShader* ShaderSerializer::DeSerialize(
 	vstd::string_view name,
 	Device* device,
-	FileIO& streamFunc,
+	BinaryIOVisitor& streamFunc,
 	bool& clearCache) {
 	vstd::small_vector<void*> releaseVec;
 	auto disp = vstd::create_disposer([&] {
 		for (auto&& i : releaseVec) { vengine_free(i); }
 	});
-	FileIO::AllocateFunc func = [&](size_t byteSize) {
+	BinaryIOVisitor::AllocateFunc func = [&](size_t byteSize) {
 		auto ptr = vengine_malloc(byteSize);
 		releaseVec.emplace_back(ptr);
 		return ptr;

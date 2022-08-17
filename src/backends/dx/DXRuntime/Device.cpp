@@ -104,6 +104,7 @@ Device::Device(ShaderPaths const& path, uint index)
 	  setAccelKernel(BuiltinKernel::LoadAccelSetKernel) {
 	using Microsoft::WRL::ComPtr;
 	uint32_t dxgiFactoryFlags = 0;
+	fileIo = &serVisitor;
 
 #if defined(_DEBUG)
 	// Enable the debug layer (requires the Graphics Tools "optional feature").
