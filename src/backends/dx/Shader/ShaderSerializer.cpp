@@ -57,7 +57,7 @@ ComputeShader* ShaderSerializer::DeSerialize(
 		return ptr;
 	};
 	auto binCode = streamFunc.read_bytecode(name, func);
-	if(binCode.empty()) return nullptr;
+	if (binCode.empty()) return nullptr;
 	auto psoCode = streamFunc.read_cache(name, func);
 	using namespace shader_ser;
 	auto binPtr = binCode.data();
@@ -73,26 +73,35 @@ ComputeShader* ShaderSerializer::DeSerialize(
 	binPtr += header.rootSigBytes;
 	// Try pipeline library
 	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc;
-	memset(&psoDesc, 0, sizeof(psoDesc));
+	psoDesc.NodeMask = 0;
+	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 	psoDesc.pRootSignature = rootSig.Get();
 	ComPtr<ID3D12PipelineState> pso;
 	psoDesc.CS.pShaderBytecode = binPtr;
 	psoDesc.CS.BytecodeLength = header.codeBytes;
 	binPtr += header.codeBytes;
 	psoDesc.CachedPSO.CachedBlobSizeInBytes = psoCode.size();
-	psoDesc.CachedPSO.pCachedBlob = psoCode.data();
+	auto createPipe = [&] {
+		return device->device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(pso.GetAddressOf()));
+	};
 	// use PSO cache
-
-	if (device->device->CreateComputePipelineState(
-			&psoDesc,
-			IID_PPV_ARGS(pso.GetAddressOf())) != S_OK) {
-		// PSO cache miss(probably driver's version or hardware transformed), discard cache
+	if (psoCode.empty()) {
+		// No PSO
 		clearCache = true;
-		psoDesc.CachedPSO.CachedBlobSizeInBytes = 0;
 		psoDesc.CachedPSO.pCachedBlob = nullptr;
-		ThrowIfFailed(device->device->CreateComputePipelineState(
-			&psoDesc,
-			IID_PPV_ARGS(pso.GetAddressOf())));
+		ThrowIfFailed(createPipe());
+	} else {
+		psoDesc.CachedPSO.pCachedBlob = psoCode.data();
+		auto psoGenSuccess = createPipe();
+		if (psoGenSuccess != S_OK) {
+			// PSO cache miss(probably driver's version or hardware transformed), discard cache
+			clearCache = true;
+			if (pso == nullptr) {
+				psoDesc.CachedPSO.CachedBlobSizeInBytes = 0;
+				psoDesc.CachedPSO.pCachedBlob = nullptr;
+				ThrowIfFailed(createPipe());
+			}
+		}
 	}
 	vstd::vector<Property> properties;
 	vstd::vector<SavedArgument> kernelArgs;

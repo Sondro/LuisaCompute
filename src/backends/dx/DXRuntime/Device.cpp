@@ -40,10 +40,10 @@ luisa::span<std::byte> SerializeVisitor::read_bytecode(luisa::string_view name, 
 	return Read(filePath, alloc);
 }
 luisa::span<std::byte> SerializeVisitor::read_cache(luisa::string_view name, AllocateFunc const& alloc) {
-	auto& psoPath = this->path.psoFolder;
+	auto& path = this->path.shaderCacheFolder;
 	vstd::string filePath;
-	filePath.reserve(psoPath.size() + name.size());
-	filePath << psoPath << name;
+	filePath.reserve(path.size() + name.size() + 4);
+	filePath << path << name << ".pso"_sv;
 	return Read(filePath, alloc);
 }
 void SerializeVisitor::write_bytecode(luisa::string_view name, luisa::span<std::byte const> data) {
@@ -54,10 +54,10 @@ void SerializeVisitor::write_bytecode(luisa::string_view name, luisa::span<std::
 	Write(filePath, data);
 }
 void SerializeVisitor::write_cache(luisa::string_view name, luisa::span<std::byte const> data) {
-	auto& psoPath = this->path.psoFolder;
+	auto& path = this->path.shaderCacheFolder;
 	vstd::string filePath;
-	filePath.reserve(psoPath.size() + name.size());
-	filePath << psoPath << name;
+	filePath.reserve(path.size() + name.size() + 4);
+	filePath << path << name << ".pso"_sv;
 	Write(filePath, data);
 }
 

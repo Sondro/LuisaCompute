@@ -30,9 +30,6 @@ LCDevice::LCDevice(const Context& ctx)
 	};
 	ProcessPath(shaderPaths.shaderCacheFolder);
 	ProcessPath(shaderPaths.dataFolder);
-	shaderPaths.psoFolder = shaderPaths.shaderCacheFolder;
-	shaderPaths.psoFolder << ".pso/"sv;
-	std::filesystem::create_directory(shaderPaths.psoFolder.c_str());
 }
 LCDevice::~LCDevice() {
 }
@@ -166,8 +163,6 @@ uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noex
 			[&] { return CodegenUtility::Codegen(kernel, shaderPaths.dataFolder); },
 			kernel.block_size(),
 			65u,
-			shaderPaths.shaderCacheFolder,
-			shaderPaths.psoFolder,
 			file_name, false));
 }
 uint64 LCDevice::load_shader(
@@ -178,8 +173,6 @@ uint64 LCDevice::load_shader(
 			nativeDevice.fileIo,
 			&nativeDevice,
 			types,
-			shaderPaths.shaderCacheFolder,
-			shaderPaths.psoFolder,
 			file_name));
 }
 

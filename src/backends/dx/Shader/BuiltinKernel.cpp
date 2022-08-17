@@ -33,8 +33,6 @@ ComputeShader* BuiltinKernel::LoadAccelSetKernel(Device* device, ShaderPaths con
 		func,
 		uint3(64, 1, 1),
 		60,
-		ctx.shaderCacheFolder,
-		ctx.psoFolder,
 		"set_accel_kernel"sv, true);
 }
 namespace detail {
@@ -42,8 +40,7 @@ static ComputeShader* LoadBCKernel(
 	Device* device,
 	vstd::function<vstd::string_view()> const& includeCode,
 	vstd::function<vstd::string_view()> const& kernelCode,
-	vstd::string&& codePath,
-	ShaderPaths const& ctx) {
+	vstd::string&& codePath) {
 	auto func = [&] {
 		CodegenResult code;
 		auto incCode = includeCode();
@@ -84,8 +81,6 @@ static ComputeShader* LoadBCKernel(
 		func,
 		uint3(1, 1, 1),
 		60,
-		ctx.shaderCacheFolder,
-		ctx.psoFolder,
 		codePath, true);
 }
 static vstd::string const& Bc6Header(ShaderPaths const& ctx) {
@@ -104,55 +99,48 @@ ComputeShader* BuiltinKernel::LoadBC6TryModeG10CSKernel(Device* device, ShaderPa
 		device,
 		[&] { return detail::Bc6Header(ctx); },
 		[&] { return ReadInternalHLSLFile("bc6_trymode_g10cs", ctx.dataFolder); },
-		vstd::string("bc6_trymodeg10"sv),
-		ctx);
+		vstd::string("bc6_trymodeg10"sv));
 }
 ComputeShader* BuiltinKernel::LoadBC6TryModeLE10CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
 		[&] { return detail::Bc6Header(ctx); },
 		[&] { return ReadInternalHLSLFile("bc6_trymode_le10cs", ctx.dataFolder); },
-		vstd::string("bc6_trymodele10"sv),
-		ctx);
+		vstd::string("bc6_trymodele10"sv));
 }
 ComputeShader* BuiltinKernel::LoadBC6EncodeBlockCSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
 		[&] { return detail::Bc6Header(ctx); },
 		[&] { return ReadInternalHLSLFile("bc6_encode_block", ctx.dataFolder); },
-		vstd::string("bc6_encodeblock"sv),
-		ctx);
+		vstd::string("bc6_encodeblock"sv));
 }
 ComputeShader* BuiltinKernel::LoadBC7TryMode456CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
 		[&] { return detail::Bc7Header(ctx); },
 		[&] { return ReadInternalHLSLFile("bc7_trymode_456cs", ctx.dataFolder); },
-		vstd::string("bc7_trymode456"sv),
-		ctx);
+		vstd::string("bc7_trymode456"sv));
 }
 ComputeShader* BuiltinKernel::LoadBC7TryMode137CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
 		[&] { return detail::Bc7Header(ctx); },
 		[&] { return ReadInternalHLSLFile("bc7_trymode_137cs", ctx.dataFolder); },
-		vstd::string("bc7_trymode137"sv),
-		ctx);
+		vstd::string("bc7_trymode137"sv));
 }
 ComputeShader* BuiltinKernel::LoadBC7TryMode02CSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
 		[&] { return detail::Bc7Header(ctx); },
 		[&] { return ReadInternalHLSLFile("bc7_trymode_02cs", ctx.dataFolder); },
-		vstd::string("bc7_trymode02"sv),
-		ctx);
+		vstd::string("bc7_trymode02"sv));
 }
 ComputeShader* BuiltinKernel::LoadBC7EncodeBlockCSKernel(Device* device, ShaderPaths const& ctx) {
 	return detail::LoadBCKernel(
 		device,
 		[&] { return detail::Bc7Header(ctx); },
 		[&] { return ReadInternalHLSLFile("bc7_encode_block", ctx.dataFolder); },
-		vstd::string("bc7_encodeblock"sv),
-		ctx);
+		vstd::string("bc7_encodeblock"sv));
 }
 }// namespace toolhub::directx

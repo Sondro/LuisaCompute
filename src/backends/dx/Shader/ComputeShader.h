@@ -30,16 +30,12 @@ public:
 		vstd::function<CodegenResult()> const& codegen,
 		uint3 blockSize,
 		uint shaderModel,
-		vstd::string_view cacheFolder,
-		vstd::string_view psoFolder,
 		vstd::string_view fileName,
 		bool tryLoadOld);
 	static ComputeShader* LoadPresetCompute(
 		BinaryIOVisitor* fileIo,
 		Device* device,
 		vstd::span<Type const* const> types,
-		vstd::string_view cacheFolder,
-		vstd::string_view psoFolder,
 		vstd::string_view fileName);
 	ComputeShader(
 		uint3 blockSize,

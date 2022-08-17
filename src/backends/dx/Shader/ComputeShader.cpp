@@ -17,8 +17,6 @@ ComputeShader* ComputeShader::LoadPresetCompute(
 	BinaryIOVisitor* fileIo,
 	Device* device,
 	vstd::span<Type const* const> types,
-	vstd::string_view cacheFolder,
-	vstd::string_view psoFolder,
 	vstd::string_view fileName) {
 	using namespace ComputeShaderDetail;
 	bool oldDeleted = false;
@@ -61,8 +59,6 @@ ComputeShader* ComputeShader::CompileCompute(
 	vstd::function<CodegenResult()> const& codegen,
 	uint3 blockSize,
 	uint shaderModel,
-	vstd::string_view cacheFolder,
-	vstd::string_view psoFolder,
 	vstd::string_view fileName,
 	bool tryLoadOld) {
 	using namespace ComputeShaderDetail;
