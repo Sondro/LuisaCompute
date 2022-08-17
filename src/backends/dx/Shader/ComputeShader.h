@@ -1,6 +1,7 @@
 #pragma once
 #include <Shader/Shader.h>
 #include <vstl/VGuid.h>
+#include <core/file_io.h>
 namespace toolhub::directx {
 struct CodegenResult;
 class ShaderSerializer;
@@ -23,6 +24,7 @@ public:
 	Tag GetTag() const { return Tag::ComputeShader; }
 	uint3 BlockSize() const { return blockSize; }
 	static ComputeShader* CompileCompute(
+		FileIO* fileIo,
 		Device* device,
 		Function kernel,
 		vstd::function<CodegenResult()> const& codegen,
@@ -33,6 +35,7 @@ public:
 		vstd::string_view fileName,
 		bool tryLoadOld);
 	static ComputeShader* LoadPresetCompute(
+		FileIO* fileIo,
 		Device* device,
 		vstd::span<Type const* const> types,
 		vstd::string_view cacheFolder,

@@ -20,6 +20,7 @@ using namespace toolhub::directx;
 namespace toolhub::directx {
 LCDevice::LCDevice(const Context& ctx)
 	: LCDeviceInterface(ctx), nativeDevice(shaderPaths) {
+	nativeDevice.SetFileIO(ctx.get_fileio_visitor());
 	shaderPaths.shaderCacheFolder = ctx.cache_directory().string().c_str();
 	shaderPaths.dataFolder = ctx.data_directory().string().c_str();
 	auto ProcessPath = [](vstd::string& str) {
@@ -30,7 +31,6 @@ LCDevice::LCDevice(const Context& ctx)
 	};
 	ProcessPath(shaderPaths.shaderCacheFolder);
 	ProcessPath(shaderPaths.dataFolder);
-	std::cout << shaderPaths.dataFolder << '\n';
 	shaderPaths.psoFolder = shaderPaths.shaderCacheFolder;
 	shaderPaths.psoFolder << ".pso/"sv;
 	std::filesystem::create_directory(shaderPaths.psoFolder.c_str());
@@ -153,6 +153,7 @@ void* LCDevice::stream_native_handle(uint64 handle) const noexcept {
 uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noexcept {
 	return reinterpret_cast<uint64>(
 		ComputeShader::CompileCompute(
+			nativeDevice.FileIO(),
 			&nativeDevice,
 			kernel,
 			[&] { return CodegenUtility::Codegen(kernel, shaderPaths.dataFolder); },
@@ -167,6 +168,7 @@ uint64 LCDevice::load_shader(
 	vstd::span<Type const* const> types) noexcept {
 	return reinterpret_cast<uint64>(
 		ComputeShader::LoadPresetCompute(
+			nativeDevice.FileIO(),
 			&nativeDevice,
 			types,
 			shaderPaths.shaderCacheFolder,

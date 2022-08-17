@@ -5,6 +5,10 @@
 #include <vstl/VGuid.h>
 #include <dxgi1_4.h>
 #include <DXRuntime/ShaderPaths.h>
+#include <core/file_io.h>
+namespace luisa::compute {
+class FileIO;
+}
 class ElementAllocator;
 using Microsoft::WRL::ComPtr;
 namespace toolhub::directx {
@@ -13,10 +17,27 @@ class DescriptorHeap;
 class ComputeShader;
 class PipelineLibrary;
 class DXShaderCompiler;
+struct SerializeVisitor : public luisa::compute::FileIO {
+	ShaderPaths const& path;
+	SerializeVisitor(
+		ShaderPaths const& path);
+	luisa::span<std::byte> Read(vstd::string const& filePath, AllocateFunc const& alloc);
+	void Write(vstd::string const& filePath, luisa::span<std::byte const> data);
+	luisa::span<std::byte> read_bytecode(luisa::string_view name, AllocateFunc const& alloc) override;
+	luisa::span<std::byte> read_cache(luisa::string_view name, AllocateFunc const& alloc) override;
+	void write_bytecode(luisa::string_view name, luisa::span<std::byte const> data) override;
+	void write_cache(luisa::string_view name, luisa::span<std::byte const> data) override;
+};
 class Device {
+	luisa::compute::FileIO* fileIo = nullptr;
+	mutable SerializeVisitor serVisitor;
 
 public:
 	ShaderPaths const& path;
+	void SetFileIO(luisa::compute::FileIO* fileIo) { this->fileIo = fileIo; }
+	luisa::compute::FileIO* FileIO() const {
+		return fileIo ? fileIo : &serVisitor;
+	}
 	struct LazyLoadShader {
 	public:
 		using LoadFunc = vstd::funcPtr_t<ComputeShader*(Device*, ShaderPaths const&)>;

@@ -2,6 +2,7 @@
 #include <Shader/ShaderSerializer.h>
 #include <Shader/ComputeShader.h>
 #include <DXRuntime/GlobalSamplers.h>
+#include <vstl/small_vector.h>
 namespace toolhub::directx {
 namespace shader_ser {
 struct Header {
@@ -17,7 +18,7 @@ vstd::vector<vbyte>
 ShaderSerializer::Serialize(
 	vstd::span<Property const> properties,
 	vstd::span<SavedArgument const> kernelArgs,
-	vstd::span<vbyte> binByte,
+	vstd::span<vbyte const> binByte,
 	uint bindlessCount,
 	uint3 blockSize) {
 	using namespace shader_ser;
@@ -42,36 +43,51 @@ ShaderSerializer::Serialize(
 	return result;
 }
 ComputeShader* ShaderSerializer::DeSerialize(
+	vstd::string_view name,
 	Device* device,
-	Visitor& visitor) {
+	FileIO& streamFunc,
+	bool& clearCache) {
+	vstd::small_vector<void*> releaseVec;
+	auto disp = vstd::create_disposer([&] {
+		for (auto&& i : releaseVec) { vengine_free(i); }
+	});
+	FileIO::AllocateFunc func = [&](size_t byteSize) {
+		auto ptr = vengine_malloc(byteSize);
+		releaseVec.emplace_back(ptr);
+		return ptr;
+	};
+	auto binCode = streamFunc.read_bytecode(name, func);
+	if(binCode.empty()) return nullptr;
+	auto psoCode = streamFunc.read_cache(name, func);
 	using namespace shader_ser;
-	vbyte const* ptr = nullptr;
+	auto binPtr = binCode.data();
 	auto Get = [&]<typename T>() -> T const& {
-		ptr = visitor.ReadFile(sizeof(T));
-		return *reinterpret_cast<T const*>(ptr);
+		auto lastPtr = binPtr;
+		binPtr += sizeof(T);
+		return *reinterpret_cast<T const*>(lastPtr);
 	};
 	auto header = Get.operator()<Header>();
-	ptr = visitor.ReadFile(header.rootSigBytes);
 	auto rootSig = DeSerializeRootSig(
 		device->device.Get(),
-		{ptr, header.rootSigBytes});
+		{reinterpret_cast<vbyte const*>(binPtr), header.rootSigBytes});
+	binPtr += header.rootSigBytes;
 	// Try pipeline library
 	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc;
 	memset(&psoDesc, 0, sizeof(psoDesc));
 	psoDesc.pRootSignature = rootSig.Get();
 	ComPtr<ID3D12PipelineState> pso;
-	auto psoResult = visitor.ReadFileAndPSO(header.codeBytes);
-	psoDesc.CS.pShaderBytecode = psoResult.fileData;
-	psoDesc.CS.BytecodeLength = psoResult.fileSize;
-	psoDesc.CachedPSO.CachedBlobSizeInBytes = psoResult.psoSize;
-	psoDesc.CachedPSO.pCachedBlob = psoResult.psoData;
+	psoDesc.CS.pShaderBytecode = binPtr;
+	psoDesc.CS.BytecodeLength = header.codeBytes;
+	binPtr += header.codeBytes;
+	psoDesc.CachedPSO.CachedBlobSizeInBytes = psoCode.size();
+	psoDesc.CachedPSO.pCachedBlob = psoCode.data();
 	// use PSO cache
 
 	if (device->device->CreateComputePipelineState(
 			&psoDesc,
 			IID_PPV_ARGS(pso.GetAddressOf())) != S_OK) {
 		// PSO cache miss(probably driver's version or hardware transformed), discard cache
-		visitor.DeletePSOFile();
+		clearCache = true;
 		psoDesc.CachedPSO.CachedBlobSizeInBytes = 0;
 		psoDesc.CachedPSO.pCachedBlob = nullptr;
 		ThrowIfFailed(device->device->CreateComputePipelineState(
@@ -82,12 +98,10 @@ ComputeShader* ShaderSerializer::DeSerialize(
 	vstd::vector<SavedArgument> kernelArgs;
 	properties.resize(header.propertyCount);
 	kernelArgs.resize(header.kernelArgCount);
-	visitor.ReadFile(
-		properties.data(),
-		properties.byte_size());
-	visitor.ReadFile(
-		kernelArgs.data(),
-		kernelArgs.byte_size());
+	memcpy(properties.data(), binPtr, properties.byte_size());
+	binPtr += properties.byte_size();
+	memcpy(kernelArgs.data(), binPtr, kernelArgs.byte_size());
+	binPtr += kernelArgs.byte_size();
 
 	auto cs = new ComputeShader(
 		header.blockSize,

@@ -7,112 +7,55 @@
 #include <vstl/MD5.h>
 namespace toolhub::directx {
 namespace ComputeShaderDetail {
-struct SerializeVisitor : ShaderSerializer::Visitor {
-	BinaryReader csoReader;
-	vstd::string const& psoPath;
-	bool oldDeleted = false;
-	SerializeVisitor(
-		vstd::string const& path,
-		vstd::string const& psoPath)
-		: csoReader(path),
-		  psoPath(psoPath) {
-	}
-	vstd::vector<vbyte> readCache;
-	vbyte const* ReadFile(size_t size) override {
-		readCache.clear();
-		readCache.resize(size);
-		csoReader.Read(reinterpret_cast<char*>(readCache.data()), size);
-		return readCache.data();
-	}
-	void ReadFile(void* ptr, size_t size) override {
-		csoReader.Read(ptr, size);
-	}
-	ShaderSerializer::ReadResult ReadFileAndPSO(
-		size_t fileSize) override {
-		BinaryReader psoReader(psoPath);
-		ShaderSerializer::ReadResult result;
-		readCache.clear();
-		if (psoReader) {
-			size_t psoSize = psoReader.GetLength();
-			readCache.resize(psoSize + fileSize);
-			result.fileSize = fileSize;
-			result.fileData = readCache.data();
-			result.psoSize = psoSize;
-			result.psoData = readCache.data() + fileSize;
-			csoReader.Read(reinterpret_cast<char*>(readCache.data()), fileSize);
-			psoReader.Read(reinterpret_cast<char*>(readCache.data() + fileSize), psoSize);
-		} else {
-			oldDeleted = true;
-			readCache.resize(fileSize);
-			result.fileSize = fileSize;
-			result.fileData = readCache.data();
-			result.psoSize = 0;
-			result.psoData = nullptr;
-			csoReader.Read(reinterpret_cast<char*>(readCache.data()), fileSize);
-		}
-		return result;
-	}
-	void DeletePSOFile() override {
-		oldDeleted = true;
-	}
-};
-static void SavePSO(vstd::string const& psoPath, ComputeShader const* cs) {
-	auto f = fopen(psoPath.c_str(), "wb");
-	if (f) {
-		auto disp = vstd::create_disposer([&] { fclose(f); });
-		ComPtr<ID3DBlob> psoCache;
-		cs->Pso()->GetCachedBlob(&psoCache);
-		fwrite(psoCache->GetBufferPointer(), psoCache->GetBufferSize(), 1, f);
-	}
+static void SavePSO(vstd::string_view fileName, FileIO* fileStream, ComputeShader const* cs) {
+	ComPtr<ID3DBlob> psoCache;
+	cs->Pso()->GetCachedBlob(&psoCache);
+	fileStream->write_cache(fileName, {reinterpret_cast<std::byte const*>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
 };
 }// namespace ComputeShaderDetail
 ComputeShader* ComputeShader::LoadPresetCompute(
+	FileIO* fileIo,
 	Device* device,
 	vstd::span<Type const* const> types,
 	vstd::string_view cacheFolder,
 	vstd::string_view psoFolder,
 	vstd::string_view fileName) {
 	using namespace ComputeShaderDetail;
-	vstd::string path;
-	path << cacheFolder << fileName;
-	vstd::string psoPath;
-	psoPath << psoFolder << fileName;
-	SerializeVisitor visitor(
-		path,
-		psoPath);
+	bool oldDeleted = false;
+	auto result = ShaderSerializer::DeSerialize(
+		fileName,
+		device,
+		*fileIo,
+		oldDeleted);
 	//Cached
-	if (visitor.csoReader) {
-		auto result = ShaderSerializer::DeSerialize(
-			device,
-			visitor);
-		if (result) {
-			// args check
-			auto args = result->Args();
-			auto DeleteFunc = [&] {
-				delete result;
-				return nullptr;
-			};
-			if (args.size() != types.size()) {
-				return DeleteFunc();
-			} else {
-				for (auto i : vstd::range(args.size())) {
-					auto& srcType = args[i];
-					auto dstType = SavedArgument{types[i]};
-					if (srcType.structSize != dstType.structSize ||
-						srcType.tag != dstType.tag) {
-						return DeleteFunc();
-					}
+
+	if (result) {
+		// args check
+		auto args = result->Args();
+		auto DeleteFunc = [&] {
+			delete result;
+			return nullptr;
+		};
+		if (args.size() != types.size()) {
+			return DeleteFunc();
+		} else {
+			for (auto i : vstd::range(args.size())) {
+				auto& srcType = args[i];
+				auto dstType = SavedArgument{types[i]};
+				if (srcType.structSize != dstType.structSize ||
+					srcType.tag != dstType.tag) {
+					return DeleteFunc();
 				}
 			}
-			if (visitor.oldDeleted) {
-				SavePSO(psoPath, result);
-			}
-			return result;
+		}
+		if (oldDeleted) {
+			SavePSO(fileName, fileIo, result);
 		}
 	}
-	return nullptr;
+	return result;
 }
 ComputeShader* ComputeShader::CompileCompute(
+	FileIO* fileIo,
 	Device* device,
 	Function kernel,
 	vstd::function<CodegenResult()> const& codegen,
@@ -126,7 +69,7 @@ ComputeShader* ComputeShader::CompileCompute(
 	bool saveCacheFile;
 	static constexpr bool PRINT_CODE = false;
 
-	auto CompileNewCompute = [&]<bool WriteCache>(vstd::string const* path, vstd::string const* psoPath) {
+	auto CompileNewCompute = [&]<bool WriteCache>() {
 		auto str = codegen();
 		if constexpr (PRINT_CODE) {
 			std::cout
@@ -143,17 +86,13 @@ ComputeShader* ComputeShader::CompileCompute(
 			[&](vstd::unique_ptr<DXByteBlob> const& buffer) {
 				auto kernelArgs = ShaderSerializer::SerializeKernel(kernel);
 				if constexpr (WriteCache) {
-					auto f = fopen(path->c_str(), "wb");
-					if (f) {
-						auto disp = vstd::create_disposer([&] { fclose(f); });
-						auto serData = ShaderSerializer::Serialize(
-							str.properties,
-							kernelArgs,
-							{buffer->GetBufferPtr(), buffer->GetBufferSize()},
-							str.bdlsBufferCount,
-							blockSize);
-						fwrite(serData.data(), serData.size(), 1, f);
-					}
+					auto serData = ShaderSerializer::Serialize(
+						str.properties,
+						kernelArgs,
+						{buffer->GetBufferPtr(), buffer->GetBufferSize()},
+						str.bdlsBufferCount,
+						blockSize);
+					fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const*>(serData.data()), serData.byte_size()});
 				}
 				auto cs = new ComputeShader(
 					blockSize,
@@ -164,7 +103,7 @@ ComputeShader* ComputeShader::CompileCompute(
 					device);
 				cs->bindlessCount = str.bdlsBufferCount;
 				if constexpr (WriteCache) {
-					SavePSO(*psoPath, cs);
+					SavePSO(fileName, fileIo, cs);
 				}
 				return cs;
 			},
@@ -175,34 +114,26 @@ ComputeShader* ComputeShader::CompileCompute(
 			});
 	};
 	if (!fileName.empty()) {
-		auto ProcessPath = [&](vstd::string_view folder) {
-			vstd::string p(folder);
-			p << fileName;
-			return p;
-		};
-		vstd::string path = ProcessPath(cacheFolder);
-		vstd::string psoPath = ProcessPath(psoFolder);
+
 		if (tryLoadOld) {
-			SerializeVisitor visitor(
-				path,
-				psoPath);
+			bool oldDeleted = false;
 			//Cached
-			if (visitor.csoReader) {
-				auto result = ShaderSerializer::DeSerialize(
-					device,
-					visitor);
-				if (result) {
-					if (visitor.oldDeleted) {
-						SavePSO(psoPath, result);
-					}
-					return result;
+			auto result = ShaderSerializer::DeSerialize(
+				fileName,
+				device,
+				*fileIo,
+				oldDeleted);
+			if (result) {
+				if (oldDeleted) {
+					SavePSO(fileName, fileIo, result);
 				}
+				return result;
 			}
 		}
-		return CompileNewCompute.operator()<true>(&path, &psoPath);
+		return CompileNewCompute.operator()<true>();
 	} else {
 
-		return CompileNewCompute.operator()<false>(nullptr, nullptr);
+		return CompileNewCompute.operator()<false>();
 	}
 }
 
