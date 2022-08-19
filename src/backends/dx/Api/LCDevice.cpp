@@ -155,15 +155,18 @@ void LCDevice::set_io_visitor(BinaryIOVisitor* visitor) noexcept {
 }
 
 uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noexcept {
+	auto code = CodegenUtility::Codegen(kernel, shaderPaths.dataFolder);
+	vstd::MD5 md5({reinterpret_cast<vbyte const*>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
 	return reinterpret_cast<uint64>(
 		ComputeShader::CompileCompute(
 			nativeDevice.fileIo,
 			&nativeDevice,
 			kernel,
-			[&] { return CodegenUtility::Codegen(kernel, shaderPaths.dataFolder); },
+			[&] { return std::move(code); },
 			kernel.block_size(),
 			65u,
-			file_name, false));
+			file_name,
+			md5));
 }
 uint64 LCDevice::load_shader(
 	vstd::string_view file_name,

@@ -6,6 +6,7 @@
 namespace toolhub::directx {
 namespace shader_ser {
 struct Header {
+	vstd::MD5 md5;
 	uint64 rootSigBytes;
 	uint64 codeBytes;
 	uint3 blockSize;
@@ -19,6 +20,7 @@ ShaderSerializer::Serialize(
 	vstd::span<Property const> properties,
 	vstd::span<SavedArgument const> kernelArgs,
 	vstd::span<vbyte const> binByte,
+	vstd::optional<vstd::MD5> const& checkMD5,
 	uint bindlessCount,
 	uint3 blockSize) {
 	using namespace shader_ser;
@@ -26,13 +28,19 @@ ShaderSerializer::Serialize(
 	result.reserve(65500);
 	result.resize(sizeof(Header));
 	Header header = {
+		[&] {
+			if (checkMD5) {
+				return *checkMD5;
+			}
+			return vstd::MD5{vstd::MD5::MD5Data{0, 0}};
+		}(),
 		(uint64)SerializeRootSig(properties, result),
 		(uint64)binByte.size(),
 		blockSize,
 		static_cast<uint>(properties.size()),
 		bindlessCount,
 		static_cast<uint>(kernelArgs.size())};
-	*reinterpret_cast<Header*>(result.data()) = header;
+	*reinterpret_cast<Header*>(result.data()) = std::move(header);
 	result.push_back_all(binByte);
 	result.push_back_all(
 		reinterpret_cast<vbyte const*>(properties.data()),
@@ -46,6 +54,7 @@ ComputeShader* ShaderSerializer::DeSerialize(
 	vstd::string_view name,
 	Device* device,
 	BinaryIOVisitor& streamFunc,
+	vstd::optional<vstd::MD5> const& checkMD5,
 	bool& clearCache) {
 	vstd::small_vector<void*> releaseVec;
 	auto disp = vstd::create_disposer([&] {
@@ -67,6 +76,7 @@ ComputeShader* ShaderSerializer::DeSerialize(
 		return *reinterpret_cast<T const*>(lastPtr);
 	};
 	auto header = Get.operator()<Header>();
+	if (checkMD5 && header.md5 != *checkMD5) return nullptr;
 	auto rootSig = DeSerializeRootSig(
 		device->device.Get(),
 		{reinterpret_cast<vbyte const*>(binPtr), header.rootSigBytes});

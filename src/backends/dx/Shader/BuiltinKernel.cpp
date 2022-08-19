@@ -33,7 +33,8 @@ ComputeShader* BuiltinKernel::LoadAccelSetKernel(Device* device, ShaderPaths con
 		func,
 		uint3(64, 1, 1),
 		60,
-		"set_accel_kernel"sv, true);
+		"set_accel_kernel"sv,
+		{});
 }
 namespace detail {
 static ComputeShader* LoadBCKernel(
@@ -81,7 +82,8 @@ static ComputeShader* LoadBCKernel(
 		func,
 		uint3(1, 1, 1),
 		60,
-		codePath, true);
+		codePath,
+		{});
 }
 static vstd::string const& Bc6Header(ShaderPaths const& ctx) {
 	static vstd::string bc6Header = ReadInternalHLSLFile("bc6_header", ctx.dataFolder);

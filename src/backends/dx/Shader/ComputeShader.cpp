@@ -24,6 +24,7 @@ ComputeShader* ComputeShader::LoadPresetCompute(
 		fileName,
 		device,
 		*fileIo,
+		{},
 		oldDeleted);
 	//Cached
 
@@ -60,13 +61,13 @@ ComputeShader* ComputeShader::CompileCompute(
 	uint3 blockSize,
 	uint shaderModel,
 	vstd::string_view fileName,
-	bool tryLoadOld) {
+	vstd::optional<vstd::MD5> const& checkMD5) {
 	using namespace ComputeShaderDetail;
 	bool saveCacheFile;
 	static constexpr bool PRINT_CODE = false;
 
 	auto CompileNewCompute = [&]<bool WriteCache>() {
-		auto str = codegen();
+		auto&& str = codegen();
 		if constexpr (PRINT_CODE) {
 			std::cout
 				<< "\n===============================\n"
@@ -86,6 +87,7 @@ ComputeShader* ComputeShader::CompileCompute(
 						str.properties,
 						kernelArgs,
 						{buffer->GetBufferPtr(), buffer->GetBufferSize()},
+						checkMD5,
 						str.bdlsBufferCount,
 						blockSize);
 					fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const*>(serData.data()), serData.byte_size()});
@@ -111,21 +113,21 @@ ComputeShader* ComputeShader::CompileCompute(
 	};
 	if (!fileName.empty()) {
 
-		if (tryLoadOld) {
-			bool oldDeleted = false;
-			//Cached
-			auto result = ShaderSerializer::DeSerialize(
-				fileName,
-				device,
-				*fileIo,
-				oldDeleted);
-			if (result) {
-				if (oldDeleted) {
-					SavePSO(fileName, fileIo, result);
-				}
-				return result;
+		bool oldDeleted = false;
+		//Cached
+		auto result = ShaderSerializer::DeSerialize(
+			fileName,
+			device,
+			*fileIo,
+			checkMD5,
+			oldDeleted);
+		if (result) {
+			if (oldDeleted) {
+				SavePSO(fileName, fileIo, result);
 			}
+			return result;
 		}
+
 		return CompileNewCompute.operator()<true>();
 	} else {
 

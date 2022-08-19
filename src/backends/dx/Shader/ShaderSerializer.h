@@ -26,12 +26,14 @@ public:
 		vstd::span<Property const> properties,
 		vstd::span<SavedArgument const> kernelArgs,
 		vstd::span<vbyte const> binByte,
+		vstd::optional<vstd::MD5> const& checkMD5,
 		uint bindlessCount,
 		uint3 blockSize);
 	static ComputeShader* DeSerialize(
 		luisa::string_view fileName,
 		Device* device,
 		BinaryIOVisitor& streamFunc,
+		vstd::optional<vstd::MD5> const& checkMD5,
 		bool& clearCache);
 	static vstd::vector<SavedArgument> SerializeKernel(Function kernel);
 

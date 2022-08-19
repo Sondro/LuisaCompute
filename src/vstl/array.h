@@ -11,7 +11,7 @@ public:
 	using value_type = T;
 	template<typename... Args>
 	requires(std::is_constructible_v<T, Args&&...>)
-		array(Args&&... args) {
+		constexpr array(Args&&... args) {
 		if constexpr (sizeof...(Args) != 0 || (!std::is_trivially_constructible_v<T>)) {
 			T* ptr = reinterpret_cast<T*>(&storage);
 			T* endPtr = ptr + mSize;
@@ -21,7 +21,7 @@ public:
 			}
 		}
 	}
-	array(array&& v) {
+	constexpr array(array&& v) {
 		if constexpr (std::is_trivially_move_constructible_v<T>) {
 			memcpy(&storage, &v.storage, byte_size);
 		} else {
@@ -32,7 +32,7 @@ public:
 			}
 		}
 	}
-	array(array const& v) {
+	constexpr array(array const& v) {
 		if constexpr (std::is_trivially_copy_constructible_v<T>) {
 			memcpy(&storage, &v.storage, byte_size);
 		} else {
@@ -43,7 +43,7 @@ public:
 			}
 		}
 	}
-	array& operator=(array const& v) {
+	constexpr array& operator=(array const& v) {
 		if constexpr (std::is_trivially_copy_assignable_v<T>) {
 			memcpy(&storage, &v.storage, byte_size);
 		} else {
@@ -55,7 +55,7 @@ public:
 		}
 		return *this;
 	}
-	array& operator=(array&& v) {
+	constexpr array& operator=(array&& v) {
 		if constexpr (std::is_trivially_move_assignable_v<T>) {
 			memcpy(&storage, &v.storage, byte_size);
 		} else {
@@ -67,7 +67,7 @@ public:
 		}
 		return *this;
 	}
-	~array() {
+	constexpr ~array() {
 		if constexpr (!std::is_trivially_destructible_v<T>) {
 			T* ptr = reinterpret_cast<T*>(&storage);
 			T* endPtr = ptr + mSize;
@@ -77,34 +77,34 @@ public:
 			}
 		}
 	}
-	T const& operator[](size_t index) const& {
+	constexpr T const& operator[](size_t index) const& {
 		T const* ptr = reinterpret_cast<T const*>(&storage);
 		return ptr[index];
 	}
-	T& operator[](size_t index) & {
+	constexpr T& operator[](size_t index) & {
 		T* ptr = reinterpret_cast<T*>(&storage);
 		return ptr[index];
 	}
-	T&& operator[](size_t index) && {
+	constexpr T&& operator[](size_t index) && {
 		T* ptr = reinterpret_cast<T*>(&storage);
 		return std::move(ptr[index]);
 	}
-	T* data() {
+	constexpr T* data() {
 		return reinterpret_cast<T*>(&storage);
 	}
-	T const* data() const {
+	constexpr T const* data() const {
 		return reinterpret_cast<T const*>(&storage);
 	}
-	T* begin() {
+	constexpr T* begin() {
 		return reinterpret_cast<T*>(&storage);
 	}
-	T* end() {
+	constexpr T* end() {
 		return reinterpret_cast<T*>(&storage) + mSize;
 	}
-	T const* begin() const {
+	constexpr T const* begin() const {
 		return reinterpret_cast<T const*>(&storage);
 	}
-	T const* end() const {
+	constexpr T const* end() const {
 		return reinterpret_cast<T const*>(&storage) + mSize;
 	}
 };

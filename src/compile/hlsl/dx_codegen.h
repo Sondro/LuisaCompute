@@ -20,11 +20,15 @@ struct CodegenResult {
     vstd::string result;
     Properties properties;
     uint64 bdlsBufferCount;
-    CodegenResult() {}
-    template<typename A, typename B>
-    CodegenResult(A &&a, B &&b, uint64 c)
-        : result(std::forward<A>(a)),
-          properties(std::forward<B>(b)), bdlsBufferCount(c) {}
+    uint64 immutableHeaderSize;
+    CodegenResult(){}
+    CodegenResult(
+        vstd::string &&result,
+        Properties &&properties,
+        uint64 bdlsBufferCount,
+        uint64 immutableHeaderSize) : result(std::move(result)), properties(std::move(properties)), bdlsBufferCount(bdlsBufferCount), immutableHeaderSize(immutableHeaderSize) {}
+    CodegenResult(CodegenResult const &) = delete;
+    CodegenResult(CodegenResult&&) = default;
 };
 class CodegenUtility {
 

@@ -124,9 +124,8 @@ size_t BottomAccel::PreProcessStates(
         bottomStruct.Inputs.Flags =
             (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS)(((uint)bottomStruct.Inputs.Flags) & (~((uint)D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE)));
     }
-    bottomStruct.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
 
-    return (update ? bottomLevelPrebuildInfo.UpdateScratchDataSizeInBytes : bottomLevelPrebuildInfo.ScratchDataSizeInBytes) + 8;
+    return (update ? bottomLevelPrebuildInfo.UpdateScratchDataSizeInBytes : bottomLevelPrebuildInfo.ScratchDataSizeInBytes) + sizeof(size_t);
 }
 bool BottomAccel::CheckAccel(
     CommandBufferBuilder &builder) {
@@ -157,7 +156,7 @@ void BottomAccel::UpdateStates(
     if (RequireCompact()) {
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postInfo;
         postInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
-        auto compactOffset = scratchBuffer.offset + scratchBuffer.byteSize - 8;
+        auto compactOffset = scratchBuffer.offset + scratchBuffer.byteSize - sizeof(size_t);
         postInfo.DestBuffer = scratchBuffer.buffer->GetAddress() + compactOffset;
         builder.CmdList()->BuildRaytracingAccelerationStructure(
             &accelData.bottomStruct,
@@ -173,17 +172,17 @@ void BottomAccel::UpdateStates(
 void BottomAccel::FinalCopy(
     CommandBufferBuilder &builder,
     BufferView const &scratchBuffer) {
-    auto compactOffset = scratchBuffer.offset + scratchBuffer.byteSize - 8;
+    auto compactOffset = scratchBuffer.offset + scratchBuffer.byteSize - sizeof(size_t);
     auto &&alloc = builder.GetCB()->GetAlloc();
-    auto readback = alloc->GetTempReadbackBuffer(8);
+    auto readback = alloc->GetTempReadbackBuffer(sizeof(size_t));
     builder.CopyBuffer(
         scratchBuffer.buffer,
         readback.buffer,
         compactOffset,
         readback.offset,
-        8);
+        sizeof(size_t));
     alloc->ExecuteAfterComplete([readback, this] {
-        static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(vbyte *)&compactSize, 8});
+        static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(vbyte *)&compactSize, sizeof(size_t)});
     });
 }
 MeshHandle *BottomAccel::AddAccelRef(TopAccel *accel, uint index) {

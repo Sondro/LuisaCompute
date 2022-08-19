@@ -184,7 +184,7 @@ size_t TopAccel::PreProcess(
             (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS)(((uint)topLevelBuildDesc.Inputs.Flags) & (~((uint)D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE)));
     }
 
-    return (update ? topLevelPrebuildInfo.UpdateScratchDataSizeInBytes : topLevelPrebuildInfo.ScratchDataSizeInBytes) + 8;
+    return (update ? topLevelPrebuildInfo.UpdateScratchDataSizeInBytes : topLevelPrebuildInfo.ScratchDataSizeInBytes) + sizeof(size_t);
 }
 void TopAccel::Build(
     ResourceStateTracker &tracker,
@@ -200,7 +200,7 @@ void TopAccel::Build(
         tracker.UpdateState(builder);
         auto cs = device->setAccelKernel.Get(device);
         auto setBuffer = alloc->GetTempUploadBuffer(setDesc.byte_size());
-        auto cbuffer = alloc->GetTempUploadBuffer(8, 256);
+        auto cbuffer = alloc->GetTempUploadBuffer(sizeof(size_t), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         struct CBuffer {
             uint dsp;
             uint count;
@@ -232,7 +232,7 @@ void TopAccel::Build(
     if (RequireCompact()) {
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postInfo;
         postInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
-        auto compactOffset = scratchBuffer.offset + scratchBuffer.byteSize - 8;
+        auto compactOffset = scratchBuffer.offset + scratchBuffer.byteSize - sizeof(size_t);
         postInfo.DestBuffer = scratchBuffer.buffer->GetAddress() + compactOffset;
         builder.CmdList()->BuildRaytracingAccelerationStructure(
             &topLevelBuildDesc,
@@ -248,17 +248,17 @@ void TopAccel::Build(
 void TopAccel::FinalCopy(
     CommandBufferBuilder &builder,
     BufferView const &scratchBuffer) {
-    auto compactOffset = scratchBuffer.offset + scratchBuffer.byteSize - 8;
+    auto compactOffset = scratchBuffer.offset + scratchBuffer.byteSize - sizeof(size_t);
     auto &&alloc = builder.GetCB()->GetAlloc();
-    auto readback = alloc->GetTempReadbackBuffer(8);
+    auto readback = alloc->GetTempReadbackBuffer(sizeof(size_t));
     builder.CopyBuffer(
         scratchBuffer.buffer,
         readback.buffer,
         compactOffset,
         readback.offset,
-        8);
+        sizeof(size_t));
     alloc->ExecuteAfterComplete([readback, this] {
-        static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(vbyte *)&compactSize, 8});
+        static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(vbyte *)&compactSize, sizeof(size_t)});
     });
 }
 bool TopAccel::RequireCompact() const {

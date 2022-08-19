@@ -1147,6 +1147,7 @@ CodegenResult CodegenUtility::Codegen(
     opt->isKernel = false;
     GenerateCBuffer(kernel, kernel.arguments(), varData);
     CodegenResult::Properties properties;
+    uint64 immutableHeaderSize = finalResult.size();
     properties.reserve(kernel.arguments().size() + opt->bindlessBufferCount + 4);
     // Bindless Buffers;
     properties.emplace_back(
@@ -1286,7 +1287,8 @@ CodegenResult CodegenUtility::Codegen(
     return {
         std::move(finalResult),
         std::move(properties),
-        opt->bindlessBufferCount};
+        opt->bindlessBufferCount,
+        immutableHeaderSize};
 }
 #ifdef USE_SPIRV
 

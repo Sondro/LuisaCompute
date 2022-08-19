@@ -31,7 +31,7 @@ public:
 		uint3 blockSize,
 		uint shaderModel,
 		vstd::string_view fileName,
-		bool tryLoadOld);
+		vstd::optional<vstd::MD5> const& checkMD5);
 	static ComputeShader* LoadPresetCompute(
 		BinaryIOVisitor* fileIo,
 		Device* device,
