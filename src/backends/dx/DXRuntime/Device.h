@@ -7,6 +7,7 @@
 #include <DXRuntime/ShaderPaths.h>
 #include <core/binary_io_visitor.h>
 #include <Shader/CommandSignature.h>
+#include <vstl/BinaryReader.h>
 namespace luisa::compute {
 class BinaryIOVisitor;
 }
@@ -18,14 +19,23 @@ class DescriptorHeap;
 class ComputeShader;
 class PipelineLibrary;
 class DXShaderCompiler;
+class BinaryStream : public luisa::compute::IBinaryStream, public vstd::IOperatorNewBase {
+public:
+	BinaryReader reader;
+	BinaryStream(vstd::string const& path);
+	size_t length() const override;
+	size_t pos() const override;
+	void read(luisa::span<std::byte> dst) override;
+	~BinaryStream();
+};
 struct SerializeVisitor : public luisa::compute::BinaryIOVisitor {
 	ShaderPaths const& path;
 	SerializeVisitor(
 		ShaderPaths const& path);
-	luisa::span<std::byte> Read(vstd::string const& filePath, AllocateFunc const& alloc);
+	luisa::unique_ptr<luisa::compute::IBinaryStream> Read(vstd::string const& filePath);
 	void Write(vstd::string const& filePath, luisa::span<std::byte const> data);
-	luisa::span<std::byte> read_bytecode(luisa::string_view name, AllocateFunc const& alloc) override;
-	luisa::span<std::byte> read_cache(luisa::string_view name, AllocateFunc const& alloc) override;
+	luisa::unique_ptr<luisa::compute::IBinaryStream> read_bytecode(luisa::string_view name) override;
+	luisa::unique_ptr<luisa::compute::IBinaryStream> read_cache(luisa::string_view name) override;
 	void write_bytecode(luisa::string_view name, luisa::span<std::byte const> data) override;
 	void write_cache(luisa::string_view name, luisa::span<std::byte const> data) override;
 };

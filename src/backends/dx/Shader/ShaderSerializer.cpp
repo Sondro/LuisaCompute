@@ -56,6 +56,8 @@ ComputeShader* ShaderSerializer::DeSerialize(
 	BinaryIOVisitor& streamFunc,
 	vstd::optional<vstd::MD5> const& checkMD5,
 	bool& clearCache) {
+	using namespace shader_ser;
+	/*
 	vstd::small_vector<void*> releaseVec;
 	auto disp = vstd::create_disposer([&] {
 		for (auto&& i : releaseVec) { vengine_free(i); }
@@ -64,19 +66,24 @@ ComputeShader* ShaderSerializer::DeSerialize(
 		auto ptr = vengine_malloc(byteSize);
 		releaseVec.emplace_back(ptr);
 		return ptr;
-	};
-	auto binCode = streamFunc.read_bytecode(name, func);
-	if (binCode.empty()) return nullptr;
-	auto psoCode = streamFunc.read_cache(name, func);
-	using namespace shader_ser;
-	auto binPtr = binCode.data();
-	auto Get = [&]<typename T>() -> T const& {
-		auto lastPtr = binPtr;
-		binPtr += sizeof(T);
-		return *reinterpret_cast<T const*>(lastPtr);
-	};
-	auto header = Get.operator()<Header>();
+	};*/
+	auto binStream = streamFunc.read_bytecode(name);
+	if (binStream == nullptr || binStream->length() <= sizeof(Header)) return nullptr;
+	Header header;
+	binStream->read({reinterpret_cast<std::byte*>(&header),
+					 sizeof(Header)});
+
 	if (checkMD5 && header.md5 != *checkMD5) return nullptr;
+	vstd::vector<std::byte> binCode(binStream->length() - sizeof(Header));
+	vstd::vector<std::byte> psoCode;
+
+	binStream->read({binCode.data(), binCode.size()});
+	auto psoStream = streamFunc.read_cache(name);
+	if (psoStream != nullptr && psoStream->length() > 0) {
+		psoCode.resize(psoStream->length());
+		psoStream->read({psoCode.data(), psoCode.size()});
+	}
+	auto binPtr = binCode.data();
 	auto rootSig = DeSerializeRootSig(
 		device->device.Get(),
 		{reinterpret_cast<vbyte const*>(binPtr), header.rootSigBytes});

@@ -16,14 +16,10 @@ static int32 gDxcRefCount = 0;
 SerializeVisitor::SerializeVisitor(
 	ShaderPaths const& path)
 	: path(path) {
+	eastl::make_shared<int>(5);
 }
-luisa::span<std::byte> SerializeVisitor::Read(vstd::string const& filePath, AllocateFunc const& alloc) {
-	BinaryReader reader(filePath);
-	if (!reader) return {};
-	auto len = reader.GetLength();
-	auto ptr = alloc(len);
-	reader.Read(ptr, len);
-	return {reinterpret_cast<std::byte*>(ptr), len};
+luisa::unique_ptr<luisa::compute::IBinaryStream> SerializeVisitor::Read(vstd::string const& filePath) {
+	return luisa::make_unique<BinaryStream>(filePath);
 }
 void SerializeVisitor::Write(vstd::string const& filePath, luisa::span<std::byte const> data) {
 	auto f = fopen(filePath.c_str(), "wb");
@@ -32,19 +28,19 @@ void SerializeVisitor::Write(vstd::string const& filePath, luisa::span<std::byte
 		fclose(f);
 	}
 }
-luisa::span<std::byte> SerializeVisitor::read_bytecode(luisa::string_view name, AllocateFunc const& alloc) {
+luisa::unique_ptr<luisa::compute::IBinaryStream> SerializeVisitor::read_bytecode(luisa::string_view name) {
 	auto& path = this->path.shaderCacheFolder;
 	vstd::string filePath;
 	filePath.reserve(path.size() + name.size());
 	filePath << path << name;
-	return Read(filePath, alloc);
+	return Read(filePath);
 }
-luisa::span<std::byte> SerializeVisitor::read_cache(luisa::string_view name, AllocateFunc const& alloc) {
+luisa::unique_ptr<luisa::compute::IBinaryStream> SerializeVisitor::read_cache(luisa::string_view name) {
 	auto& path = this->path.shaderCacheFolder;
 	vstd::string filePath;
 	filePath.reserve(path.size() + name.size() + 4);
 	filePath << path << name << ".pso"_sv;
-	return Read(filePath, alloc);
+	return Read(filePath);
 }
 void SerializeVisitor::write_bytecode(luisa::string_view name, luisa::span<std::byte const> data) {
 	auto& path = this->path.shaderCacheFolder;
@@ -167,4 +163,16 @@ Device::Device(ShaderPaths const& path, uint index)
 		gDxcCompiler.New();
 	}
 }
+BinaryStream::BinaryStream(vstd::string const& path)
+	: reader(path) {}
+size_t BinaryStream::length() const {
+	return reader.GetLength();
+}
+size_t BinaryStream::pos() const {
+	return reader.GetPos();
+}
+void BinaryStream::read(luisa::span<std::byte> dst) {
+	reader.Read(dst.data(), dst.size_bytes());
+}
+BinaryStream::~BinaryStream() {}
 }// namespace toolhub::directx
