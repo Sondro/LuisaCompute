@@ -43,9 +43,10 @@ template<typename T>
 using to_vector_t = luisa::vector<T>;
 
 }// namespace detail
-
+class AstSerializer;
 /// Constant data
 class LC_AST_API ConstantData {
+    friend class AstSerializer;
 
 public:
     using View = detail::constant_data_view_t<detail::to_span_t, basic_types, true>;

@@ -18,6 +18,7 @@ struct StmtVisitor;
  * 
  */
 class LC_AST_API Statement : public concepts::Noncopyable {
+    friend class AstSerializer;
 
 public:
     /// Statement types
@@ -90,6 +91,7 @@ struct StmtVisitor {
 
 /// Break statement
 class BreakStmt final : public Statement {
+    friend class AstSerializer;
 
 private:
     uint64_t _compute_hash() const noexcept override {
@@ -103,6 +105,7 @@ public:
 
 /// Continue statement
 class ContinueStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     uint64_t _compute_hash() const noexcept override {
@@ -116,6 +119,7 @@ public:
 
 /// Return statement
 class ReturnStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     const Expression *_expr;
@@ -141,6 +145,7 @@ public:
 
 /// Scope statement
 class ScopeStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     vector<const Statement *> _statements;
@@ -161,6 +166,7 @@ public:
 
 /// Assign statement
 class AssignStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     const Expression *_lhs;
@@ -193,6 +199,7 @@ public:
 
 /// If statement
 class IfStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     const Expression *_condition;
@@ -228,6 +235,7 @@ public:
 
 /// Loop statement
 class LoopStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     ScopeStmt _body;
@@ -246,6 +254,7 @@ public:
 
 /// Expression statement
 class ExprStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     const Expression *_expr;
@@ -271,6 +280,7 @@ public:
 
 /// Switch statement
 class SwitchStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     const Expression *_expr;
@@ -300,6 +310,7 @@ public:
 
 /// Case statement of switch
 class SwitchCaseStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     const Expression *_expr;
@@ -329,6 +340,7 @@ public:
 
 /// Default statement of switch
 class SwitchDefaultStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     ScopeStmt _body;
@@ -347,6 +359,7 @@ public:
 
 /// For statement
 class ForStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     const Expression *_var;
@@ -386,6 +399,7 @@ public:
 
 /// Comment statement
 class CommentStmt : public Statement {
+    friend class AstSerializer;
 
 private:
     luisa::string _comment;

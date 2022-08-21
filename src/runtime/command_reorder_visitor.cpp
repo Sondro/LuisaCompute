@@ -389,14 +389,12 @@ size_t CommandReorderVisitor::SetMesh(
         else
             ite.first->second.readLayer = std::max<int64_t>(layer, ite.first->second.readLayer);
     };
-    if (ib != vb) {
-        auto ibHandle = GetHandle(
-            ib,
-            ResourceType::Buffer);
-        auto rangeHandle = static_cast<RangeHandle *>(ibHandle);
-        layer = std::max<int64_t>(layer, GetLastLayerRead(rangeHandle, ib_range));
-        SetHandle(rangeHandle, ib_range, layer);
-    }
+    auto ibHandle = GetHandle(
+        ib,
+        ResourceType::Buffer);
+    auto rangeHandle = static_cast<RangeHandle *>(ibHandle);
+    layer = std::max<int64_t>(layer, GetLastLayerRead(rangeHandle, ib_range));
+    SetHandle(rangeHandle, ib_range, layer);
     SetHandle(static_cast<RangeHandle *>(vbHandle), vb_range, layer);
     static_cast<NoRangeHandle *>(meshHandle)->view.writeLayer = layer;
     maxMeshLevel = std::max<int64_t>(maxMeshLevel, layer);

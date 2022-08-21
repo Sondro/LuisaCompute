@@ -65,6 +65,7 @@ Device::LazyLoadShader::~LazyLoadShader() {}
 
 Device::LazyLoadShader::LazyLoadShader(LoadFunc loadFunc) : loadFunc(loadFunc) {}
 Device::~Device() {
+	//lcmdSig.Delete();
 	std::lock_guard lck(gDxcMutex);
 	if (--gDxcRefCount == 0) {
 		gDxcCompiler.Delete();
@@ -159,6 +160,7 @@ Device::Device(ShaderPaths const& path, uint index)
 		samplerHeap->CreateSampler(
 			samplers[i], i);
 	}
+	//cmdSig.New(this);
 	{
 		std::lock_guard lck(gDxcMutex);
 		gDxcRefCount++;

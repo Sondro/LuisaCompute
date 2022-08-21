@@ -254,10 +254,12 @@ struct TypeVisitor {
 };
 
 /// Type class
+class AstSerializer;
 class LC_AST_API Type {
+    friend class AstSerializer;
 
 public:
-        friend class detail::TypeRegistry;
+    friend class detail::TypeRegistry;
 
     /// Type tags
     enum struct Tag : uint32_t {
@@ -331,10 +333,7 @@ public:
 
     /// Scalar = bool || float || int || uint
     [[nodiscard]] constexpr bool is_scalar() const noexcept {
-        return _tag == Tag::BOOL
-               || _tag == Tag::FLOAT
-               || _tag == Tag::INT
-               || _tag == Tag::UINT;
+        return _tag == Tag::BOOL || _tag == Tag::FLOAT || _tag == Tag::INT || _tag == Tag::UINT;
     }
 
     /// Basic = scalar || vector || matrix

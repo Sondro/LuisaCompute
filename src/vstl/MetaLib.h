@@ -63,11 +63,13 @@ private:
 public:
     using SelfType = StackObject<T, false>;
     template<typename... Args>
+        requires(std::is_constructible_v<T, Args &&...>)
     inline SelfType &New(Args &&...args) &noexcept {
         new (storage) T(std::forward<Args>(args)...);
         return *this;
     }
     template<typename... Args>
+        requires(std::is_constructible_v<T, Args &&...>)
     inline SelfType &&New(Args &&...args) &&noexcept {
         return std::move(New(std::forward<Args>(args)...));
     }
@@ -165,6 +167,7 @@ private:
 public:
     using SelfType = StackObject<T, true>;
     template<typename... Args>
+        requires(std::is_constructible_v<T, Args &&...>)
     inline SelfType &New(Args &&...args) &noexcept {
         if (initialized) return *this;
         initialized = true;
@@ -173,11 +176,13 @@ public:
     }
 
     template<typename... Args>
+        requires(std::is_constructible_v<T, Args &&...>)
     inline SelfType &&New(Args &&...args) &&noexcept {
         return std::move(New(std::forward<Args>(args)...));
     }
 
     template<typename... Args>
+        requires(std::is_constructible_v<T, Args &&...>)
     inline SelfType &ForceNew(Args &&...args) &noexcept {
         if (initialized) { Delete(); }
         initialized = true;

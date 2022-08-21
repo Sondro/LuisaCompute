@@ -71,18 +71,19 @@ void ParseHex(std::string_view strv, Guid::GuidData &data) {
 }// namespace VGuid_Detail
 optional<Guid> Guid::TryParseGuid(std::string_view strv) {
     using namespace VGuid_Detail;
-    optional<Guid> opt;
     switch (strv.size()) {
-        case 22:
-            opt.New();
-            StringUtil::DecodeFromBase64(strv, reinterpret_cast<uint8_t *>(&opt->data));
-            break;
-        case 32:
-            opt.New();
-            ParseHex(strv, opt->data);
-            break;
+        case 22: {
+            Guid opt;
+            StringUtil::DecodeFromBase64(strv, reinterpret_cast<uint8_t *>(&opt.data));
+            return {opt};
+        }
+        case 32: {
+            Guid opt;
+            ParseHex(strv, opt.data);
+            return {opt};
+        }
     }
-    return opt;
+    return {};
 }
 Guid::Guid(std::string_view strv) {
     using namespace VGuid_Detail;
