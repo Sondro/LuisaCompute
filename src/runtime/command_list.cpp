@@ -219,12 +219,13 @@ public:
         return json;
     }
 };
-*/
+
 nlohmann::json CommandList::dump_json() const noexcept {
     //CommandDumpVisitor visitor;
     //return visitor.dump(*this);
     return {};
 }
+*/
 
 void CommandList::reserve(size_t size) noexcept {
     _commands.reserve(size);

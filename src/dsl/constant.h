@@ -37,7 +37,7 @@ public:
     Constant(U &&data) noexcept : Constant{luisa::span<const T>{std::forward<U>(data)}} {}
 
     /// Construct constant from initializer list
-    Constant(std::initializer_list<T> init) noexcept : Constant{luisa::vector<T>{init}} {}
+    Constant(std::initializer_list<T> init) noexcept : Constant{luisa::span<const T>{init.begin(), init.end()}} {}
 
     Constant(Constant &&) noexcept = default;
     Constant(const Constant &) noexcept = delete;

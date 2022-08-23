@@ -130,7 +130,6 @@ ComputeShader* ComputeShader::CompileCompute(
 
 		return CompileNewCompute.operator()<true>();
 	} else {
-
 		return CompileNewCompute.operator()<false>();
 	}
 }

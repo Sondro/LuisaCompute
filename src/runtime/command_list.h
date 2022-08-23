@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <nlohmann/json.hpp>
+//#include <nlohmann/json.hpp>
 
 #include <core/stl.h>
 #include <runtime/command.h>
@@ -34,7 +34,7 @@ public:
     [[nodiscard]] auto size() const noexcept { return _commands.size(); }
 
     // for debug
-    [[nodiscard]] nlohmann::json dump_json() const noexcept;
+  //  [[nodiscard]] nlohmann::json dump_json() const noexcept;
 };
 
 }// namespace luisa::compute

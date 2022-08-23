@@ -1,4 +1,3 @@
-
 #include <Api/LCDevice.h>
 #include <DXRuntime/Device.h>
 #include <Resource/DefaultBuffer.h>
@@ -13,9 +12,11 @@
 #include <Resource/BottomAccel.h>
 #include <Resource/TopAccel.h>
 #include <vstl/BinaryReader.h>
-#include <Api/LCSwapChain.h>KW
+#include <Api/LCSwapChain.h>
 #include <Api/LCUtil.h>
 #include <compile/hlsl/dx_codegen.h>
+#include <serialize/serialize.h>
+#include <serialize/DatabaseInclude.h>
 using namespace toolhub::directx;
 namespace toolhub::directx {
 LCDevice::LCDevice(const Context& ctx)
@@ -156,13 +157,21 @@ void LCDevice::set_io_visitor(BinaryIOVisitor* visitor) noexcept {
 
 uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noexcept {
 	auto code = CodegenUtility::Codegen(kernel, shaderPaths.dataFolder);
+	AstSerializer ser{};
+	auto db = vstd::create_unique(CreateDatabase());
+	ser.SerializeKernel(kernel, db.get());
+	BinaryIOVisitor* visitor = nativeDevice.fileIo;
+	auto formatPrint = db->GetRootNode()->Serialize();
+	visitor->write_bytecode("ser_result.json",
+							{reinterpret_cast<std::byte const*>(formatPrint.data()),
+							 formatPrint.size()});
 	vstd::MD5 md5({reinterpret_cast<vbyte const*>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
 	return reinterpret_cast<uint64>(
 		ComputeShader::CompileCompute(
 			nativeDevice.fileIo,
 			&nativeDevice,
 			kernel,
-			[&] { return std::move(code); },
+			[&] -> decltype(auto) { return std::move(code); },
 			kernel.block_size(),
 			65u,
 			file_name,

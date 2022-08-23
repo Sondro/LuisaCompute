@@ -124,7 +124,7 @@ BuildProject({
     projectName = "lc_test",
     projectType = "binary",
     event = function()
-        add_files("build/test/**.cpp")
+        add_files("build/test/test_dsl.cpp")
         add_defines(Defines)
         add_includedirs(IncludePath)
     end,
