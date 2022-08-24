@@ -205,7 +205,7 @@ private:
     using SharedFunctionBuilder = luisa::shared_ptr<const detail::FunctionBuilder>;
     SharedFunctionBuilder _builder{nullptr};
     explicit Kernel(SharedFunctionBuilder builder) noexcept : _builder{std::move(builder)} {}
-    mutable luisa::map<const Device::Interface *, luisa::shared_ptr<Shader<N, Args...>>> _compiled_shaders;
+    mutable luisa::unordered_map<const Device::Interface *, luisa::shared_ptr<Shader<N, Args...>>> _compiled_shaders;
 
 public:
     /**

@@ -94,11 +94,10 @@ end)
 IncludePath = {"./", "../../", "../../ext/abseil-cpp/", "../../ext/EASTL/include/", "../../ext/json/include/",
                "../../ext/EASTL/packages/EABase/include/Common", "../../ext/fmt/include/", "../../ext/spdlog/include/",
                "../../ext/xxHash/", "../../ext/stb/"}
-Defines = {"VENGINE_VULKAN_PROJECT", "UNICODE", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", "NOMINMAX", "EASTL_DLL=1",
+Defines = {"VENGINE_DIRECTX_PROJECT", "UNICODE", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", "NOMINMAX", "EASTL_DLL=1",
            "ABSL_CONSUME_DLL=1", "FMT_CONSTEVAL=constexpr", "FMT_USE_CONSTEXPR=1", "FMT_HEADER_ONLY=1",
            "_ENABLE_EXTENDED_ALIGNED_STORAGE"}
 
-VulkanLib = "C:/VulkanSDK/1.3.216.0/"
 BuildProject({
     projectName = "luisa-compute-backend-dx",
     projectType = "shared",

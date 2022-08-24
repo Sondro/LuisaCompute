@@ -8,42 +8,40 @@
 #include <cmath>
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-
 #include <fmt/format.h>
 
-#include <EASTL/bit.h>
+//#include <EASTL/bit.h>
 #include <EASTL/span.h>
-#include <EASTL/list.h>
-#include <EASTL/slist.h>
+
+//#include <EASTL/list.h>
+//#include <EASTL/slist.h>
 #include <EASTL/deque.h>
 #include <EASTL/queue.h>
 #include <EASTL/memory.h>
 #include <EASTL/vector.h>
 #include <EASTL/variant.h>
 #include <EASTL/optional.h>
-#include <EASTL/bitvector.h>
-#include <EASTL/fixed_map.h>
-#include <EASTL/fixed_set.h>
+//#include <EASTL/map.h>
+//#include <EASTL/bitvector.h>
+//#include <EASTL/fixed_map.h>
+//#include <EASTL/fixed_set.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/shared_ptr.h>
 #include <EASTL/functional.h>
-#include <EASTL/vector_map.h>
-#include <EASTL/vector_set.h>
-#include <EASTL/shared_array.h>
-#include <EASTL/fixed_hash_map.h>
-#include <EASTL/fixed_hash_set.h>
-#include <EASTL/vector_multimap.h>
-#include <EASTL/vector_multiset.h>
-#include <EASTL/bonus/lru_cache.h>
+//#include <EASTL/vector_map.h>
+//#include <EASTL/vector_set.h>
+//#include <EASTL/shared_array.h>
+//#include <EASTL/fixed_hash_map.h>
+//#include <EASTL/vector_multimap.h>
+//#include <EASTL/vector_multiset.h>
+//#include <EASTL/bonus/lru_cache.h>
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
-#include <absl/container/btree_map.h>
-#include <absl/container/btree_set.h>
-#include <absl/container/node_hash_map.h>
-#include <absl/container/node_hash_set.h>
+//#include <absl/container/btree_set.h>
+//#include <absl/container/btree_map.h>
+//#include <absl/container/node_hash_map.h>
+//#include <absl/container/node_hash_set.h>
 
 #include <core/dll_export.h>
 #include <core/hash.h>
@@ -125,24 +123,22 @@ using eastl::static_pointer_cast;
 using eastl::unique_ptr;
 using eastl::weak_ptr;
 
-template<typename T, typename Alloc = allocator<T>>
-using shared_array = eastl::shared_array<T, Alloc>;
+
+//template<typename T, typename Alloc = allocator<T>>
+//using shared_array = eastl::shared_array<T, Alloc>;
 
 template<typename T, typename Alloc = allocator<T>>
 using vector = eastl::vector<T, Alloc>;
-
 template<typename T, typename Alloc = allocator<T>>
 using deque = eastl::deque<T, Alloc>;
-
 template<typename T, typename Container = luisa::deque<T>>
 using queue = eastl::queue<T, Container>;
 
+/*
 template<typename T, typename Alloc = allocator<T>>
 using slist = eastl::slist<T, Alloc>;
-
 template<typename T, typename Alloc = allocator<T>>
 using list = eastl::list<T, Alloc>;
-
 using eastl::bitvector;
 using eastl::fixed_hash_map;
 using eastl::fixed_hash_multimap;
@@ -150,14 +146,15 @@ using eastl::fixed_map;
 using eastl::fixed_multimap;
 using eastl::fixed_multiset;
 using eastl::fixed_set;
-
+*/
+/*
 using eastl::lru_cache;
 
 using eastl::vector_map;
 using eastl::vector_multimap;
 using eastl::vector_multiset;
 using eastl::vector_set;
-
+*/
 using eastl::make_optional;
 using eastl::monostate;
 using eastl::move_only_function;
@@ -198,28 +195,29 @@ using unordered_set = absl::flat_hash_set<K, Hash, Eq, Allocator>;
 using std::unordered_map;
 using std::unordered_set;
 #endif
-
+/*
 template<typename K, typename V,
          typename Compare = std::less<>,
          typename Alloc = luisa::allocator<std::pair<const K, V>>>
 using map = absl::btree_map<K, V, Compare, Alloc>;
-
 template<typename K, typename V,
          typename Compare = std::less<>,
          typename Alloc = luisa::allocator<std::pair<const K, V>>>
 using multimap = absl::btree_multimap<K, V, Compare, Alloc>;
 
-template<typename K,
-         typename Compare = std::less<>,
-         typename Alloc = luisa::allocator<K>>
-using set = absl::btree_set<K, Compare, Alloc>;
+
 
 template<typename K,
          typename Compare = std::less<>,
          typename Alloc = luisa::allocator<K>>
 using multiset = absl::btree_multiset<K, Compare, Alloc>;
+template<typename K,
+         typename Compare = std::less<>,
+         typename Alloc = luisa::allocator<K>>
+using set = absl::btree_set<K, Compare, Alloc>;
+*/
 
-using eastl::bit_cast;
+//using eastl::bit_cast;
 using eastl::get;
 using eastl::get_if;
 using eastl::holds_alternative;

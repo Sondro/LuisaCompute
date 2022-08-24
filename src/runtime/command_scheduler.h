@@ -19,7 +19,7 @@ private:
     luisa::vector<Command *> _commands;       // stores all commands
     luisa::vector<luisa::vector<uint>> _edges;// _edges[i] stores indices of all commands that depends on _commands[i]
     luisa::vector<uint> _dependency_count;    // number of dependencies of each command
-    luisa::set<uint> _pending_nodes;// nodes that are not yet scheduled
+    luisa::unordered_set<uint> _pending_nodes;// nodes that are not yet scheduled
     luisa::vector<uint> _free_nodes;          // stores indices of all free nodes (with zero dependency)
     luisa::vector<uint> _free_nodes_swap;     // for fast swap
     luisa::vector<CommandList> _command_lists;// scheduled command lists

@@ -6,6 +6,7 @@
 
 #include <nlohmann/json_fwd.hpp>
 #include <core/stl.h>
+#include <EASTL/map.h>
 
 namespace luisa {
 
