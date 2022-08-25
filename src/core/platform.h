@@ -48,6 +48,8 @@
 
 #include <core/intrin.h>
 #include <core/stl.h>
+#include <core/stl/string.h>
+#include <core/stl/vector.h>
 
 namespace luisa {
 

@@ -11,6 +11,7 @@
 #include <sstream>
 #include <core/logging.h>
 #include <core/thread_pool.h>
+#include <core/stl/smart_ptr.h>
 
 namespace luisa {
 

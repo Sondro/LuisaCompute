@@ -1,5 +1,6 @@
 #pragma once
 #include <vstl/Common.h>
+#include <bitset>
 namespace toolhub::db::parser {
 template<typename T>
 struct StateRecorder {

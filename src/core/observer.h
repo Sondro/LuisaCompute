@@ -6,7 +6,10 @@
 
 #include <core/hash.h>
 #include <core/stl.h>
+#include <core/stl/vector.h>
+#include <core/stl/smart_ptr.h>
 #include <core/spin_mutex.h>
+#include <core/stl/unordered_map.h>
 
 namespace luisa {
 

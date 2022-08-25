@@ -9,7 +9,8 @@
 #include <unordered_map>
 
 #include <core/dynamic_module.h>
-
+#include <core/stl/smart_ptr.h>
+#include <core/stl/string.h>
 namespace luisa::compute {
 
 class Device;

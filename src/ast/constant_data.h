@@ -13,7 +13,7 @@
 
 #include <core/basic_types.h>
 #include <core/concepts.h>
-
+#include <core/stl/variant.h>
 namespace luisa::compute {
 
 namespace detail {

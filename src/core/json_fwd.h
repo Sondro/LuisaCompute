@@ -7,7 +7,8 @@
 #include <nlohmann/json_fwd.hpp>
 #include <core/stl.h>
 #include <EASTL/map.h>
-
+#include <core/stl/vector.h>
+#include <core/stl/string.h>
 namespace luisa {
 
 template<typename K, typename V,

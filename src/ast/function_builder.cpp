@@ -3,7 +3,6 @@
 //
 
 #include <ast/function_builder.h>
-
 namespace luisa::compute::detail {
 
 luisa::vector<FunctionBuilder *> &FunctionBuilder::_function_stack() noexcept {

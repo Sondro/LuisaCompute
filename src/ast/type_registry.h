@@ -14,7 +14,8 @@
 #include <core/macro.h>
 #include <core/stl.h>
 #include <ast/type.h>
-
+#include <core/stl/unordered_map.h>
+#include <core/stl/smart_ptr.h>
 namespace luisa::compute {
 
 template<typename T>

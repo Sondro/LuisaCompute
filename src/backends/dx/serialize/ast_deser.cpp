@@ -1,6 +1,7 @@
 #include "serialize.h"
 #include <vstl/variant_util.h>
 #include <ast/function_builder.h>
+#include <ast/function.h>
 using namespace toolhub::db;
 namespace luisa::compute {
 using ReadVar = vstd::VariantVisitor_t<ReadJsonVariant>;
@@ -187,7 +188,7 @@ RefExpr* AstSerializer::DeserExprDerive(Type const* type, IJsonDict const* dict)
 			varDict = localVarDict;
 			break;
 	}
-	auto varValueDict = varDict->Get(uid).get_or<IJsonDict*>(nullptr);
+	auto varValueDict = varDict->Get(*uid).get_or<IJsonDict*>(nullptr);
 	assert(varValueDict);
 	Variable var;
 	DeSerialize(var, varValueDict);
@@ -211,7 +212,7 @@ ConstantExpr* AstSerializer::DeserExprDerive(Type const* type, IJsonDict const* 
 }
 template<>
 CallExpr* AstSerializer::DeserExprDerive(Type const* type, IJsonDict const* dict) {
-	auto op = static_cast<CallOp>(dict->Get("op").get_or<int64>(0));
+	auto op = static_cast<CallOp>(dict->Get("op"sv).get_or<int64>(0));
 	auto argListArr = dict->Get("arglist"sv).get_or<IJsonArray*>(nullptr);
 	assert(argListArr);
 	CallExpr::ArgumentList argList;
@@ -222,7 +223,7 @@ CallExpr* AstSerializer::DeserExprDerive(Type const* type, IJsonDict const* dict
 		argList.emplace_back(DeserExpr(subDict));
 	}
 	if (op == CallOp::CUSTOM) {
-		auto custom = dict->Get("custom").get_or<int64>(0);
+		auto custom = dict->Get("custom"sv).get_or<int64>(0);
 		assert(custom);
 		auto&& func =
 			callables
@@ -260,6 +261,10 @@ CastExpr* AstSerializer::DeserExprDerive(Type const* type, IJsonDict const* dict
 }
 
 void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict const* dict) {
+	detail::FunctionBuilder::push(builder);
+	auto popTask = vstd::create_disposer([&]{
+		detail::FunctionBuilder::pop(builder);
+	});
 	auto GetVar = [&](vstd::string_view name, luisa::vector<Variable>& dst, IJsonDict*& sub) {
 		sub = dict->Get(name).get_or<IJsonDict*>(nullptr);
 		assert(sub);
@@ -282,38 +287,105 @@ void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict co
 			DeSerialize(v, varDict);
 		}
 	};
-	GetVar("buildinvar"sv, builder->_builtin_variables, builtinVarDict);
+	//////////////////// Builtin vars
+	GetVar("builtinvar"sv, builder->_builtin_variables, builtinVarDict);
+	//////////////////// Local vars
 	GetVar("localvar"sv, builder->_local_variables, localVarDict);
+	//////////////////// Arguments
 	GetVar("args", builder->_arguments, arguments);
+	//////////////////// Shared vars
 	GetMapVar("sharedvar"sv, builder->_shared_variables, sharedVarDict);
 	{
-		constDict = dict->Get("consts").get_or<IJsonDict*>(nullptr);
+		auto usageSize = dict->Get("usagesize"sv).get_or<int64>(0);
+		if(usageSize > 0){
+			builder->_variable_usages.resize(usageSize);
+			for(auto i : vstd::range(usageSize)){
+				builder->_variable_usages[i] = Usage::NONE;
+			}
+		}
+	}
+	//////////////////// Constant
+	{
+		constDict = dict->Get("consts"sv).get_or<IJsonDict*>(nullptr);
 		assert(constDict);
 		builder->_captured_constants.reserve(constDict->Length());
 		for (auto&& i : *constDict) {
 			auto v = i.value.get_or<IJsonDict*>(nullptr);
 			assert(v);
-			//TODO
-			/*
-			builder->_captured_constants.emplace(
-				i.key.get_or<int64>(0),
-				Function::Constant(DeSerialize(v)));*/
+			auto typeHash = v->Get("consttype"sv).get_or<int64>(0);
+			auto&& result = builder->_captured_constants.try_emplace(i.key.get_or<int64>(0)).first->second;
+			result.type = DeserType(typeHash);
+			result.data = DeSerialize(v);
 		}
 	}
-	//TODO
+	//////////////////// Callop
+	{
+		auto callOpsDict = dict->Get("callop"sv).get_or<IJsonArray*>(nullptr);
+		assert(callOpsDict);
+		auto&& bits = builder->_used_builtin_callables._bits;
+		size_t index = 0;
+		for (auto&& value : *callOpsDict) {
+			auto integer = static_cast<uint64>([&] {
+				auto v = value.try_get<int64>();
+				assert(v);
+				return *v;
+			}());
+			constexpr uint64 MAX_BITMASK = 1ull << 63ull;
+			uint64 bitMask = MAX_BITMASK;
+			while (bitMask != 0 && index < call_op_count) {
+				bits[index] = (integer & bitMask) != 0;
+				index++;
+				bitMask >>= 1;
+			}
+		}
+	}
+	//////////////////// Tag
+	builder->_tag = static_cast<Function::Tag>(
+		dict->Get("tag"sv).get_or<int64>(0));
+	//////////////////// Block size
+	if(builder->tag() == Function::Tag::KERNEL)
+	{
+		auto sizeArr = dict->Get("blocksize"sv).get_or<IJsonArray*>(nullptr);
+		assert(sizeArr->Length() == 3);
+		auto GetInteger = [&](size_t i) {
+			auto it = sizeArr->Get(i).try_get<int64>();
+			assert(it);
+			return static_cast<uint>(*it);
+		};
+		builder->_block_size = uint3{
+			GetInteger(0),
+			GetInteger(1),
+			GetInteger(2)};
+	}
+	
+	//////////////////// Return Type
+	{
+		auto typeHashPtr = dict->Get("return"sv).try_get<int64>();
+		if (typeHashPtr) {
+			builder->_return_type = DeserType(*typeHashPtr);
+		} else {
+			builder->_return_type.reset();
+		}
+	}
+	//////////////////// Body
+	{
+		auto bodyArr = dict->Get("body").get_or<IJsonArray*>(nullptr);
+		assert(bodyArr);
+		DeserStmtScope(builder->_body, bodyArr);
+	}
 }
 
 void AstSerializer::DeserializeKernel(detail::FunctionBuilder* builder, IJsonDict const* dict) {
 	callables.Clear();
 	vstd::VEngineMallocVisitor mallocVisitor;
 	stackAlloc.New(1024, &mallocVisitor);
+	auto disposeStackAlloc = vstd::create_disposer([&] { stackAlloc.Delete(); });
 	this->builder = builder;
 	funcDict = dict->Get("funcs"sv).get_or<IJsonDict*>(nullptr);
 	typeDict = dict->Get("types"sv).get_or<IJsonDict*>(nullptr);
-	assert(funcDict && typeDict && constDict);
-	DeserFunction(builder, dict);
-
-	auto disposeStackAlloc = vstd::create_disposer([&] { stackAlloc.Delete(); });
+	auto kernelDict = dict->Get("kernel"sv).get_or<IJsonDict*>(nullptr);
+	assert(funcDict && typeDict && kernelDict);
+	DeserFunction(builder, kernelDict);
 }
 Statement* AstSerializer::DeserStmt(IJsonDict const* dict) {
 	auto hashPtr = dict->Get("stmthash"sv).try_get<int64>();
@@ -374,9 +446,9 @@ Expression* AstSerializer::DeserExpr(IJsonDict const* dict) {
 	auto typePtr = dict->Get("exprtype"sv).try_get<vstd::string_view>();
 	Type const* type;
 	if (typePtr) {
-		type = nullptr;
-	} else {
 		type = Type::from(*typePtr);
+	} else {
+		type = nullptr;
 	}
 	auto tag = static_cast<Expression::Tag>(*tagPtr);
 	Expression* expr;
@@ -412,8 +484,6 @@ Expression* AstSerializer::DeserExpr(IJsonDict const* dict) {
 			expr = nullptr;
 			break;
 	}
-	//TODO: in
-
 	expr->_hash = *hashPtr;
 	return expr;
 }

@@ -16,6 +16,11 @@
 #include <ast/expression.h>
 #include <ast/constant_data.h>
 #include <ast/type_registry.h>
+#include <core/stl/optional.h>
+#include <core/stl/smart_ptr.h>
+#include <core/stl/unordered_map.h>
+#include <core/stl/variant.h>
+
 
 namespace luisa::compute {
 class Statement;

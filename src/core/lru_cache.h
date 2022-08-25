@@ -8,8 +8,10 @@
 #include <optional>
 
 #include <core/stl.h>
+#include <EASTL/bonus/lru_cache.h>
 
 namespace luisa {
+using eastl::lru_cache;
 
 // TODO: support allocator & comparator
 template<typename Key, typename Value>

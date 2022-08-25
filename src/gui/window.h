@@ -13,7 +13,8 @@
 #include <imgui/imgui.h>
 
 #include <core/basic_types.h>
-
+#include <core/stl/functional.h>
+#include <core/stl/smart_ptr.h>
 namespace luisa::compute {
 
 class GLTexture;

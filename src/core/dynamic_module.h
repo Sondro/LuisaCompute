@@ -6,7 +6,8 @@
 #include <core/platform.h>
 #include <core/stl.h>
 #include <core/concepts.h>
-
+#include <core/stl/vector.h>
+#include <core/stl/optional.h>
 namespace luisa {
 
 /**

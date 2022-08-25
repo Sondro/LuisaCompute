@@ -1,5 +1,7 @@
 #pragma once
 #include <core/stl.h>
+#include <core/stl/string.h>
+#include <core/stl/smart_ptr.h>
 namespace luisa::compute {
 class IBinaryStream {
 public:

@@ -7,41 +7,11 @@
 #include <cstdlib>
 #include <cmath>
 #include <memory>
-#include <string>
+#include <assert.h>
 #include <fmt/format.h>
 
-//#include <EASTL/bit.h>
 #include <EASTL/span.h>
-
-//#include <EASTL/list.h>
-//#include <EASTL/slist.h>
-#include <EASTL/deque.h>
-#include <EASTL/queue.h>
 #include <EASTL/memory.h>
-#include <EASTL/vector.h>
-#include <EASTL/variant.h>
-#include <EASTL/optional.h>
-//#include <EASTL/map.h>
-//#include <EASTL/bitvector.h>
-//#include <EASTL/fixed_map.h>
-//#include <EASTL/fixed_set.h>
-#include <EASTL/unique_ptr.h>
-#include <EASTL/shared_ptr.h>
-#include <EASTL/functional.h>
-//#include <EASTL/vector_map.h>
-//#include <EASTL/vector_set.h>
-//#include <EASTL/shared_array.h>
-//#include <EASTL/fixed_hash_map.h>
-//#include <EASTL/vector_multimap.h>
-//#include <EASTL/vector_multiset.h>
-//#include <EASTL/bonus/lru_cache.h>
-
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
-//#include <absl/container/btree_set.h>
-//#include <absl/container/btree_map.h>
-//#include <absl/container/node_hash_map.h>
-//#include <absl/container/node_hash_set.h>
 
 #include <core/dll_export.h>
 #include <core/hash.h>
@@ -107,63 +77,9 @@ inline void delete_with_allocator(T *p) noexcept {
     }
 }
 
-using string = std::basic_string<char, std::char_traits<char>, allocator<char>>;
-using std::string_view;
 
-using eastl::const_pointer_cast;
-using eastl::dynamic_pointer_cast;
-using eastl::enable_shared_from_this;
-using eastl::function;
-using eastl::make_shared;
-using eastl::make_unique;
-using eastl::reinterpret_pointer_cast;
-using eastl::shared_ptr;
+
 using eastl::span;
-using eastl::static_pointer_cast;
-using eastl::unique_ptr;
-using eastl::weak_ptr;
-
-
-//template<typename T, typename Alloc = allocator<T>>
-//using shared_array = eastl::shared_array<T, Alloc>;
-
-template<typename T, typename Alloc = allocator<T>>
-using vector = eastl::vector<T, Alloc>;
-template<typename T, typename Alloc = allocator<T>>
-using deque = eastl::deque<T, Alloc>;
-template<typename T, typename Container = luisa::deque<T>>
-using queue = eastl::queue<T, Container>;
-
-/*
-template<typename T, typename Alloc = allocator<T>>
-using slist = eastl::slist<T, Alloc>;
-template<typename T, typename Alloc = allocator<T>>
-using list = eastl::list<T, Alloc>;
-using eastl::bitvector;
-using eastl::fixed_hash_map;
-using eastl::fixed_hash_multimap;
-using eastl::fixed_map;
-using eastl::fixed_multimap;
-using eastl::fixed_multiset;
-using eastl::fixed_set;
-*/
-/*
-using eastl::lru_cache;
-
-using eastl::vector_map;
-using eastl::vector_multimap;
-using eastl::vector_multiset;
-using eastl::vector_set;
-*/
-using eastl::make_optional;
-using eastl::monostate;
-using eastl::move_only_function;
-using eastl::nullopt;
-using eastl::optional;
-using eastl::variant;
-using eastl::variant_alternative_t;
-using eastl::variant_size_v;
-
 template<typename T = void>
 struct equal_to {
     [[nodiscard]] bool operator()(const T &lhs, const T &rhs) const noexcept { return lhs == rhs; }
@@ -178,50 +94,6 @@ struct equal_to<void> {
     }
 };
 
-#define LUISA_COMPUTE_USE_ABSEIL_HASH_TABLES
-
-#ifdef LUISA_COMPUTE_USE_ABSEIL_HASH_TABLES
-template<typename K, typename V,
-         typename Hash = hash<K>,
-         typename Eq = equal_to<>,
-         typename Allocator = luisa::allocator<std::pair<const K, V>>>
-using unordered_map = absl::flat_hash_map<K, V, Hash, Eq, Allocator>;
-template<typename K,
-         typename Hash = hash<K>,
-         typename Eq = equal_to<>,
-         typename Allocator = luisa::allocator<const K>>
-using unordered_set = absl::flat_hash_set<K, Hash, Eq, Allocator>;
-#else
-using std::unordered_map;
-using std::unordered_set;
-#endif
-/*
-template<typename K, typename V,
-         typename Compare = std::less<>,
-         typename Alloc = luisa::allocator<std::pair<const K, V>>>
-using map = absl::btree_map<K, V, Compare, Alloc>;
-template<typename K, typename V,
-         typename Compare = std::less<>,
-         typename Alloc = luisa::allocator<std::pair<const K, V>>>
-using multimap = absl::btree_multimap<K, V, Compare, Alloc>;
-
-
-
-template<typename K,
-         typename Compare = std::less<>,
-         typename Alloc = luisa::allocator<K>>
-using multiset = absl::btree_multiset<K, Compare, Alloc>;
-template<typename K,
-         typename Compare = std::less<>,
-         typename Alloc = luisa::allocator<K>>
-using set = absl::btree_set<K, Compare, Alloc>;
-*/
-
-//using eastl::bit_cast;
-using eastl::get;
-using eastl::get_if;
-using eastl::holds_alternative;
-using eastl::visit;
 
 struct default_sentinel_t {};
 inline constexpr default_sentinel_t default_sentinel{};
@@ -245,20 +117,5 @@ template<typename F>
     return detail::LazyConstructor<F>(ctor);
 }
 
-#ifndef FMT_STRING
-#define FMT_STRING(...) __VA_ARGS__
-#endif
-
-template<typename FMT, typename... Args>
-[[nodiscard]] inline auto format(FMT &&f, Args &&...args) noexcept {
-    using memory_buffer = fmt::basic_memory_buffer<char, fmt::inline_buffer_size, luisa::allocator<char>>;
-    memory_buffer buffer;
-    fmt::format_to(std::back_inserter(buffer), std::forward<FMT>(f), std::forward<Args>(args)...);
-    return luisa::string{buffer.data(), buffer.size()};
-}
-
-[[nodiscard]] inline auto hash_to_string(uint64_t hash) noexcept {
-    return luisa::format("{:016X}", hash);
-}
 
 }// namespace luisa

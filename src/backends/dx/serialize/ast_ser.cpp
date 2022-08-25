@@ -1,5 +1,6 @@
 #include <serialize/serialize.h>
 #include <vstl/variant_util.h>
+#include <ast/function_builder.h>
 
 namespace luisa::compute {
 using namespace toolhub::db;
@@ -264,6 +265,12 @@ int64 AstSerializer::SerType(Type const* type) {
 		[&] { return vstd::string(type->description()); });
 	return hs;
 }
+Type const* AstSerializer::DeserType(int64 hash) {
+	auto strPtr = typeDict->Get(hash).try_get<vstd::string_view>();
+	if(!strPtr) return nullptr;
+	return Type::from(*strPtr);
+}
+
 template<>
 void AstSerializer::SerExprDerive(UnaryExpr const* expr, IJsonDict* dict) {
 	dict->Set("operand"sv, SerExpr(expr->operand()));
@@ -492,6 +499,7 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 	AddVars(func.local_variables(), "localvar"sv, func.local_variables().size(), localVarDict);
 	//////////////////// Arguments
 	AddVars(func.arguments(), "args"sv, func.arguments().size(), arguments);
+	dict->Set("usagesize"sv, func.builder()->_variable_usages.size());
 	//////////////////// Shared vars
 	AddVars(
 		vstd::CacheEndRange(func.shared_variables()) | vstd::TransformRange([](auto&& v) -> auto const& { return v.second; }),
@@ -527,9 +535,16 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 				count = 0;
 			}
 		}
+		if(count != 0){
+			result <<= 64 - count;
+			(*arr) << result;
+		}
 		dict->Set("callop"sv, std::move(arr));
 	}
+	//////////////////// Tag
+	dict->Set("tag"sv, static_cast<int64>(func.tag()));
 	//////////////////// Block size
+	if(func.tag() == Function::Tag::KERNEL)
 	{
 		auto sz = func.block_size();
 		auto arr = db->CreateArray();
@@ -537,18 +552,15 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 		(*arr) << sz.x << sz.y << sz.z;
 		dict->Set("blocksize"sv, std::move(arr));
 	}
-	//////////////////// Tag
-	dict->Set("tag"sv, static_cast<int64>(func.tag()));
+	
 	//////////////////// Return Type
 	if (func.return_type()) {
 		dict->Set("return"sv, SerType(func.return_type()));
 	}
 	//////////////////// Body
-	dict->Set("body"sv, SerStmt(func.body()));
-	//////////////////// Raytracing
-	dict->Set("raytracing"sv, func.raytracing());
+	SerScope(func.body(), dict.get(), "body"sv);
 	//////////////////// Use atomic
-	dict->Set("atomicfloat"sv, func.is_atomic_float_used());
+	//dict->Set("atomicfloat"sv, func.is_atomic_float_used());
 	return dict;
 }
 
@@ -566,7 +578,7 @@ void AstSerializer::SerializeKernel(Function kernel, IJsonDatabase* db, IJsonDic
 	auto typeDict = db->CreateDict();
 	this->funcDict = funcDict.get();
 	this->typeDict = typeDict.get();
-	SerFunction(kernel);
+	root->Set("kernel"sv, SerNewFunction(kernel));
 	root->Set("funcs"sv, std::move(funcDict));
 	root->Set("types"sv, std::move(typeDict));
 }

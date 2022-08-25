@@ -7,6 +7,7 @@
 #include <new>
 #include <vstl/VAllocator.h>
 #include <EASTL/functional.h>
+#include <core/stl/functional.h>
 namespace vstd {
 template<typename T>
 using function = luisa::move_only_function<T>;

@@ -14,6 +14,9 @@
 #include <core/hash.h>
 #include <core/concepts.h>
 #include <core/stl.h>
+#include <core/stl/string.h>
+#include <core/stl/vector.h>
+#include <core/stl/functional.h>
 
 namespace luisa::compute {
 

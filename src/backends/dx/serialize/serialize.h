@@ -44,6 +44,7 @@ class AstSerializer {
 	Statement* DeserStmt(IJsonDict const* dict);
 	Expression* DeserExpr(IJsonDict const* dict);
 	int64 SerType(Type const* type);
+	Type const* DeserType(int64 hash);
 	int64 SerFunction(Function func);
 	void DeserFunction(detail::FunctionBuilder* builder, IJsonDict const* dict);
 	vstd::unique_ptr<IJsonDict> SerNewFunction(Function func);
