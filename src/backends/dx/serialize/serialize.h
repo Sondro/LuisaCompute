@@ -11,14 +11,26 @@ using namespace toolhub::db;
 class AstSerializer {
 	vstd::optional<vstd::StackAllocator> stackAlloc;
 	IJsonDatabase* db = nullptr;
-	IJsonDict* typeDict = nullptr;
 	IJsonDict* localVarDict = nullptr;
 	IJsonDict* builtinVarDict = nullptr;
 	IJsonDict* sharedVarDict = nullptr;
 	IJsonDict* arguments = nullptr;
-	IJsonDict* funcDict = nullptr;
 	IJsonDict* constDict = nullptr;
-	vstd::HashMap<uint64, Function> callables;
+	IJsonDict* typeDict = nullptr;
+	IJsonDict* funcDict = nullptr;
+	
+	struct Stack {
+		IJsonDict* localVarDict;
+		IJsonDict* builtinVarDict;
+		IJsonDict* sharedVarDict;
+		IJsonDict* arguments;
+		IJsonDict* constDict;
+	};
+	vstd::vector<Stack> stacks;
+	void PushStack();
+	void PopStack();
+
+	vstd::HashMap<uint64, luisa::shared_ptr<detail::FunctionBuilder>> callables;
 	detail::FunctionBuilder* builder = nullptr;
 	void Serialize(Variable const& t, IJsonDict* r);
 	void DeSerialize(Variable& t, IJsonDict const* dict);
@@ -47,6 +59,7 @@ class AstSerializer {
 	Type const* DeserType(int64 hash);
 	int64 SerFunction(Function func);
 	void DeserFunction(detail::FunctionBuilder* builder, IJsonDict const* dict);
+	luisa::shared_ptr<detail::FunctionBuilder> const& DeserFunction(uint64 hash);
 	vstd::unique_ptr<IJsonDict> SerNewFunction(Function func);
 
 	template<typename T, typename... Args>

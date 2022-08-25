@@ -265,11 +265,6 @@ int64 AstSerializer::SerType(Type const* type) {
 		[&] { return vstd::string(type->description()); });
 	return hs;
 }
-Type const* AstSerializer::DeserType(int64 hash) {
-	auto strPtr = typeDict->Get(hash).try_get<vstd::string_view>();
-	if(!strPtr) return nullptr;
-	return Type::from(*strPtr);
-}
 
 template<>
 void AstSerializer::SerExprDerive(UnaryExpr const* expr, IJsonDict* dict) {
@@ -321,7 +316,7 @@ void AstSerializer::SerExprDerive(CallExpr const* expr, IJsonDict* dict) {
 	}
 	dict->Set("arglist"sv, std::move(argList));
 	if (expr->op() == CallOp::CUSTOM) {
-		dict->Set("callable"sv, SerFunction(expr->custom()));
+		dict->Set("custom"sv, SerFunction(expr->custom()));
 	}
 }
 template<>
@@ -373,7 +368,7 @@ void AstSerializer::SerStmtDerive(SwitchStmt const* stmt, IJsonDict* dict) {
 }
 template<>
 void AstSerializer::SerStmtDerive(SwitchCaseStmt const* stmt, IJsonDict* dict) {
-	dict->Set("expr"sv, SerExpr(stmt->expression()));
+	SerExpr(stmt->expression(), dict);
 	SerScope(stmt->body(), dict, "body"sv);
 }
 template<>
@@ -485,13 +480,14 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 	auto AddVars = [&](auto&& vars, vstd::string_view name, size_t reserveSize, IJsonDict*& dst) {
 		auto varsDict = db->CreateDict();
 		varsDict->Reserve(reserveSize);
+		dst = varsDict.get();
 		for (auto&& i : vars) {
 			auto varDict = db->CreateDict();
 			Serialize(i, varDict.get());
 			varsDict->Set(i.uid(), std::move(varDict));
 		}
+
 		dict->Set(name, std::move(varsDict));
-		dst = varsDict.get();
 	};
 	//////////////////// Builtin vars
 	AddVars(func.builtin_variables(), "builtinvar"sv, func.builtin_variables().size(), builtinVarDict);
@@ -506,9 +502,53 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 		"sharedvar"sv,
 		func.shared_variables().size(),
 		sharedVarDict);
+	//////////////////// Captured
+	{
+		auto&& arr = func.builder()->argument_bindings();
+		if (!arr.empty()) {
+			//TODO: binding
+			auto binds = db->CreateArray();
+			binds->Reserve(arr.size());
+			for (auto&& i : arr) {
+				luisa::visit(
+					[&]<typename T>(T const& v) {
+						auto CreateDict = [&](int64 type) {
+							auto d = db->CreateDict();
+							d->Set("type"sv, type);
+							return d;
+						};
+						if constexpr (std::is_same_v<T, detail::FunctionBuilder::BufferBinding>) {
+							vstd::unique_ptr<IJsonDict> d = CreateDict(0);
+							d->Set("handle"sv, v.handle);
+							d->Set("offset"sv, v.offset_bytes);
+							d->Set("size"sv, v.size_bytes);
+							binds->Add(std::move(d));
+						} else if constexpr (std::is_same_v<T, detail::FunctionBuilder::TextureBinding>) {
+							vstd::unique_ptr<IJsonDict> d = CreateDict(1);
+							d->Set("handle"sv, v.handle);
+							d->Set("level"sv, v.level);
+							binds->Add(std::move(d));
+						} else if constexpr (std::is_same_v<T, detail::FunctionBuilder::BindlessArrayBinding>) {
+							vstd::unique_ptr<IJsonDict> d = CreateDict(2);
+							d->Set("handle"sv, v.handle);
+							binds->Add(std::move(d));
+						} else if constexpr (std::is_same_v<T, detail::FunctionBuilder::AccelBinding>) {
+							vstd::unique_ptr<IJsonDict> d = CreateDict(3);
+							d->Set("handle"sv, v.handle);
+							binds->Add(std::move(d));
+						} else {
+							binds->Add(WriteJsonVariant{});
+						}
+					},
+					i);
+			}
+			dict->Set("binds"sv, std::move(binds));
+		}
+	}
 	//////////////////// Constant
 	{
 		auto constDict = db->CreateDict();
+		this->constDict = constDict.get();
 		auto consts = func.constants();
 		constDict->Reserve(consts.size());
 		for (auto&& i : consts) {
@@ -519,6 +559,8 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 		}
 		dict->Set("consts"sv, std::move(constDict));
 	}
+	PushStack();
+	auto popStackTask = vstd::create_disposer([&] { PopStack(); });
 	//////////////////// Callop
 	{
 		auto&& set = func.builtin_callables()._bits;
@@ -527,7 +569,7 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 		int64 result = 0;
 		for (auto i : vstd::range(set.size())) {
 			bool v = set[i];
-			result << 1;
+			result <<= 1;
 			if (v) result |= 1;
 			if ((++count) >= 64) {
 				(*arr) << result;
@@ -535,24 +577,33 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 				count = 0;
 			}
 		}
-		if(count != 0){
+		if (count != 0) {
 			result <<= 64 - count;
 			(*arr) << result;
 		}
 		dict->Set("callop"sv, std::move(arr));
 	}
+	//////////////////// Custom Functions
+	{
+		auto customFuncHash = db->CreateArray();
+		auto&& funcs = func.custom_callables();
+		customFuncHash->Reserve(funcs.size());
+		for (auto&& i : funcs) {
+			(*customFuncHash) << SerFunction(Function(i.get()));
+		}
+		dict->Set("callables"sv, std::move(customFuncHash));
+	}
 	//////////////////// Tag
 	dict->Set("tag"sv, static_cast<int64>(func.tag()));
 	//////////////////// Block size
-	if(func.tag() == Function::Tag::KERNEL)
-	{
+	if (func.tag() == Function::Tag::KERNEL) {
 		auto sz = func.block_size();
 		auto arr = db->CreateArray();
 		arr->Reserve(3);
 		(*arr) << sz.x << sz.y << sz.z;
 		dict->Set("blocksize"sv, std::move(arr));
 	}
-	
+
 	//////////////////// Return Type
 	if (func.return_type()) {
 		dict->Set("return"sv, SerType(func.return_type()));
@@ -582,5 +633,25 @@ void AstSerializer::SerializeKernel(Function kernel, IJsonDatabase* db, IJsonDic
 	root->Set("funcs"sv, std::move(funcDict));
 	root->Set("types"sv, std::move(typeDict));
 }
-
+#define VENGINE_SET_STACK(v) v = stack.v
+void AstSerializer::PushStack() {
+	stacks.emplace_back(Stack{
+		localVarDict,
+		builtinVarDict,
+		sharedVarDict,
+		arguments,
+		constDict});
+}
+void AstSerializer::PopStack() {
+	stacks.erase_last();
+	if (!stacks.empty()) {
+		auto&& stack = *stacks.last();
+		VENGINE_SET_STACK(localVarDict);
+		VENGINE_SET_STACK(builtinVarDict);
+		VENGINE_SET_STACK(sharedVarDict);
+		VENGINE_SET_STACK(arguments);
+		VENGINE_SET_STACK(constDict);
+	}
+}
+#undef VENGINE_SET_STACK
 }// namespace luisa::compute

@@ -118,6 +118,9 @@ ForStmt* AstSerializer::DeserStmtDerive(IJsonDict const* dict) {
 		DeserExpr(var),
 		DeserExpr(cond),
 		DeserExpr(step));
+	auto bodyDict = dict->Get("body"sv).get_or<IJsonArray*>(nullptr);
+	assert(bodyDict);
+	DeserStmtScope(ptr->_body, bodyDict);
 	return ptr;
 }
 template<>
@@ -184,11 +187,15 @@ RefExpr* AstSerializer::DeserExprDerive(Type const* type, IJsonDict const* dict)
 		case Variable::Tag::DISPATCH_ID:
 		case Variable::Tag::DISPATCH_SIZE:
 			varDict = builtinVarDict;
+			break;
 		default:
 			varDict = localVarDict;
 			break;
 	}
 	auto varValueDict = varDict->Get(*uid).get_or<IJsonDict*>(nullptr);
+	if (!varValueDict) {
+		varValueDict = arguments->Get(*uid).get_or<IJsonDict*>(nullptr);
+	}
 	assert(varValueDict);
 	Variable var;
 	DeSerialize(var, varValueDict);
@@ -225,21 +232,12 @@ CallExpr* AstSerializer::DeserExprDerive(Type const* type, IJsonDict const* dict
 	if (op == CallOp::CUSTOM) {
 		auto custom = dict->Get("custom"sv).get_or<int64>(0);
 		assert(custom);
-		auto&& func =
-			callables
-				.Emplace(
-					custom,
-					vstd::LazyEval([&] {
-						auto customDict = funcDict->Get(custom).get_or<IJsonDict*>(nullptr);
-						assert(customDict);
-						auto builder = new detail::FunctionBuilder();
-						DeserFunction(builder, customDict);
-						return builder;
-					}))
-				.Value();
+		auto ite = callables.Find(custom);
+		assert(ite);
+		auto&& func = ite.Value();
 		return Alloc<CallExpr>(
 			type,
-			func,
+			Function(func.get()),
 			std::move(argList));
 	} else {
 		return Alloc<CallExpr>(
@@ -262,7 +260,7 @@ CastExpr* AstSerializer::DeserExprDerive(Type const* type, IJsonDict const* dict
 
 void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict const* dict) {
 	detail::FunctionBuilder::push(builder);
-	auto popTask = vstd::create_disposer([&]{
+	auto popTask = vstd::create_disposer([&] {
 		detail::FunctionBuilder::pop(builder);
 	});
 	auto GetVar = [&](vstd::string_view name, luisa::vector<Variable>& dst, IJsonDict*& sub) {
@@ -297,11 +295,58 @@ void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict co
 	GetMapVar("sharedvar"sv, builder->_shared_variables, sharedVarDict);
 	{
 		auto usageSize = dict->Get("usagesize"sv).get_or<int64>(0);
-		if(usageSize > 0){
+		if (usageSize > 0) {
 			builder->_variable_usages.resize(usageSize);
-			for(auto i : vstd::range(usageSize)){
+			for (auto i : vstd::range(usageSize)) {
 				builder->_variable_usages[i] = Usage::NONE;
 			}
+		}
+	}
+	//////////////////// Captured
+	{
+		auto binds = dict->Get("binds"sv).get_or<IJsonArray*>(nullptr);
+		assert(binds);
+		auto&& arr = builder->_argument_bindings;
+		arr.reserve(binds->Length());
+		for (auto&& i : *binds) {
+			i.visit([&]<typename T>(T const& t) {
+				if constexpr (std::is_same_v<T, IJsonDict*>) {
+					int64 type = t->Get("type"sv).template get_or<int64>(0);
+					switch (type) {
+						//Buffer
+						case 0:
+							arr.emplace_back(
+								detail::FunctionBuilder::BufferBinding(
+									t->Get("handle"sv).template get_or<int64>(0),
+									t->Get("offset"sv).template get_or<int64>(0),
+									t->Get("size"sv).template get_or<int64>(0)));
+							break;
+						//Texture
+						case 1:
+							arr.emplace_back(
+								detail::FunctionBuilder::TextureBinding(
+									t->Get("handle"sv).template get_or<int64>(0),
+									t->Get("level"sv).template get_or<int64>(0)));
+							break;
+						//Bindless
+						case 2:
+							arr.emplace_back(
+								detail::FunctionBuilder::BindlessArrayBinding(
+									t->Get("handle"sv).template get_or<int64>(0)));
+							break;
+						//Accel:
+						case 3:
+							arr.emplace_back(
+								detail::FunctionBuilder::AccelBinding(
+									t->Get("handle"sv).template get_or<int64>(0)));
+							break;
+					}
+				} else if constexpr (std::is_same_v<T, std::nullptr_t>) {
+					arr.emplace_back(luisa::monostate{});
+				} else {
+					assert(false);
+				}
+			});
 		}
 	}
 	//////////////////// Constant
@@ -312,12 +357,15 @@ void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict co
 		for (auto&& i : *constDict) {
 			auto v = i.value.get_or<IJsonDict*>(nullptr);
 			assert(v);
-			auto typeHash = v->Get("consttype"sv).get_or<int64>(0);
+			auto typeHash = v->Get("consttype"sv).try_get<int64>();
 			auto&& result = builder->_captured_constants.try_emplace(i.key.get_or<int64>(0)).first->second;
-			result.type = DeserType(typeHash);
+			if (typeHash)
+				result.type = DeserType(*typeHash);
 			result.data = DeSerialize(v);
 		}
 	}
+	PushStack();
+	auto popStackTask = vstd::create_disposer([&] { PopStack(); });
 	//////////////////// Callop
 	{
 		auto callOpsDict = dict->Get("callop"sv).get_or<IJsonArray*>(nullptr);
@@ -334,17 +382,29 @@ void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict co
 			uint64 bitMask = MAX_BITMASK;
 			while (bitMask != 0 && index < call_op_count) {
 				bits[index] = (integer & bitMask) != 0;
+
 				index++;
 				bitMask >>= 1;
 			}
+		}
+	}
+	//////////////////// Custom Functions
+	{
+		auto customFuncHash = dict->Get("callables"sv).get_or<IJsonArray*>(nullptr);
+		assert(customFuncHash);
+		builder->_used_custom_callables.reserve(customFuncHash->Length());
+		for (auto&& i : *customFuncHash) {
+			auto hashPtr = i.try_get<int64>();
+			assert(hashPtr);
+			builder->_used_custom_callables.emplace_back(luisa::shared_ptr<const detail::FunctionBuilder>(
+				DeserFunction(*hashPtr)));
 		}
 	}
 	//////////////////// Tag
 	builder->_tag = static_cast<Function::Tag>(
 		dict->Get("tag"sv).get_or<int64>(0));
 	//////////////////// Block size
-	if(builder->tag() == Function::Tag::KERNEL)
-	{
+	if (builder->tag() == Function::Tag::KERNEL) {
 		auto sizeArr = dict->Get("blocksize"sv).get_or<IJsonArray*>(nullptr);
 		assert(sizeArr->Length() == 3);
 		auto GetInteger = [&](size_t i) {
@@ -357,7 +417,7 @@ void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict co
 			GetInteger(1),
 			GetInteger(2)};
 	}
-	
+
 	//////////////////// Return Type
 	{
 		auto typeHashPtr = dict->Get("return"sv).try_get<int64>();
@@ -373,6 +433,26 @@ void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict co
 		assert(bodyArr);
 		DeserStmtScope(builder->_body, bodyArr);
 	}
+}
+luisa::shared_ptr<detail::FunctionBuilder> const& AstSerializer::DeserFunction(uint64 hash) {
+	return callables.Emplace(
+						hash,
+						vstd::LazyEval([&] {
+							auto funcV = funcDict->Get(hash).get_or<IJsonDict*>(nullptr);
+							assert(funcV);
+							auto func = luisa::make_shared<detail::FunctionBuilder>(Function::Tag::CALLABLE);
+							DeserFunction(func.get(), funcV);
+							return func;
+						}))
+		.Value();
+}
+
+Type const* AstSerializer::DeserType(int64 hash) {
+	auto strPtr = typeDict->Get(hash).try_get<vstd::string_view>();
+	assert(strPtr);
+	auto type = Type::from(*strPtr);
+	assert(type);
+	return type;
 }
 
 void AstSerializer::DeserializeKernel(detail::FunctionBuilder* builder, IJsonDict const* dict) {
@@ -443,10 +523,10 @@ Expression* AstSerializer::DeserExpr(IJsonDict const* dict) {
 	assert(hashPtr);
 	auto tagPtr = dict->Get("exprtag"sv).try_get<int64>();
 	assert(tagPtr);
-	auto typePtr = dict->Get("exprtype"sv).try_get<vstd::string_view>();
+	auto typePtr = dict->Get("exprtype"sv).try_get<int64>();
 	Type const* type;
 	if (typePtr) {
-		type = Type::from(*typePtr);
+		type = DeserType(*typePtr);
 	} else {
 		type = nullptr;
 	}
