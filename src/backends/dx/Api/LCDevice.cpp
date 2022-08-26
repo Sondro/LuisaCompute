@@ -157,13 +157,14 @@ void LCDevice::set_io_visitor(BinaryIOVisitor* visitor) noexcept {
 }
 
 uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noexcept {
-	//auto code = CodegenUtility::Codegen(kernel, shaderPaths.dataFolder);
+	auto code = CodegenUtility::Codegen(kernel, shaderPaths.dataFolder);
+	/*
 	AstSerializer ser{};
 	auto db = vstd::create_unique(CreateDatabase());
 	ser.SerializeKernel(kernel, db.get());
 	luisa::compute::detail::FunctionBuilder builder(Function::Tag::KERNEL);
 	ser.DeserializeKernel(&builder, db->GetRootNode());
-	auto code = CodegenUtility::Codegen(Function(&builder), shaderPaths.dataFolder);
+	auto code = CodegenUtility::Codegen(Function(&builder), shaderPaths.dataFolder);*/
 	vstd::MD5 md5({reinterpret_cast<vbyte const*>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
 	return reinterpret_cast<uint64>(
 		ComputeShader::CompileCompute(

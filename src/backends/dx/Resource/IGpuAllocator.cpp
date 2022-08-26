@@ -25,10 +25,11 @@ public:
 		uint32_t mipCount,
 		ID3D12Heap** heap, uint64_t* offset,
 		bool isRenderTexture) override {
+		using namespace D3D12MA;
 		D3D12_HEAP_FLAGS heapFlag = isRenderTexture ? D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES : D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
-		D3D12MA::ALLOCATION_DESC desc;
+		ALLOCATION_DESC desc;
 		desc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-		desc.Flags = D3D12MA::ALLOCATION_FLAGS::ALLOCATION_FLAG_NONE;
+		desc.Flags = ALLOCATION_FLAGS::ALLOCATION_FLAG_NONE;
 		desc.ExtraHeapFlags = heapFlag;
 		desc.CustomPool = nullptr;
 		D3D12_RESOURCE_ALLOCATION_INFO info;
@@ -41,7 +42,7 @@ public:
 			dimension,
 			depthSlice,
 			mipCount);
-		D3D12MA::Allocation* alloc;
+		Allocation* alloc;
 		{
 			std::lock_guard lck(mtx);
 			allocator->AllocateMemory(&desc, &info, &alloc);
@@ -55,15 +56,16 @@ public:
 		uint64_t targetSizeInBytes,
 		D3D12_HEAP_TYPE heapType,
 		ID3D12Heap** heap, uint64_t* offset) override {
-		D3D12MA::ALLOCATION_DESC desc;
+		using namespace D3D12MA;
+		ALLOCATION_DESC desc;
 		desc.HeapType = heapType;
-		desc.Flags = D3D12MA::ALLOCATION_FLAGS::ALLOCATION_FLAG_NONE;
+		desc.Flags = ALLOCATION_FLAGS::ALLOCATION_FLAG_NONE;
 		desc.ExtraHeapFlags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 		desc.CustomPool = nullptr;
 		D3D12_RESOURCE_ALLOCATION_INFO info;
 		info.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 		info.SizeInBytes = CalcPlacedOffsetAlignment(targetSizeInBytes);
-		D3D12MA::Allocation* alloc;
+		Allocation* alloc;
 		{
 			std::lock_guard lck(mtx);
 			allocator->AllocateMemory(&desc, &info, &alloc);
@@ -73,14 +75,15 @@ public:
 		return reinterpret_cast<uint64>(alloc);
 	}
 	void Release(uint64 alloc) override {
+		using namespace D3D12MA;
 		std::lock_guard lck(mtx);
-		reinterpret_cast<D3D12MA::Allocation*>(alloc)->Release();
+		reinterpret_cast<Allocation*>(alloc)->Release();
 	}
 	DefaultAllocator(
 		Device* device) {
-
-		D3D12MA::ALLOCATOR_DESC desc;
-		desc.Flags = D3D12MA::ALLOCATOR_FLAGS::ALLOCATOR_FLAG_SINGLETHREADED;
+		using namespace D3D12MA;
+		ALLOCATOR_DESC desc;
+		desc.Flags = ALLOCATOR_FLAGS::ALLOCATOR_FLAG_SINGLETHREADED | ALLOCATOR_FLAGS::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
 		desc.pAdapter = device->adapter.Get();
 		desc.pAllocationCallbacks = nullptr;
 		desc.pDevice = device->device.Get();

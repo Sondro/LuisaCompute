@@ -64,7 +64,7 @@ ComputeShader* ComputeShader::CompileCompute(
 	vstd::optional<vstd::MD5> const& checkMD5) {
 	using namespace ComputeShaderDetail;
 	bool saveCacheFile;
-	static constexpr bool PRINT_CODE = true;
+	static constexpr bool PRINT_CODE = false;
 
 	auto CompileNewCompute = [&]<bool WriteCache>() {
 		auto&& str = codegen();
