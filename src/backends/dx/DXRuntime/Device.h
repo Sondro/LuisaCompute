@@ -18,7 +18,7 @@ class IGpuAllocator;
 class DescriptorHeap;
 class ComputeShader;
 class PipelineLibrary;
-class DXShaderCompiler;
+class ShaderCompiler;
 class BinaryStream : public luisa::compute::IBinaryStream, public vstd::IOperatorNewBase {
 public:
 	BinaryReader reader;
@@ -57,6 +57,7 @@ public:
 		ComputeShader* Get(Device* self);
 		~LazyLoadShader();
 	};
+	bool SupportMeshShader() const;
 
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
 	Microsoft::WRL::ComPtr<ID3D12Device5> device;
@@ -88,6 +89,6 @@ public:
 	Device(Device&&) = delete;
 	~Device();
 	void WaitFence(ID3D12Fence* fence, uint64 fenceIndex);
-	static DXShaderCompiler* Compiler();
+	static ShaderCompiler* Compiler();
 };
 }// namespace toolhub::directx

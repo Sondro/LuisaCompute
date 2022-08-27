@@ -10,7 +10,7 @@
 #include <vstl/BinaryReader.h>
 namespace toolhub::directx {
 static std::mutex gDxcMutex;
-static vstd::optional<DXShaderCompiler> gDxcCompiler;
+static vstd::optional<ShaderCompiler> gDxcCompiler;
 static int32 gDxcRefCount = 0;
 
 SerializeVisitor::SerializeVisitor(
@@ -85,7 +85,7 @@ ComputeShader* Device::LazyLoadShader::Get(Device* self) {
 	}
 	return shader.get();
 }
-DXShaderCompiler* Device::Compiler() {
+ShaderCompiler* Device::Compiler() {
 	return gDxcCompiler;
 }
 Device::Device(ShaderPaths const& path, uint index)
@@ -163,6 +163,12 @@ Device::Device(ShaderPaths const& path, uint index)
 		gDxcCompiler.New();
 	}
 }
+bool Device::SupportMeshShader() const {
+	D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureData = {};
+	device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData));
+	return (featureData.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1);
+}
+
 BinaryStream::BinaryStream(vstd::string const& path)
 	: reader(path) {}
 size_t BinaryStream::length() const {
