@@ -22,7 +22,7 @@
 #include <ast/function_builder.h>
 
 namespace luisa::compute {
-
+class CmdSerde;
 #define LUISA_COMPUTE_RUNTIME_COMMANDS \
     BufferUploadCommand,               \
         BufferDownloadCommand,         \
@@ -114,12 +114,15 @@ public:
 };
 
 class BufferUploadCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _handle;
     size_t _offset;
     size_t _size;
     const void *_data;
+    BufferUploadCommand()
+        : Command{Command::Tag::EBufferUploadCommand} {}
 
 public:
     BufferUploadCommand(uint64_t handle, size_t offset_bytes, size_t size_bytes, const void *data) noexcept
@@ -133,12 +136,15 @@ public:
 };
 
 class BufferDownloadCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _handle;
     size_t _offset;
     size_t _size;
     void *_data;
+    BufferDownloadCommand()
+        : Command{Command::Tag::EBufferDownloadCommand} {}
 
 public:
     BufferDownloadCommand(uint64_t handle, size_t offset_bytes, size_t size_bytes, void *data) noexcept
@@ -152,6 +158,7 @@ public:
 };
 
 class BufferCopyCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _src_handle;
@@ -159,6 +166,8 @@ private:
     size_t _src_offset;
     size_t _dst_offset;
     size_t _size;
+    BufferCopyCommand()
+        : Command{Command::Tag::EBufferCopyCommand} {}
 
 public:
     BufferCopyCommand(uint64_t src, uint64_t dst, size_t src_offset, size_t dst_offset, size_t size) noexcept
@@ -173,6 +182,7 @@ public:
 };
 
 class BufferToTextureCopyCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _buffer_handle;
@@ -181,6 +191,8 @@ private:
     PixelStorage _pixel_storage;
     uint _texture_level;
     uint _texture_size[3];
+    BufferToTextureCopyCommand()
+        : Command{Command::Tag::EBufferToTextureCopyCommand} {}
 
 public:
     BufferToTextureCopyCommand(uint64_t buffer, size_t buffer_offset,
@@ -200,6 +212,7 @@ public:
 };
 
 class TextureToBufferCopyCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _buffer_handle;
@@ -208,6 +221,8 @@ private:
     PixelStorage _pixel_storage;
     uint _texture_level;
     uint _texture_size[3];
+    TextureToBufferCopyCommand()
+        : Command{Command::Tag::ETextureToBufferCopyCommand} {}
 
 public:
     TextureToBufferCopyCommand(uint64_t buffer, size_t buffer_offset,
@@ -226,6 +241,7 @@ public:
 };
 
 class TextureCopyCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     PixelStorage _storage;
@@ -234,6 +250,8 @@ private:
     uint _size[3];
     uint _src_level;
     uint _dst_level;
+    TextureCopyCommand()
+        : Command{Command::Tag::ETextureCopyCommand} {}
 
 public:
     TextureCopyCommand(PixelStorage storage, uint64_t src_handle, uint64_t dst_handle,
@@ -251,6 +269,7 @@ public:
 };
 
 class TextureUploadCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _handle;
@@ -258,6 +277,8 @@ private:
     uint _level;
     uint _size[3];
     const void *_data;
+    TextureUploadCommand()
+        : Command{Command::Tag::ETextureUploadCommand} {}
 
 public:
     TextureUploadCommand(uint64_t handle, PixelStorage storage,
@@ -274,6 +295,7 @@ public:
 };
 
 class TextureDownloadCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _handle;
@@ -281,6 +303,8 @@ private:
     uint _level;
     uint _size[3];
     void *_data;
+    TextureDownloadCommand()
+        : Command{Command::Tag::ETextureDownloadCommand} {}
 
 public:
     TextureDownloadCommand(uint64_t handle, PixelStorage storage,
@@ -297,6 +321,7 @@ public:
 };
 
 class ShaderDispatchCommand final : public Command {
+    friend class CmdSerde;
 
 public:
     struct alignas(8) Argument {
@@ -356,23 +381,22 @@ public:
             : Argument{Tag::ACCEL}, handle{handle} {}
     };
 
-    using ArgumentBuffer = std::array<std::byte, 4000u>;
-
 private:
     uint64_t _handle;
     Function _kernel;
-    size_t _argument_buffer_size{0u};
     uint _dispatch_size[3]{};
     uint32_t _argument_count{0u};
-    luisa::unique_ptr<ArgumentBuffer> _argument_buffer;
+    luisa::vector<std::byte> _argument_buffer;
 
 private:
+    ShaderDispatchCommand() : Command{Command::Tag::EShaderDispatchCommand} {}
     void _encode_pending_bindings() noexcept;
     void _encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept;
     void _encode_texture(uint64_t handle, uint32_t level) noexcept;
     void _encode_uniform(const void *data, size_t size) noexcept;
     void _encode_bindless_array(uint64_t handle) noexcept;
     void _encode_accel(uint64_t handle) noexcept;
+    std::byte *_emplace_space(size_t size);
 
 public:
     explicit ShaderDispatchCommand(uint64_t handle, Function kernel) noexcept;
@@ -392,8 +416,9 @@ public:
 
     template<typename Visit>
     void decode(Visit &&visit) const noexcept {
-        auto p = _argument_buffer->data();
-        while (p < _argument_buffer->data() + _argument_buffer_size) {
+        auto p = _argument_buffer.data();
+        auto end = _argument_buffer.data() + _argument_buffer.size();
+        while (p < end) {
             Argument argument{};
             std::memcpy(&argument, p, sizeof(Argument));
             switch (argument.tag) {
@@ -453,6 +478,7 @@ enum struct AccelBuildRequest : uint32_t {
 };
 
 class MeshBuildCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _handle;
@@ -464,6 +490,8 @@ private:
     uint64_t _triangle_buffer;
     size_t _triangle_buffer_offset;
     size_t _triangle_buffer_size;
+    MeshBuildCommand()
+        : Command{Command::Tag::EMeshBuildCommand} {}
 
 public:
     MeshBuildCommand(uint64_t handle, AccelBuildRequest request,
@@ -484,6 +512,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(MeshBuildCommand)
 };
 class AccelBuildCommand final : public Command {
+    friend class CmdSerde;
 
 public:
     struct alignas(16) Modification {
@@ -516,6 +545,8 @@ private:
     uint32_t _instance_count;
     AccelBuildRequest _request;
     luisa::vector<Modification> _modifications;
+    AccelBuildCommand()
+        : Command{Command::Tag::EAccelBuildCommand} {}
 
 public:
     AccelBuildCommand(uint64_t handle, uint32_t instance_count,
@@ -531,9 +562,12 @@ public:
 };
 
 class BindlessArrayUpdateCommand final : public Command {
+    friend class CmdSerde;
 
 private:
     uint64_t _handle;
+    BindlessArrayUpdateCommand()
+        : Command{Command::Tag::EBindlessArrayUpdateCommand} {}
 
 public:
     explicit BindlessArrayUpdateCommand(uint64_t handle) noexcept

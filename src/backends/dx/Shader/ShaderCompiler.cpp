@@ -136,9 +136,29 @@ extern "C" __declspec(dllexport) void ConsoleTest() {
 		std::cout << "Input shader file name: ";
 		std::cin >> fileName;
 		if (fileName == "exit") return;
+		BinaryReader read(fileName);
+		if (!read) {
+			std::cout << "illegal file path!\n";
+			break;
+		}
+		auto vec = read.Read();
 		//TODO: read file
 		std::cout << "Input compile arguments: (input \"end\" to finish)";
 		vstd::vector<vstd::string> args;
+		args.reserve(32);
+		auto fixedArgs = {
+			"/Qstrip_debug",
+			"/Qstrip_reflect",
+			"/Qstrip_priv",
+			"/enable_unbounded_descriptor_tables",
+			"/Qstrip_rootsignature",
+			"/Gfa",
+			"/all-resources-bound",
+			"-HV 2021"
+		};
+		for(auto&& i : fixedArgs){
+			args.emplace_back(i);
+		}
 		while (true) {
 			vstd::string a;
 			std::cin >> a;
@@ -148,6 +168,11 @@ extern "C" __declspec(dllexport) void ConsoleTest() {
 				args.emplace_back(std::move(a));
 			}
 		}
+		c.CustomCompile(
+			vstd::string_view(
+				reinterpret_cast<char const*>(vec.data()),
+				vec.size()),
+			args);
 		//TODO: compile
 	}
 }

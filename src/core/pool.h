@@ -21,7 +21,7 @@ namespace luisa {
  * @tparam thread_safe whether the pool is thread-safe
  */
 template<typename T, bool thread_safe = true>
-class Pool : public thread_safety<conditional_mutex_t<true>> {
+class Pool : public thread_safety<conditional_mutex_t<true, luisa::spin_mutex>> {
 
 public:
     static constexpr auto block_size = 64u;

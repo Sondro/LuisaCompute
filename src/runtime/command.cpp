@@ -10,7 +10,11 @@ namespace luisa::compute {
 void Command::recycle() {
     _recycle();
 }
-
+std::byte *ShaderDispatchCommand::_emplace_space(size_t size) {
+    size_t sz = _argument_buffer.size();
+    _argument_buffer.resize(_argument_buffer.size() + size);
+    return _argument_buffer.data() + sz;
+}
 inline void ShaderDispatchCommand::_encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept {
     /*if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
@@ -32,10 +36,10 @@ inline void ShaderDispatchCommand::_encode_buffer(uint64_t handle, size_t offset
     auto variable_uid = _kernel.arguments()[_argument_count].uid();
     auto usage = _kernel.variable_usage(variable_uid);*/
     BufferArgument argument{handle, offset, size};
+   
     std::memcpy(
-        _argument_buffer->data() + _argument_buffer_size,
+        _emplace_space(sizeof(BufferArgument)),
         &argument, sizeof(BufferArgument));
-    _argument_buffer_size += sizeof(BufferArgument);
     _argument_count++;
 }
 
@@ -61,9 +65,8 @@ inline void ShaderDispatchCommand::_encode_texture(uint64_t handle, uint32_t lev
     auto usage = _kernel.variable_usage(variable_uid);*/
     TextureArgument argument{handle, level};
     std::memcpy(
-        _argument_buffer->data() + _argument_buffer_size,
+        _emplace_space(sizeof(TextureArgument)),
         &argument, sizeof(TextureArgument));
-    _argument_buffer_size += sizeof(TextureArgument);
     _argument_count++;
 }
 
@@ -89,12 +92,11 @@ inline void ShaderDispatchCommand::_encode_uniform(const void *data, size_t size
             t->description(), t->size());
     }
     auto variable_uid = _kernel.arguments()[_argument_count].uid();*/
-    auto arg_ptr = _argument_buffer->data() + _argument_buffer_size;
+    auto arg_ptr = _emplace_space(sizeof(UniformArgument) + size);
     auto data_ptr = arg_ptr + sizeof(UniformArgument);
     UniformArgument argument{data_ptr, size};
     std::memcpy(arg_ptr, &argument, sizeof(UniformArgument));
     std::memcpy(data_ptr, data, size);
-    _argument_buffer_size += sizeof(UniformArgument) + size;
     _argument_count++;
 }
 
@@ -112,8 +114,10 @@ void ShaderDispatchCommand::set_dispatch_size(uint3 launch_size) noexcept {
 }
 
 ShaderDispatchCommand::ShaderDispatchCommand(uint64_t handle, Function kernel) noexcept
-    : Command{Command::Tag::EShaderDispatchCommand}, _handle{handle}, _kernel(kernel),
-      _argument_buffer{luisa::make_unique<ArgumentBuffer>()} { _encode_pending_bindings(); }
+    : Command{Command::Tag::EShaderDispatchCommand}, _handle{handle}, _kernel(kernel) {
+    _argument_buffer.reserve(256);
+    _encode_pending_bindings(); 
+}
 
 inline void ShaderDispatchCommand::_encode_bindless_array(uint64_t handle) noexcept {
     /*if (_argument_count >= _kernel.arguments().size()) [[unlikely]] {
@@ -121,12 +125,7 @@ inline void ShaderDispatchCommand::_encode_bindless_array(uint64_t handle) noexc
             "Invalid bindless array argument at index {}.",
             _argument_count);
     }*/
-    if (_argument_buffer_size + sizeof(BindlessArrayArgument) > _argument_buffer->size()) [[unlikely]] {
-        LUISA_ERROR_WITH_LOCATION(
-            "Failed to encode bindless array. "
-            "Shader argument buffer exceeded size limit {}.",
-            _argument_buffer->size());
-    }
+    
     /*
     if (auto t = _kernel.arguments()[_argument_count].type();
         !t->is_bindless_array()) {
@@ -136,9 +135,8 @@ inline void ShaderDispatchCommand::_encode_bindless_array(uint64_t handle) noexc
     }*/
     BindlessArrayArgument argument{handle};
     std::memcpy(
-        _argument_buffer->data() + _argument_buffer_size,
+        _emplace_space(sizeof(BindlessArrayArgument)),
         &argument, sizeof(BindlessArrayArgument));
-    _argument_buffer_size += sizeof(BindlessArrayArgument);
     _argument_count++;
 }
 
@@ -162,8 +160,7 @@ inline void ShaderDispatchCommand::_encode_accel(uint64_t handle) noexcept {
             t->description(), _argument_count);
     }*/
     AccelArgument argument{handle};
-    std::memcpy(_argument_buffer->data() + _argument_buffer_size, &argument, size);
-    _argument_buffer_size += size;
+    std::memcpy(_emplace_space(size), &argument, size);
     _argument_count++;
 }
 

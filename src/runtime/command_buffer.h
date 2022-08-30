@@ -12,8 +12,9 @@ namespace luisa::compute {
 
 class Command;
 class Stream;
-
+class CmdSerde;
 class LC_RUNTIME_API CommandBuffer {
+    friend class CmdSerde;
 
 public:
     struct Commit {};
@@ -47,7 +48,7 @@ public:
     // compound commands
     template<typename... T>
     decltype(auto) operator<<(std::tuple<T...> args) &noexcept {
-        auto encode = [this]<size_t... i>(std::tuple<T...> a, std::index_sequence<i...>) noexcept -> decltype(auto) {
+        auto encode = [this]<size_t... i>(std::tuple<T...> a, std::index_sequence<i...>) noexcept->decltype(auto) {
             return (*this << ... << std::move(std::get<i>(a)));
         };
         return encode(std::move(args), std::index_sequence_for<T...>{});

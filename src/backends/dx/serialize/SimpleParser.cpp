@@ -2,7 +2,7 @@
 #include <serialize/ParserException.h>
 #include <serialize/DatabaseInclude.h>
 #include <vstl/BinaryReader.h>
-#include <serialize/Parser/StateRecorder.h>
+#include <serialize/StateRecorder.h>
 namespace toolhub::db {
 namespace parser {
 enum class OutsideState : vbyte {

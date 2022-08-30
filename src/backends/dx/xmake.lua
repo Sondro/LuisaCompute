@@ -29,15 +29,14 @@ function BuildProject(config)
         set_kind(projectType)
     end
     local unityBuildBatch = GetValue(config.unityBuildBatch)
-    if (unityBuildBatch == nil) then
-        unityBuildBatch = 1;
+    if (unityBuildBatch ~= nil) and (unityBuildBatch > 1) then
+        add_rules("c.unity_build", {
+            batchsize = unityBuildBatch
+        })
+        add_rules("c++.unity_build", {
+            batchsize = unityBuildBatch
+        })
     end
-    add_rules("c.unity_build", {
-        batchsize = unityBuildBatch
-    })
-    add_rules("c++.unity_build", {
-        batchsize = unityBuildBatch
-    })
     SetException(config.exception)
     if is_mode("release") then
         set_optimize("aggressive")
@@ -103,7 +102,7 @@ BuildProject({
     projectName = "luisa-compute-backend-dx",
     projectType = "shared",
     event = function()
-        add_files("Api/**.cpp", "DXRuntime/**.cpp", "Resource/**.cpp", "serialize/**.cpp", "Shader/**.cpp")
+        add_files("Api/**.cpp", "DXRuntime/**.cpp", "Resource/**.cpp", "Shader/**.cpp", "serialize/**.cpp")
         add_defines(Defines)
         add_includedirs(IncludePath)
         add_rules("copy_dll", "copy_to_build")
@@ -122,7 +121,7 @@ BuildProject({
 })
 BuildProject({
     projectName = "lc_test",
-    projectType = "shared",
+    projectType = "binary",
     event = function()
         add_files("build/test/test_dsl.cpp")
         add_defines(Defines)

@@ -10,8 +10,10 @@
 #include <runtime/command.h>
 
 namespace luisa::compute {
+class CmdSerde;
 
 class LC_RUNTIME_API CommandList : concepts::Noncopyable {
+    friend class CmdSerde;
 
 private:
     luisa::vector<Command *> _commands;
@@ -34,7 +36,7 @@ public:
     [[nodiscard]] auto size() const noexcept { return _commands.size(); }
 
     // for debug
-  //  [[nodiscard]] nlohmann::json dump_json() const noexcept;
+    //  [[nodiscard]] nlohmann::json dump_json() const noexcept;
 };
 
 }// namespace luisa::compute
