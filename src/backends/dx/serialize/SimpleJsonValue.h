@@ -190,12 +190,11 @@ public:
 	vstd::Iterator<JsonKeyPair> begin() const& override;
 	vstd::Iterator<MoveJsonKeyPair> begin() && override;
 	size_t Length() const override;
-	vstd::vector<vbyte> Serialize() const override;
-	void Serialize(vstd::vector<vbyte>& vec) const override;
-	void M_GetSerData(vstd::vector<vbyte>& arr) const;
-	void LoadFromSer(vstd::span<vbyte const>& arr);
-	void LoadFromSer_DiffEnding(vstd::span<vbyte const>& arr);
-	bool Read(vstd::span<vbyte const> sp,
+	void Serialize(luisa::vector<std::byte>& vec) const override;
+	void M_GetSerData(luisa::vector<std::byte>& arr) const;
+	void LoadFromSer(vstd::span<std::byte const>& arr);
+	void LoadFromSer_DiffEnding(vstd::span<std::byte const>& arr);
+	bool Read(vstd::span<std::byte const> sp,
 			  bool clearLast) override;
 	void Reset() override;
 	void Reserve(size_t capacity) override;
@@ -222,7 +221,7 @@ public:
 	void Dispose() override;
 	SimpleBinaryJson* MGetDB() const { return db; }
 	IJsonDatabase* GetDB() const override;
-	vstd::vector<SimpleJsonVariant, VEngine_AllocType::VEngine, 4> arr;
+	vstd::vector<SimpleJsonVariant> arr;
 	SimpleJsonValueArray(SimpleBinaryJson* db);
 	~SimpleJsonValueArray();
 	/* SimpleJsonValueArray(
@@ -233,12 +232,11 @@ public:
 	vstd::optional<ParsingException> Parse(
 		vstd::string_view str,
 		bool clearLast) override;
-	vstd::vector<vbyte> Serialize() const override;
-	void Serialize(vstd::vector<vbyte>& vec) const override;
-	void M_GetSerData(vstd::vector<vbyte>& result) const;
-	void LoadFromSer(vstd::span<vbyte const>& arr);
-	void LoadFromSer_DiffEnding(vstd::span<vbyte const>& arr);
-	bool Read(vstd::span<vbyte const> sp, bool clearLast) override;
+	void Serialize(luisa::vector<std::byte>& vec) const override;
+	void M_GetSerData(luisa::vector<std::byte>& result) const;
+	void LoadFromSer(vstd::span<std::byte const>& arr);
+	void LoadFromSer_DiffEnding(vstd::span<std::byte const>& arr);
+	bool Read(vstd::span<std::byte const> sp, bool clearLast) override;
 	void Reset() override;
 	vstd::vector<ReadJsonVariant> Get(vstd::span<size_t> indices) const override;
 	void Set(vstd::span<std::pair<size_t, WriteJsonVariant>> values) override;

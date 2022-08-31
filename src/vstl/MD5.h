@@ -1,6 +1,5 @@
 #pragma once
 #include <vstl/Common.h>
-#include <vstl/Serializer.h>
 namespace vstd {
 static constexpr size_t MD5_SIZE = 16;
 
@@ -50,28 +49,5 @@ struct hash<MD5> {
 		return dataHasher(m.ToBinary());
 	}
 };
-template<>
-struct SerDe<MD5> {
-	static MD5 Get(eastl::span<uint8_t const>& sp) {
-		MD5::MD5Data data;
-		data.data0 = SerDe<uint64>::Get(sp);
-		data.data1 = SerDe<uint64>::Get(sp);
-		return MD5(data);
-	}
-	static void Set(MD5 const& data, vector<uint8_t>& arr) {
-		auto&& dd = data.ToBinary();
-		SerDe<uint64>::Set(dd.data0, arr);
-		SerDe<uint64>::Set(dd.data1, arr);
-	}
-};
-template<>
-struct compare<MD5> {
-	int32 operator()(MD5 const& a, MD5 const& b) const {
-		if (a.ToBinary().data0 > b.ToBinary().data0) return 1;
-		if (a.ToBinary().data0 < b.ToBinary().data0) return -1;
-		if (a.ToBinary().data1 > b.ToBinary().data1) return 1;
-		if (a.ToBinary().data1 < b.ToBinary().data1) return -1;
-		return 0;
-	}
-};
+
 }// namespace vstd

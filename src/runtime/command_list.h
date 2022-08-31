@@ -10,10 +10,12 @@
 #include <runtime/command.h>
 
 namespace luisa::compute {
-class CmdSerde;
+class CmdSer;
+class CmdDeser;
 
 class LC_RUNTIME_API CommandList : concepts::Noncopyable {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     luisa::vector<Command *> _commands;

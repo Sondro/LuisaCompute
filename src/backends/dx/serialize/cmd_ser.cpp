@@ -1,80 +1,66 @@
-#include "cmd_serde.h"
+#include "cmd_ser.h"
 namespace luisa::compute {
-template<typename T>
-	requires(std::is_trivial_v<T> && !std::is_pointer_v<T>)
-CmdSerde::Serializer& CmdSerde::Serializer::operator<<(T const& d) {
-	auto idx = bytes.size();
-	bytes.resize(idx + sizeof(T));
-	memcpy(bytes.data() + idx, &d, sizeof(T));
-	return *this;
+
+void CmdSer::SerCmdType(BufferUploadCommand const* cmd) {
+	*arr << (cmd->_handle) << (cmd->_offset) << (cmd->_size) << vstd::span<std::byte const>{reinterpret_cast<std::byte const*>(cmd->_data), cmd->_size};
+	uploadSize += cmd->_size;
 }
-CmdSerde::Serializer& CmdSerde::Serializer::operator<<(vstd::span<std::byte const> data) {
-	auto idx = bytes.size();
-	bytes.resize(idx + data.size_bytes());
-	memcpy(bytes.data() + idx, data.data(), data.size_bytes());
-	return *this;
+void CmdSer::SerCmdType(BufferDownloadCommand const* cmd) {
+	*arr << (cmd->_handle) << (cmd->_offset) << (cmd->_size);
+	readbackSpan.emplace_back(cmd->_data, cmd->_size);
 }
-void CmdSerde::SerCmdType(BufferUploadCommand const* cmd) {
-	arr << (cmd->_handle) << (cmd->_offset) << (cmd->_size) << vstd::span<std::byte const>{reinterpret_cast<std::byte const*>(cmd->_data), cmd->_size};
-	arr.uploadSize += cmd->_size;
+void CmdSer::SerCmdType(BufferCopyCommand const* cmd) {
+	*arr << (cmd->_src_handle) << (cmd->_dst_handle) << (cmd->_src_offset) << (cmd->_dst_offset) << (cmd->_size);
 }
-void CmdSerde::SerCmdType(BufferDownloadCommand const* cmd) {
-	arr << (cmd->_handle) << (cmd->_offset) << (cmd->_size);
-	arr.readbackSpan.emplace_back(cmd->_data, cmd->_size);
+void CmdSer::SerCmdType(BufferToTextureCopyCommand const* cmd) {
+	*arr << (cmd->_buffer_handle) << (cmd->_buffer_offset) << (cmd->_texture_handle) << (cmd->_pixel_storage) << (cmd->_texture_level) << (cmd->_texture_size[0]) << (cmd->_texture_size[1]) << (cmd->_texture_size[2]);
 }
-void CmdSerde::SerCmdType(BufferCopyCommand const* cmd) {
-	arr << (cmd->_src_handle) << (cmd->_dst_handle) << (cmd->_src_offset) << (cmd->_dst_offset) << (cmd->_size);
+void CmdSer::SerCmdType(TextureToBufferCopyCommand const* cmd) {
+	*arr << (cmd->_buffer_handle) << (cmd->_buffer_offset) << (cmd->_texture_handle) << (cmd->_pixel_storage) << (cmd->_texture_level) << (cmd->_texture_size[0]) << (cmd->_texture_size[1]) << (cmd->_texture_size[2]);
 }
-void CmdSerde::SerCmdType(BufferToTextureCopyCommand const* cmd) {
-	arr << (cmd->_buffer_handle) << (cmd->_buffer_offset) << (cmd->_texture_handle) << (cmd->_pixel_storage) << (cmd->_texture_level) << (cmd->_texture_size[0]) << (cmd->_texture_size[1]) << (cmd->_texture_size[2]);
+void CmdSer::SerCmdType(TextureCopyCommand const* cmd) {
+	*arr << (cmd->_storage) << (cmd->_src_handle) << (cmd->_dst_handle) << (cmd->_size[0]) << (cmd->_size[1]) << (cmd->_size[2]) << (cmd->_src_level) << (cmd->_dst_level);
 }
-void CmdSerde::SerCmdType(TextureToBufferCopyCommand const* cmd) {
-	arr << (cmd->_buffer_handle) << (cmd->_buffer_offset) << (cmd->_texture_handle) << (cmd->_pixel_storage) << (cmd->_texture_level) << (cmd->_texture_size[0]) << (cmd->_texture_size[1]) << (cmd->_texture_size[2]);
-}
-void CmdSerde::SerCmdType(TextureCopyCommand const* cmd) {
-	arr << (cmd->_storage) << (cmd->_src_handle) << (cmd->_dst_handle) << (cmd->_size[0]) << (cmd->_size[1]) << (cmd->_size[2]) << (cmd->_src_level) << (cmd->_dst_level);
-}
-void CmdSerde::SerCmdType(TextureUploadCommand const* cmd) {
+void CmdSer::SerCmdType(TextureUploadCommand const* cmd) {
 	auto byteSize = pixel_storage_size(
 		cmd->_storage,
 		cmd->_size[0],
 		cmd->_size[1],
 		cmd->_size[2]);
-	arr << (cmd->_handle) << (cmd->_storage) << (cmd->_level) << (cmd->_size[0]) << (cmd->_size[1]) << (cmd->_size[2]) << vstd::span<std::byte const>{reinterpret_cast<std::byte const*>(cmd->_data), byteSize};
-
+	*arr << (cmd->_handle) << (cmd->_storage) << (cmd->_level) << (cmd->_size[0]) << (cmd->_size[1]) << (cmd->_size[2]) << vstd::span<std::byte const>{reinterpret_cast<std::byte const*>(cmd->_data), byteSize};
 }
-void CmdSerde::SerCmdType(TextureDownloadCommand const* cmd) {
-	arr << (cmd->_handle) << (cmd->_storage) << (cmd->_level) << (cmd->_size[0]) << (cmd->_size[1]) << (cmd->_size[2]);
+void CmdSer::SerCmdType(TextureDownloadCommand const* cmd) {
+	*arr << (cmd->_handle) << (cmd->_storage) << (cmd->_level) << (cmd->_size[0]) << (cmd->_size[1]) << (cmd->_size[2]);
 	auto byteSize = pixel_storage_size(
 		cmd->_storage,
 		cmd->_size[0],
 		cmd->_size[1],
 		cmd->_size[2]);
-	arr.readbackSpan.emplace_back(cmd->_data, byteSize);
-	arr.uploadSize += byteSize;
+	readbackSpan.emplace_back(cmd->_data, byteSize);
+	uploadSize += byteSize;
 }
 
-void CmdSerde::SerCmdType(ShaderDispatchCommand const* cmd) {
-	arr << (cmd->_handle) << (cmd->_kernel.hash()) << (cmd->_dispatch_size[0]) << (cmd->_dispatch_size[1]) << (cmd->_dispatch_size[2]) << (cmd->_argument_count) << vstd::span<std::byte const>{reinterpret_cast<std::byte const*>(cmd->_argument_buffer.data()), cmd->_argument_buffer.size()};
+void CmdSer::SerCmdType(ShaderDispatchCommand const* cmd) {
+	*arr << (cmd->_handle) << (cmd->_kernel.hash()) << (cmd->_dispatch_size[0]) << (cmd->_dispatch_size[1]) << (cmd->_dispatch_size[2]) << (cmd->_argument_count) << vstd::span<std::byte const>{reinterpret_cast<std::byte const*>(cmd->_argument_buffer.data()), cmd->_argument_buffer.size()};
 }
 
-void CmdSerde::SerCmdType(AccelBuildCommand const* cmd) {
-	arr << (cmd->_handle) << (cmd->_instance_count) << (cmd->_request) << (cmd->_modifications.size());
+void CmdSer::SerCmdType(AccelBuildCommand const* cmd) {
+	*arr << (cmd->_handle) << (cmd->_instance_count) << (cmd->_request) << (cmd->_modifications.size());
 	for (auto&& i : cmd->_modifications) {
-		arr << (i.index) << (i.flags) << (i.mesh);
+		*arr << (i.index) << (i.flags) << (i.mesh);
 		for (auto&& j : i.affine) {
-			arr << (j);
+			*arr << (j);
 		}
 	}
 }
-void CmdSerde::SerCmdType(MeshBuildCommand const* cmd) {
-	arr << (cmd->_handle) << (cmd->_request) << (cmd->_vertex_buffer) << (cmd->_vertex_stride) << (cmd->_vertex_buffer_offset) << (cmd->_vertex_buffer_size) << (cmd->_triangle_buffer) << (cmd->_triangle_buffer_offset) << (cmd->_triangle_buffer_size);
+void CmdSer::SerCmdType(MeshBuildCommand const* cmd) {
+	*arr << (cmd->_handle) << (cmd->_request) << (cmd->_vertex_buffer) << (cmd->_vertex_stride) << (cmd->_vertex_buffer_offset) << (cmd->_vertex_buffer_size) << (cmd->_triangle_buffer) << (cmd->_triangle_buffer_offset) << (cmd->_triangle_buffer_size);
 }
-void CmdSerde::SerCmdType(BindlessArrayUpdateCommand const* cmd) {
-	arr << (cmd->_handle);
+void CmdSer::SerCmdType(BindlessArrayUpdateCommand const* cmd) {
+	*arr << (cmd->_handle);
 }
-void CmdSerde::SerType(Command const* cmd) {
-	arr << cmd->tag();
+void CmdSer::SerType(Command const* cmd) {
+	*arr << cmd->tag();
 	switch (cmd->tag()) {
 		case Command::Tag::EBufferUploadCommand: {
 			SerCmdType(static_cast<BufferUploadCommand const*>(cmd));
@@ -115,20 +101,22 @@ void CmdSerde::SerType(Command const* cmd) {
 	}
 }
 
-void CmdSerde::SerCommands(CommandBuffer const& cmds) {
-	arr.uploadSize = 0;
-	auto&& list = cmds._command_list._commands;
-	arr << list.size();
-	auto readbackIndex = arr.bytes.size();
-	arr.bytes.resize(readbackIndex + sizeof(size_t) * 2);
+void CmdSer::SerCommands(CommandList const& cmds) {
+	uploadSize = 0;
+	auto&& list = cmds._commands;
+	*arr << list.size();
+	auto readbackIndex = arr->bytes.size();
+	arr->bytes.resize(readbackIndex + sizeof(size_t) * 2);
 	for (auto&& i : list) {
 		SerType(i);
 	}
 	size_t readbackFullSize = 0;
-	for(auto&& i : arr.readbackSpan){
+	for (auto&& i : readbackSpan) {
 		readbackFullSize += i.second;
 	}
-	memcpy(arr.bytes.data() + readbackIndex, &readbackFullSize, sizeof(size_t));
-	memcpy(arr.bytes.data() + readbackIndex + sizeof(size_t), &arr.uploadSize, sizeof(size_t));
+	memcpy(arr->bytes.data() + readbackIndex, &readbackFullSize, sizeof(size_t));
+	memcpy(arr->bytes.data() + readbackIndex + sizeof(size_t), &uploadSize, sizeof(size_t));
 }
+CmdSer::CmdSer() {}
+CmdSer::~CmdSer() {}
 }// namespace luisa::compute

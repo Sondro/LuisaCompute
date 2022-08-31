@@ -2,6 +2,7 @@
 #include <serialize/SimpleJsonValue.h>
 #include <vstl/Common.h>
 #include <vstl/StringUtility.h>
+#include <vstl/Serializer.h>
 namespace toolhub::db {
 //Bind Python Object
 class DictIEnumerator : public vstd::IEnumerable<JsonKeyPair> {
@@ -95,16 +96,16 @@ struct BinaryHeader {
 	uint64 size;
 	uint64 postDefine;
 };
-static void SerPreProcess(vstd::vector<vbyte>& data) {
+static void SerPreProcess(luisa::vector<std::byte>& data) {
 	data.resize(data.size() + sizeof(uint64));
 }
 static bool IsMachineLittleEnding() {
 	uint i = 0x12345678;
-	vbyte* p = reinterpret_cast<vbyte*>(&i);
+	uint8_t* p = reinterpret_cast<uint8_t*>(&i);
 	return (*p == 0x78) && (*(p + 1) == 0x56);
 }
 template<bool isDict>
-static void SerPostProcess(vstd::vector<vbyte>& data, size_t initOffset) {
+static void SerPostProcess(luisa::vector<std::byte>& data, size_t initOffset) {
 	uint64 hashValue;
 	vstd::hash<BinaryHeader> hasher;
 	if constexpr (isDict) {
@@ -115,10 +116,10 @@ static void SerPostProcess(vstd::vector<vbyte>& data, size_t initOffset) {
 	*reinterpret_cast<uint64*>(data.data() + initOffset) = hashValue;
 }
 template<bool isDict>
-static bool DeserCheck(vstd::span<vbyte const>& sp, bool& sameEnding) {
+static bool DeserCheck(vstd::span<std::byte const>& sp, bool& sameEnding) {
 	uint64 hashValue;
 	vstd::hash<BinaryHeader> hasher;
-	auto ending = vstd::SerDe<vbyte>::Get(sp);
+	auto ending = vstd::SerDe<std::byte>::Get(sp);
 	sameEnding = (bool(ending) == IsMachineLittleEnding());
 	if constexpr (isDict) {
 		hashValue = hasher(BinaryHeader{3551484578062615571ull, sp.size(), 13190554206192427769ull});
@@ -470,22 +471,14 @@ vstd::optional<WriteJsonVariant> SimpleJsonValueDict::GetAndSet(Key const& key, 
 size_t SimpleJsonValueDict::Length() const {
 	return vars.size();
 }
-vstd::vector<vbyte> SimpleJsonValueDict::Serialize() const {
-	vstd::vector<vbyte> result;
-	result.emplace_back(IsMachineLittleEnding());
-	SerPreProcess(result);
-	M_GetSerData(result);
-	SerPostProcess<true>(result, 1);
-	return result;
-}
-void SimpleJsonValueDict::Serialize(vstd::vector<vbyte>& result) const {
-	result.emplace_back(IsMachineLittleEnding());
+void SimpleJsonValueDict::Serialize(luisa::vector<std::byte>& result) const {
+	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<vbyte>::max()) : static_cast<std::byte>(0));
 	auto sz = result.size();
 	SerPreProcess(result);
 	M_GetSerData(result);
 	SerPostProcess<true>(result, sz);
 }
-void SimpleJsonValueDict::M_GetSerData(vstd::vector<vbyte>& data) const {
+void SimpleJsonValueDict::M_GetSerData(luisa::vector<std::byte>& data) const {
 	PushDataToVector<uint64>(vars.size(), data);
 	for (auto&& kv : vars) {
 		PushDataToVector(kv.first.value, data);
@@ -493,7 +486,7 @@ void SimpleJsonValueDict::M_GetSerData(vstd::vector<vbyte>& data) const {
 	}
 }
 
-void SimpleJsonValueDict::LoadFromSer(vstd::span<vbyte const>& sp) {
+void SimpleJsonValueDict::LoadFromSer(vstd::span<std::byte const>& sp) {
 	auto sz = PopValue<uint64>(sp);
 	vars.reserve(sz);
 	for (auto i : vstd::range(sz)) {
@@ -507,7 +500,7 @@ void SimpleJsonValueDict::LoadFromSer(vstd::span<vbyte const>& sp) {
 		vars.Emplace(std::move(key), std::move(value));
 	}
 }
-void SimpleJsonValueDict::LoadFromSer_DiffEnding(vstd::span<vbyte const>& sp) {
+void SimpleJsonValueDict::LoadFromSer_DiffEnding(vstd::span<std::byte const>& sp) {
 	auto sz = PopValueReverse<uint64>(sp);
 	vars.reserve(sz);
 	for (auto i : vstd::range(sz)) {
@@ -546,30 +539,22 @@ size_t SimpleJsonValueArray::Length() const {
 	return arr.size();
 }
 
-vstd::vector<vbyte> SimpleJsonValueArray::Serialize() const {
-	vstd::vector<vbyte> result;
-	result.emplace_back(IsMachineLittleEnding());
-	SerPreProcess(result);
-	M_GetSerData(result);
-	SerPostProcess<false>(result, 1);
-	return result;
-}
-void SimpleJsonValueArray::Serialize(vstd::vector<vbyte>& result) const {
-	result.emplace_back(IsMachineLittleEnding());
+void SimpleJsonValueArray::Serialize(luisa::vector<std::byte>& result) const {
+	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<vbyte>::max()) : static_cast<std::byte>(0));
 	auto sz = result.size();
 	SerPreProcess(result);
 	M_GetSerData(result);
 	SerPostProcess<false>(result, sz);
 }
 
-void SimpleJsonValueArray::M_GetSerData(vstd::vector<vbyte>& data) const {
+void SimpleJsonValueArray::M_GetSerData(luisa::vector<std::byte>& data) const {
 	PushDataToVector<uint64>(arr.size(), data);
 	for (auto&& v : arr) {
 		SimpleJsonLoader::Serialize(v, data);
 	}
 }
 
-void SimpleJsonValueArray::LoadFromSer(vstd::span<vbyte const>& sp) {
+void SimpleJsonValueArray::LoadFromSer(vstd::span<std::byte const>& sp) {
 	auto sz = PopValue<uint64>(sp);
 
 	arr.reserve(sz);
@@ -577,7 +562,7 @@ void SimpleJsonValueArray::LoadFromSer(vstd::span<vbyte const>& sp) {
 		arr.emplace_back(SimpleJsonLoader::DeSerialize(sp, db));
 	}
 }
-void SimpleJsonValueArray::LoadFromSer_DiffEnding(vstd::span<vbyte const>& sp) {
+void SimpleJsonValueArray::LoadFromSer_DiffEnding(vstd::span<std::byte const>& sp) {
 	auto sz = PopValueReverse<uint64>(sp);
 	arr.reserve(sz);
 	for (auto i : vstd::range(sz)) {
@@ -637,16 +622,20 @@ void SimpleJsonValueArray::M_Print_Compress(vstd::string& str) const {
 	CompressPrintArray<decltype(arr), SimpleJsonValueDict, SimpleJsonValueArray>(arr, str);
 }
 vstd::MD5 SimpleJsonValueDict::GetMD5() const {
-	vstd::vector<vbyte> vec;
+	luisa::vector<std::byte> vec;
 	M_GetSerData(vec);
-	return vstd::MD5(vec);
+	return vstd::MD5(vstd::span<uint8_t const>{
+		reinterpret_cast<uint8_t const*>(vec.data()),
+		vec.size()});
 }
 vstd::MD5 SimpleJsonValueArray::GetMD5() const {
-	vstd::vector<vbyte> vec;
+	luisa::vector<std::byte> vec;
 	M_GetSerData(vec);
-	return vstd::MD5(vec);
+	return vstd::MD5(vstd::span<uint8_t const>{
+		reinterpret_cast<uint8_t const*>(vec.data()),
+		vec.size()});
 }
-bool SimpleJsonValueDict::Read(vstd::span<vbyte const> sp, bool clearLast) {
+bool SimpleJsonValueDict::Read(vstd::span<std::byte const> sp, bool clearLast) {
 	bool sameEnding;
 	if (!DeserCheck<true>(sp, sameEnding)) return false;
 	if (clearLast) {
@@ -660,7 +649,7 @@ bool SimpleJsonValueDict::Read(vstd::span<vbyte const> sp, bool clearLast) {
 	return true;
 }
 
-bool SimpleJsonValueArray::Read(vstd::span<vbyte const> sp, bool clearLast) {
+bool SimpleJsonValueArray::Read(vstd::span<std::byte const> sp, bool clearLast) {
 	bool sameEnding;
 	if (!DeserCheck<false>(sp, sameEnding)) return false;
 	if (clearLast) {

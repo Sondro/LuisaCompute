@@ -3,6 +3,7 @@
 #include <vstl/functional.h>
 #include <serialize/IJsonDatabase.h>
 #include <serialize/IJsonObject.h>
+#include <vstl/Serializer.h>
 namespace toolhub::db {
 class SimpleBinaryJson;
 class ConcurrentBinaryJson;
@@ -51,7 +52,7 @@ struct SimpleJsonVariant {
 };
 
 template<typename T>
-void PushDataToVector(T&& v, vstd::vector<vbyte>& serData) {
+void PushDataToVector(T&& v, luisa::vector<std::byte>& serData) {
 	using TT = std::remove_cvref_t<T>;
 	vstd::SerDe<TT>::Set(v, serData);
 }
@@ -59,18 +60,18 @@ void PushDataToVector(T&& v, vstd::vector<vbyte>& serData) {
 class SimpleJsonLoader {
 public:
 	static bool Check(IJsonDatabase* db, SimpleJsonVariant const& var);
-	static SimpleJsonVariant DeSerialize(vstd::span<vbyte const>& arr, SimpleBinaryJson* db);
-	static SimpleJsonVariant DeSerialize_DiffEnding(vstd::span<vbyte const>& arr, SimpleBinaryJson* db);
-	static void Serialize(SimpleJsonVariant const& v, vstd::vector<vbyte>& data);
+	static SimpleJsonVariant DeSerialize(vstd::span<std::byte const>& arr, SimpleBinaryJson* db);
+	static SimpleJsonVariant DeSerialize_DiffEnding(vstd::span<std::byte const>& arr, SimpleBinaryJson* db);
+	static void Serialize(SimpleJsonVariant const& v, luisa::vector<std::byte>& data);
 	
 };
 template<typename T>
-T PopValue(vstd::span<vbyte const>& arr) {
+T PopValue(vstd::span<std::byte const>& arr) {
 	using TT = std::remove_cvref_t<T>;
 	return vstd::SerDe<TT>::Get(arr);
 }
 template<typename T>
-T PopValueReverse(vstd::span<vbyte const>& arr) {
+T PopValueReverse(vstd::span<std::byte const>& arr) {
 	using TT = std::remove_cvref_t<T>;
 	return vstd::SerDe<TT, true>::Get(arr);
 }

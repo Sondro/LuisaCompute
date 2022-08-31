@@ -169,7 +169,7 @@ uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noex
 	return reinterpret_cast<uint64>(
 		ComputeShader::CompileCompute(
 			nativeDevice.fileIo,
-			&nativeDevice,
+			&nativeDevice,	
 			kernel,
 			[&] -> decltype(auto) { return std::move(code); },
 			kernel.block_size(),

@@ -50,13 +50,12 @@ public:
 	virtual bool IsArray() const { return false; }
 	virtual IJsonDatabase* GetDB() const = 0;
 	virtual size_t Length() const = 0;
-	virtual vstd::vector<vbyte> Serialize() const = 0;
-	virtual void Serialize(vstd::vector<vbyte>& vec) const = 0;
+	virtual void Serialize(luisa::vector<std::byte>& vec) const = 0;
 	virtual void Reset() = 0;
 	virtual bool IsEmpty() const = 0;
 	virtual vstd::string FormattedPrint() const = 0;
 	virtual vstd::string Print() const = 0;
-	virtual bool Read(vstd::span<vbyte const> sp,
+	virtual bool Read(vstd::span<std::byte const> sp,
 					  bool clearLast) = 0;
 	virtual void Reserve(size_t capacity) = 0;
 	virtual vstd::optional<ParsingException> Parse(

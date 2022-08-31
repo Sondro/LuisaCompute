@@ -37,7 +37,14 @@
 #else
 #define LC_RTX_API __declspec(dllimport)
 #endif
-
+/*
+#ifdef LC_REMOTE_EXPORT_DLL
+#define LC_REMOTE_API __declspec(dllexport)
+#else
+#define LC_REMOTE_API __declspec(dllimport)
+#endif
+*/
+#define LC_REMOTE_API
 #else
 #define LC_VSTL_API
 #define LC_AST_API
@@ -45,4 +52,5 @@
 #define LC_CORE_API
 #define LC_DSL_API
 #define LC_RTX_API
+#define LC_REMOTE_API
 #endif

@@ -1,106 +1,92 @@
-#include "cmd_serde.h"
+#include "cmd_deser.h"
 namespace luisa::compute {
-template<typename T>
-	requires(std::is_trivial_v<T> && !std::is_pointer_v<T>)
-CmdSerde::DeSerializer& CmdSerde::DeSerializer::operator>>(T& d) {
-	memcpy(&d, ptr, sizeof(T));
-	ptr += sizeof(T);
-	return *this;
-}
-CmdSerde::DeSerializer& CmdSerde::DeSerializer::operator>>(vstd::span<std::byte> data) {
-	memcpy(data.data(), ptr, data.size());
-	ptr += data.size();
-	return *this;
-}
-std::byte* CmdSerde::DeSerializer::DeserUploadData(size_t size) {
+std::byte* CmdDeser::DeserUploadData(size_t size) {
 	auto ptr = uploadPtr;
 	uploadPtr += size;
-	(*this) >> vstd::span<std::byte>(ptr, size);
+	*arr >>  vstd::span<std::byte>(ptr, size);
 	return ptr;
 }
-std::byte* CmdSerde::DeSerializer::DeserDownloadData(size_t size) {
+std::byte* CmdDeser::DeserDownloadData(size_t size) {
 	auto data = readbackPtr;
 	readbackPtr += size;
 	return data;
 }
-void CmdSerde::DeserCmdType(BufferUploadCommand* cmd) {
-	ptr >> cmd->_handle >> cmd->_offset >> cmd->_size;
-	cmd->_data = ptr.DeserUploadData(cmd->_size);
+void CmdDeser::DeserCmdType(BufferUploadCommand* cmd) {
+	*arr >>  cmd->_handle >> cmd->_offset >> cmd->_size;
+	cmd->_data = DeserUploadData(cmd->_size);
 }
-void CmdSerde::DeserCmdType(BufferDownloadCommand* cmd) {
-	ptr >> cmd->_handle >> cmd->_offset >> cmd->_size;
-	cmd->_data = ptr.DeserDownloadData(cmd->_size);
+void CmdDeser::DeserCmdType(BufferDownloadCommand* cmd) {
+	*arr >>  cmd->_handle >> cmd->_offset >> cmd->_size;
+	cmd->_data = DeserDownloadData(cmd->_size);
 }
-void CmdSerde::DeserCmdType(BufferCopyCommand* cmd) {
-	ptr >> (cmd->_src_handle) >> (cmd->_dst_handle) >> (cmd->_src_offset) >> (cmd->_dst_offset) >> (cmd->_size);
+void CmdDeser::DeserCmdType(BufferCopyCommand* cmd) {
+	*arr >>  (cmd->_src_handle) >> (cmd->_dst_handle) >> (cmd->_src_offset) >> (cmd->_dst_offset) >> (cmd->_size);
 }
-void CmdSerde::DeserCmdType(BufferToTextureCopyCommand* cmd) {
-	ptr >> (cmd->_buffer_handle) >> (cmd->_buffer_offset) >> (cmd->_texture_handle) >> (cmd->_pixel_storage) >> (cmd->_texture_level) >> (cmd->_texture_size[0]) >> (cmd->_texture_size[1]) >> (cmd->_texture_size[2]);
+void CmdDeser::DeserCmdType(BufferToTextureCopyCommand* cmd) {
+	*arr >>  (cmd->_buffer_handle) >> (cmd->_buffer_offset) >> (cmd->_texture_handle) >> (cmd->_pixel_storage) >> (cmd->_texture_level) >> (cmd->_texture_size[0]) >> (cmd->_texture_size[1]) >> (cmd->_texture_size[2]);
 }
-void CmdSerde::DeserCmdType(ShaderDispatchCommand* cmd) {
+void CmdDeser::DeserCmdType(ShaderDispatchCommand* cmd) {
 	uint64 funcHash;
-	ptr >> (cmd->_handle) >> funcHash >> (cmd->_dispatch_size[0]) >> (cmd->_dispatch_size[1]) >> (cmd->_dispatch_size[2]) >> (cmd->_argument_count);
-	auto ite = functions.Find(funcHash);
-	assert(ite);
-	cmd->_kernel = Function{ite.Value().get()};
+	*arr >>  (cmd->_handle) >> funcHash >> (cmd->_dispatch_size[0]) >> (cmd->_dispatch_size[1]) >> (cmd->_dispatch_size[2]) >> (cmd->_argument_count);
+	cmd->_kernel = getFunc(funcHash);
 }
-void CmdSerde::DeserCmdType(TextureUploadCommand* cmd) {
-	ptr >> (cmd->_handle) >> (cmd->_storage) >> (cmd->_level) >> (cmd->_size[0]) >> (cmd->_size[1]) >> (cmd->_size[2]);
+void CmdDeser::DeserCmdType(TextureUploadCommand* cmd) {
+	*arr >>  (cmd->_handle) >> (cmd->_storage) >> (cmd->_level) >> (cmd->_size[0]) >> (cmd->_size[1]) >> (cmd->_size[2]);
 	auto byteSize = pixel_storage_size(
 		cmd->_storage,
 		cmd->_size[0],
 		cmd->_size[1],
 		cmd->_size[2]);
-	ptr.DeserUploadData(byteSize);
+	DeserUploadData(byteSize);
 }
-void CmdSerde::DeserCmdType(TextureDownloadCommand* cmd) {
-	ptr >> (cmd->_handle) >> (cmd->_storage) >> (cmd->_level) >> (cmd->_size[0]) >> (cmd->_size[1]) >> (cmd->_size[2]);
+void CmdDeser::DeserCmdType(TextureDownloadCommand* cmd) {
+	*arr >>  (cmd->_handle) >> (cmd->_storage) >> (cmd->_level) >> (cmd->_size[0]) >> (cmd->_size[1]) >> (cmd->_size[2]);
 	auto byteSize = pixel_storage_size(
 		cmd->_storage,
 		cmd->_size[0],
 		cmd->_size[1],
 		cmd->_size[2]);
-	cmd->_data = ptr.DeserDownloadData(byteSize);
+	cmd->_data = DeserDownloadData(byteSize);
 }
-void CmdSerde::DeserCmdType(TextureCopyCommand* cmd) {
-	ptr >> (cmd->_storage) >> (cmd->_src_handle) >> (cmd->_dst_handle) >> (cmd->_size[0]) >> (cmd->_size[1]) >> (cmd->_size[2]) >> (cmd->_src_level) >> (cmd->_dst_level);
+void CmdDeser::DeserCmdType(TextureCopyCommand* cmd) {
+	*arr >>  (cmd->_storage) >> (cmd->_src_handle) >> (cmd->_dst_handle) >> (cmd->_size[0]) >> (cmd->_size[1]) >> (cmd->_size[2]) >> (cmd->_src_level) >> (cmd->_dst_level);
 }
-void CmdSerde::DeserCmdType(TextureToBufferCopyCommand* cmd) {
-	ptr >> (cmd->_buffer_handle) >> (cmd->_buffer_offset) >> (cmd->_texture_handle) >> (cmd->_pixel_storage) >> (cmd->_texture_level) >> (cmd->_texture_size[0]) >> (cmd->_texture_size[1]) >> (cmd->_texture_size[2]);
+void CmdDeser::DeserCmdType(TextureToBufferCopyCommand* cmd) {
+	*arr >>  (cmd->_buffer_handle) >> (cmd->_buffer_offset) >> (cmd->_texture_handle) >> (cmd->_pixel_storage) >> (cmd->_texture_level) >> (cmd->_texture_size[0]) >> (cmd->_texture_size[1]) >> (cmd->_texture_size[2]);
 }
-void CmdSerde::DeserCmdType(AccelBuildCommand* cmd) {
+void CmdDeser::DeserCmdType(AccelBuildCommand* cmd) {
 	size_t modSize;
-	ptr >> (cmd->_handle) >> (cmd->_instance_count) >> (cmd->_request) >> modSize;
+	*arr >>  (cmd->_handle) >> (cmd->_instance_count) >> (cmd->_request) >> modSize;
 	cmd->_modifications.resize(modSize);
 	for (auto&& i : cmd->_modifications) {
-		ptr >> i.index >> i.flags >> i.mesh;
+		*arr >>  i.index >> i.flags >> i.mesh;
 		for (auto&& j : i.affine) {
-			ptr >> j;
+			*arr >>  j;
 		}
 	}
 }
-void CmdSerde::DeserCmdType(MeshBuildCommand* cmd) {
-	ptr >> (cmd->_handle) >> (cmd->_request) >> (cmd->_vertex_buffer) >> (cmd->_vertex_stride) >> (cmd->_vertex_buffer_offset) >> (cmd->_vertex_buffer_size) >> (cmd->_triangle_buffer) >> (cmd->_triangle_buffer_offset) >> (cmd->_triangle_buffer_size);
+void CmdDeser::DeserCmdType(MeshBuildCommand* cmd) {
+	*arr >>  (cmd->_handle) >> (cmd->_request) >> (cmd->_vertex_buffer) >> (cmd->_vertex_stride) >> (cmd->_vertex_buffer_offset) >> (cmd->_vertex_buffer_size) >> (cmd->_triangle_buffer) >> (cmd->_triangle_buffer_offset) >> (cmd->_triangle_buffer_size);
 }
-void CmdSerde::DeserCmdType(BindlessArrayUpdateCommand* cmd) {
-	ptr >> (cmd->_handle);
+void CmdDeser::DeserCmdType(BindlessArrayUpdateCommand* cmd) {
+	*arr >>  (cmd->_handle);
 }
-void CmdSerde::DeserCommands(CommandBuffer& cmds) {
+void CmdDeser::DeserCommands(CommandList& cmds) {
 	size_t cmdSize;
 	size_t readbackSize;
 	size_t uploadSize;
-	auto&& vec = cmds._command_list._commands;
-	ptr >> cmdSize >> readbackSize >> uploadSize;
-	ptr.readbackDatas.clear();
-	ptr.uploadDatas.clear();
-	ptr.readbackDatas.resize(readbackSize);
-	ptr.uploadDatas.resize(uploadSize);
-	ptr.readbackPtr = ptr.readbackDatas.data();
-	ptr.uploadPtr = ptr.uploadDatas.data();
+	auto&& vec = cmds._commands;
+	*arr >>  cmdSize >> readbackSize >> uploadSize;
+	readbackDatas.clear();
+	uploadDatas.clear();
+	readbackDatas.resize(readbackSize);
+	uploadDatas.resize(uploadSize);
+	readbackPtr = readbackDatas.data();
+	uploadPtr = uploadDatas.data();
 	vec.resize(cmdSize);
 	Command::Tag tag;
 	for (auto&& i : vec) {
-		ptr >> tag;
+		*arr >>  tag;
 		switch (tag) {
 			case Command::Tag::EBufferUploadCommand: {
 				DeserCmdType(static_cast<BufferUploadCommand*>(i));
@@ -141,4 +127,8 @@ void CmdSerde::DeserCommands(CommandBuffer& cmds) {
 		}
 	}
 }
+CmdDeser::CmdDeser(
+	luisa::move_only_function<Function(uint64 hash)>&& getFunc)
+	: getFunc(std::move(getFunc)) {}
+CmdDeser::~CmdDeser() {}
 }// namespace luisa::compute

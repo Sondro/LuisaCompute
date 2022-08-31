@@ -22,7 +22,8 @@
 #include <ast/function_builder.h>
 
 namespace luisa::compute {
-class CmdSerde;
+class CmdSer;
+class CmdDeser;
 #define LUISA_COMPUTE_RUNTIME_COMMANDS \
     BufferUploadCommand,               \
         BufferDownloadCommand,         \
@@ -114,7 +115,8 @@ public:
 };
 
 class BufferUploadCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _handle;
@@ -136,7 +138,8 @@ public:
 };
 
 class BufferDownloadCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _handle;
@@ -158,7 +161,8 @@ public:
 };
 
 class BufferCopyCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _src_handle;
@@ -182,7 +186,8 @@ public:
 };
 
 class BufferToTextureCopyCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _buffer_handle;
@@ -212,7 +217,8 @@ public:
 };
 
 class TextureToBufferCopyCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _buffer_handle;
@@ -241,7 +247,8 @@ public:
 };
 
 class TextureCopyCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     PixelStorage _storage;
@@ -269,7 +276,8 @@ public:
 };
 
 class TextureUploadCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _handle;
@@ -295,7 +303,8 @@ public:
 };
 
 class TextureDownloadCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _handle;
@@ -321,7 +330,8 @@ public:
 };
 
 class ShaderDispatchCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 public:
     struct alignas(8) Argument {
@@ -478,7 +488,8 @@ enum struct AccelBuildRequest : uint32_t {
 };
 
 class MeshBuildCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _handle;
@@ -512,7 +523,8 @@ public:
     LUISA_MAKE_COMMAND_COMMON(MeshBuildCommand)
 };
 class AccelBuildCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 public:
     struct alignas(16) Modification {
@@ -562,7 +574,8 @@ public:
 };
 
 class BindlessArrayUpdateCommand final : public Command {
-    friend class CmdSerde;
+    friend class CmdSer;
+    friend class CmdDeser;
 
 private:
     uint64_t _handle;

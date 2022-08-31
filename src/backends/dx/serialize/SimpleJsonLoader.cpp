@@ -19,7 +19,7 @@ bool SimpleJsonLoader::Check(IJsonDatabase* parent, SimpleJsonVariant const& var
 
 	return res;
 }
-SimpleJsonVariant SimpleJsonLoader::DeSerialize(vstd::span<vbyte const>& arr, SimpleBinaryJson* db) {
+SimpleJsonVariant SimpleJsonLoader::DeSerialize(vstd::span<std::byte const>& arr, SimpleBinaryJson* db) {
 	ValueType type = PopValue<ValueType>(arr);
 	switch (type) {
 		case ValueType::Int: {
@@ -54,7 +54,7 @@ SimpleJsonVariant SimpleJsonLoader::DeSerialize(vstd::span<vbyte const>& arr, Si
 			return {};
 	}
 }
-SimpleJsonVariant SimpleJsonLoader::DeSerialize_DiffEnding(vstd::span<vbyte const>& arr, SimpleBinaryJson* db) {
+SimpleJsonVariant SimpleJsonLoader::DeSerialize_DiffEnding(vstd::span<std::byte const>& arr, SimpleBinaryJson* db) {
 	ValueType type = PopValueReverse<ValueType>(arr);
 	switch (type) {
 		case ValueType::Int: {
@@ -91,9 +91,9 @@ SimpleJsonVariant SimpleJsonLoader::DeSerialize_DiffEnding(vstd::span<vbyte cons
 	}
 }
 
-void SimpleJsonLoader::Serialize(SimpleJsonVariant const& v, vstd::vector<vbyte>& data) {
+void SimpleJsonLoader::Serialize(SimpleJsonVariant const& v, luisa::vector<std::byte>& data) {
 	size_t dataOffset = data.size();
-	data.push_back(v.value.index());
+	data.push_back(static_cast<std::byte>(v.value.index()));
 	switch (v.value.index()) {
 		case WriteJsonVariant::IndexOf<int64>:
 			PushDataToVector(v.value. force_get<int64>(), data);
