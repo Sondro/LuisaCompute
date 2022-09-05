@@ -2,10 +2,24 @@
 #include <vstl/Common.h>
 #include <runtime/device.h>
 #include "array_iostream.h"
+#include "ast_serde.h"
+#include "socket_visitor.h"
+#include <vstl/LockFreeArrayQueue.h>
+#include <serialize/DatabaseInclude.h>
 namespace luisa::compute {
 class DeviceSer : public vstd::IOperatorNewBase, public Device::Interface {
+	std::mutex mtx;
+	using ReceivedData = vstd::variant<luisa::vector<std::byte>, SocketVisitor::WaitReceive>;
+	vstd::HashMap<uint64, ReceivedData> receivedData;
+	SocketVisitor* visitor = nullptr;
+	luisa::vector<std::byte> const* GetData(uint64 handle);
+	vstd::LockFreeArrayQueue<vstd::unique_ptr<AstSerializer>> serializers;
+	vstd::LockFreeArrayQueue<vstd::unique_ptr<IJsonDatabase>> dbs;
+	uint64 handleCounter = 0;
+
 public:
 	ArrayIStream arr;
+
 	void* native_handle() const noexcept override { return nullptr; }
 
 	// buffer

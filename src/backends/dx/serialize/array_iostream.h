@@ -2,7 +2,7 @@
 #include <vstl/Common.h>
 namespace luisa::compute {
 struct ArrayIStream {
-	vstd::vector<std::byte> bytes;
+	luisa::vector<std::byte> bytes;
 	template<typename T>
 		requires(std::is_trivial_v<T> && !std::is_pointer_v<T>)
 	ArrayIStream& operator<<(T const& d) {
@@ -16,6 +16,13 @@ struct ArrayIStream {
 		bytes.resize(idx + data.size_bytes());
 		memcpy(bytes.data() + idx, data.data(), data.size_bytes());
 		return *this;
+	}
+	luisa::vector<std::byte> steal(){
+		auto disp = vstd::create_disposer([&]{
+			vstd::reset(bytes);
+			bytes.reserve(128);
+		});
+		return std::move(bytes);
 	}
 };
 struct ArrayOStream {

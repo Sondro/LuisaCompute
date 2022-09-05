@@ -7,9 +7,8 @@ protected:
 	~SocketVisitor() = default;
 
 public:
-	using WaitSend = luisa::move_only_function<void()>;
 	using WaitReceive = luisa::move_only_function<luisa::vector<std::byte>()>;
-	virtual WaitSend send_async(luisa::vector<std::byte>&& src) = 0;
+	virtual void send_async(luisa::vector<std::byte>&& src) = 0;
 	virtual WaitReceive receive_async() = 0;
 };
 }// namespace luisa::compute

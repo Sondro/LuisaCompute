@@ -102,7 +102,7 @@ BuildProject({
     projectName = "luisa-compute-backend-dx",
     projectType = "shared",
     event = function()
-        add_files("Api/**.cpp", "DXRuntime/**.cpp", "Resource/**.cpp", "Shader/**.cpp", "serialize/**.cpp")
+        add_files("Api/**.cpp", "DXRuntime/**.cpp", "Resource/**.cpp", "Shader/**.cpp", "serialize/**.cpp")--
         add_defines(Defines)
         add_includedirs(IncludePath)
         add_rules("copy_dll", "copy_to_build")

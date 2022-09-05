@@ -21,5 +21,8 @@ Var<float2> interpolate(Expr<Hit> hit, Expr<float2> a, Expr<float2> b, Expr<floa
 Var<float3> interpolate(Expr<Hit> hit, Expr<float3> a, Expr<float3> b, Expr<float3> c) noexcept {
     return (1.0f - hit.bary.x - hit.bary.y) * a + hit.bary.x * b + hit.bary.y * c;
 }
+Var<float4> interpolate(Expr<Hit> hit, Expr<float4> a, Expr<float4> b, Expr<float4> c) noexcept {
+    return (1.0f - hit.bary.x - hit.bary.y) * a + hit.bary.x * b + hit.bary.y * c;
+}
 
 }// namespace luisa::compute

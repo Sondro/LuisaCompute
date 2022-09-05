@@ -18,6 +18,7 @@ struct alignas(16) Hit {
 [[nodiscard]] LC_RTX_API Var<float> interpolate(Expr<Hit> hit, Expr<float> a, Expr<float> b, Expr<float> c) noexcept;
 [[nodiscard]] LC_RTX_API Var<float2> interpolate(Expr<Hit> hit, Expr<float2> a, Expr<float2> b, Expr<float2> c) noexcept;
 [[nodiscard]] LC_RTX_API Var<float3> interpolate(Expr<Hit> hit, Expr<float3> a, Expr<float3> b, Expr<float3> c) noexcept;
+[[nodiscard]] LC_RTX_API Var<float4> interpolate(Expr<Hit> hit, Expr<float4> a, Expr<float4> b, Expr<float4> c) noexcept;
 
 }// namespace luisa::compute
 

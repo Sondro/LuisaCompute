@@ -8,7 +8,7 @@
 namespace luisa::compute {
 using namespace toolhub::db;
 
-class AstSerializer : public vstd::IOperatorNewBase{
+class AstSerializer : public vstd::IOperatorNewBase {
 	vstd::optional<vstd::StackAllocator> stackAlloc;
 	IJsonDatabase* db = nullptr;
 	IJsonDict* localVarDict = nullptr;
@@ -18,7 +18,7 @@ class AstSerializer : public vstd::IOperatorNewBase{
 	IJsonDict* constDict = nullptr;
 	IJsonDict* typeDict = nullptr;
 	IJsonDict* funcDict = nullptr;
-	
+
 	struct Stack {
 		IJsonDict* localVarDict;
 		IJsonDict* builtinVarDict;

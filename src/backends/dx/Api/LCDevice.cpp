@@ -15,7 +15,6 @@
 #include <Api/LCSwapChain.h>
 #include <Api/LCUtil.h>
 #include <compile/hlsl/dx_codegen.h>
-#include <serialize/serialize.h>
 #include <serialize/DatabaseInclude.h>
 #include <ast/function_builder.h>
 using namespace toolhub::directx;
