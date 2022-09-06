@@ -4,8 +4,6 @@ if (WIN32)
             _ENABLE_EXTENDED_ALIGNED_STORAGE=1
             _CRT_SECURE_NO_WARNINGS=1
             _UNICODE=1
-            FMT_EXCEPTIONS=0
-            SPDLOG_NO_EXCEPTIONS=0
             WIN32_LEAN_AND_MEAN=1)
     set(CMAKE_SHARED_MODULE_PREFIX "") # for MinGW/Cygwin etc.
     if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
