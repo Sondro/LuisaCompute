@@ -197,13 +197,16 @@ private:
     static auto _define(Function::Tag tag, Def &&def) {
         auto f = make_shared<FunctionBuilder>(tag);
         push(f.get());
-        try {
+        struct Dispose {
+            FunctionBuilder *builder;
+            ~Dispose() {
+                pop(builder);
+            }
+        };
+        {
+            Dispose disp{f.get()};
             f->with(&f->_body, std::forward<Def>(def));
-        } catch (...) {
-            pop(f.get());
-            throw;
         }
-        pop(f.get());
         return luisa::const_pointer_cast<const FunctionBuilder>(f);
     }
 

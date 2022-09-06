@@ -410,7 +410,10 @@ public:
         size_t index = reinterpret_cast<size_t>(ite) - reinterpret_cast<size_t>(vec.arr);
         index /= sizeof(T);
 #if defined(DEBUG)
-        if (index >= mSize) throw "Out of Range!";
+        if (index >= mSize) {
+            VEngine_Log("Out of Range!");
+            VENGINE_EXIT;
+        }
 #endif
         if constexpr (!(std::is_trivially_move_constructible_v<T>)) {
             if (index < mSize - 1) {
@@ -428,12 +431,12 @@ public:
         mSize--;
     }
 
-    T const* last() const noexcept {
-		return vec.arr + mSize - 1;
-	}
-	T* last() noexcept {
-		return vec.arr + mSize - 1;
-	}
+    T const *last() const noexcept {
+        return vec.arr + mSize - 1;
+    }
+    T *last() noexcept {
+        return vec.arr + mSize - 1;
+    }
 
     T erase_last() noexcept {
         mSize--;
@@ -489,13 +492,19 @@ public:
     }
     T &operator[](size_t index) noexcept {
 #if defined(DEBUG)
-        if (index >= mSize) throw "Out of Range!";
+        if (index >= mSize) {
+            VEngine_Log("Out of Range!");
+            VENGINE_EXIT;
+        };
 #endif
         return vec.arr[index];
     }
     const T &operator[](size_t index) const noexcept {
 #if defined(DEBUG)
-        if (index >= mSize) throw "Out of Range!";
+        if (index >= mSize) {
+            VEngine_Log("Out of Range!");
+            VENGINE_EXIT;
+        };
 #endif
         return vec.arr[index];
     }
