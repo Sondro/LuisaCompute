@@ -29,9 +29,7 @@ target_compile_features(luisa-compute-include INTERFACE c_std_11 cxx_std_20)
 if(MSVC)
     target_compile_options(luisa-compute-include INTERFACE
             /EHs-c-)
-endif()
-
-if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     target_compile_options(luisa-compute-include INTERFACE
             /wd4068 # Maxwell loves custom pragmas
             /wd5105 # winbase.h: macro expansion producing 'defined' has undefined behavior
