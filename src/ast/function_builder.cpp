@@ -403,6 +403,24 @@ const CallExpr *FunctionBuilder::call(const Type *type, CallOp call_op, luisa::s
             "be called with enum CallOp.");
     }
     _used_builtin_callables.mark(call_op);
+    if (!_use_atomic_float) {
+        switch (call_op) {
+            case CallOp::ATOMIC_EXCHANGE:
+            case CallOp::ATOMIC_COMPARE_EXCHANGE:
+            case CallOp::ATOMIC_FETCH_ADD:
+            case CallOp::ATOMIC_FETCH_SUB:
+            case CallOp::ATOMIC_FETCH_AND:
+            case CallOp::ATOMIC_FETCH_OR:
+            case CallOp::ATOMIC_FETCH_XOR:
+            case CallOp::ATOMIC_FETCH_MIN:
+            case CallOp::ATOMIC_FETCH_MAX: {
+                auto type = args[0]->type();
+                if (type->tag() == Type::Tag::BUFFER && type->element()->tag() == Type::Tag::FLOAT) {
+                    _use_atomic_float = true;
+                }
+            } break;
+        }
+    }
     auto expr = _create_expression<CallExpr>(
         type, call_op, CallExpr::ArgumentList{args.begin(), args.end()});
     if (type == nullptr) {
@@ -512,5 +530,9 @@ bool FunctionBuilder::raytracing() const noexcept {
     return _used_builtin_callables.test(CallOp::TRACE_CLOSEST) ||
            _used_builtin_callables.test(CallOp::TRACE_ANY);
 }
+bool FunctionBuilder::is_atomic_float_used() const {
+    return _use_atomic_float;
+}
+
 
 }// namespace luisa::compute::detail

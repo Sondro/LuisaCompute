@@ -95,7 +95,7 @@ public:
     /// Cast to bool, true if builder is not nullptr
     [[nodiscard]] explicit operator bool() const noexcept { return _builder != nullptr; }
     //TODO: need track command
-    [[nodiscard]] bool is_atomic_float_used() const { return false; }
+    [[nodiscard]] bool is_atomic_float_used() const;
 };
 
 }// namespace luisa::compute

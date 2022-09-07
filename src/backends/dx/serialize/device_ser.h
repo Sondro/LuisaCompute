@@ -15,7 +15,12 @@ class DeviceSer : public vstd::IOperatorNewBase, public Device::Interface {
 	luisa::vector<std::byte> const* GetData(uint64 handle);
 	vstd::LockFreeArrayQueue<vstd::unique_ptr<AstSerializer>> serializers;
 	vstd::LockFreeArrayQueue<vstd::unique_ptr<IJsonDatabase>> dbs;
+	std::thread dispatchThread;
 	uint64 handleCounter = 0;
+	bool threadEnable = true;
+	vstd::LockFreeArrayQueue<vstd::function<void()>> dispatchTasks;
+	std::condition_variable dispatchCv;
+	std::mutex dispatchMtx;
 
 public:
 	ArrayIStream arr;
@@ -85,5 +90,10 @@ public:
 	void destroy_swap_chain(uint64_t handle) noexcept override {}
 	PixelStorage swap_chain_pixel_storage(uint64_t handle) noexcept override { return PixelStorage::BYTE4; }
 	void present_display_in_stream(uint64_t stream_handle, uint64_t swapchain_handle, uint64_t image_handle) noexcept override {}
+	DeviceSer(Context ctx);
+	~DeviceSer();
+
+private:
+	void DispatchThead();
 };
 }// namespace luisa::compute

@@ -595,6 +595,7 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 	}
 	//////////////////// Tag
 	dict->Set("tag"sv, static_cast<int64>(func.tag()));
+
 	//////////////////// Block size
 	if (func.tag() == Function::Tag::KERNEL) {
 		auto sz = func.block_size();
@@ -611,7 +612,7 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 	//////////////////// Body
 	SerScope(func.body(), dict.get(), "body"sv);
 	//////////////////// Use atomic
-	//dict->Set("atomicfloat"sv, func.is_atomic_float_used());
+	dict->Set("atomicfloat"sv, func.is_atomic_float_used());
 	return dict;
 }
 

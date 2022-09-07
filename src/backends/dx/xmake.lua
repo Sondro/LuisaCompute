@@ -39,7 +39,7 @@ function BuildProject(config)
     end
     SetException(config.exception)
     if is_mode("release") then
-        set_optimize("aggressive")
+        set_optimize("fastest")
         if is_plat("windows") then
             set_runtimes("MD")
         end

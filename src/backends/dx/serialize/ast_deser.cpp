@@ -429,10 +429,12 @@ void AstSerializer::DeserFunction(detail::FunctionBuilder* builder, IJsonDict co
 	}
 	//////////////////// Body
 	{
-		auto bodyArr = dict->Get("body").get_or<IJsonArray*>(nullptr);
+		auto bodyArr = dict->Get("body"sv).get_or<IJsonArray*>(nullptr);
 		assert(bodyArr);
 		DeserStmtScope(builder->_body, bodyArr);
 	}
+	//////////////////// Atomic flag
+	builder->_use_atomic_float =  dict->Get("atomicfloat"sv).get_or<bool>(false);
 }
 luisa::shared_ptr<detail::FunctionBuilder> const& AstSerializer::DeserFunction(uint64 hash) {
 	return callables.Emplace(

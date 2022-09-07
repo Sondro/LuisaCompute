@@ -240,4 +240,29 @@ luisa::vector<std::byte> const* DeviceSer::GetData(uint64 handle) {
 	}
 	return &v.get<0>();
 }
+DeviceSer::DeviceSer(Context ctx)
+	: Device::Interface(ctx),
+	  dispatchThread([this] { DispatchThead(); }) {
+}
+DeviceSer::~DeviceSer() {
+	{
+		std::lock_guard lck(dispatchMtx);
+		threadEnable = false;
+	}
+	dispatchCv.notify_one();
+	dispatchThread.join();
+}
+void DeviceSer::DispatchThead() {
+	while (threadEnable) {
+		while (auto v = dispatchTasks.Pop()) {
+			(*v)();
+		}
+		{
+			std::unique_lock lck(dispatchMtx);
+			while (dispatchTasks.Length() == 0) {
+				dispatchCv.wait(lck);
+			}
+		}
+	}
+}
 }// namespace luisa::compute

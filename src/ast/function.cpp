@@ -51,6 +51,9 @@ uint3 Function::block_size() const noexcept {
 uint64_t Function::hash() const noexcept {
     return _builder->hash();
 }
+bool Function::is_atomic_float_used() const {
+    return _builder->is_atomic_float_used();
+}
 
 bool Function::raytracing() const noexcept {
     return _builder->raytracing();

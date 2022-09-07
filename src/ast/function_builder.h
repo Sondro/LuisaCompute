@@ -156,6 +156,7 @@ private:
     uint64_t _hash;
     uint3 _block_size;
     Tag _tag;
+    bool _use_atomic_float = false;
 
 protected:
     [[nodiscard]] static luisa::vector<FunctionBuilder *> &_function_stack() noexcept;
@@ -414,6 +415,7 @@ public:
 
     /// Return a Function object constructed from this
     [[nodiscard]] auto function() const noexcept { return Function{this}; }
+    [[nodiscard]] bool is_atomic_float_used() const;
 };
 
 }// namespace luisa::compute::detail
