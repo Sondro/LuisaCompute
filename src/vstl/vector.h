@@ -409,12 +409,7 @@ public:
     void erase(T *ite) noexcept {
         size_t index = reinterpret_cast<size_t>(ite) - reinterpret_cast<size_t>(vec.arr);
         index /= sizeof(T);
-#if defined(DEBUG)
-        if (index >= mSize) {
-            VEngine_Log("Out of Range!");
-            VENGINE_EXIT;
-        }
-#endif
+        assert(index < mSize);
         if constexpr (!(std::is_trivially_move_constructible_v<T>)) {
             if (index < mSize - 1) {
                 for (auto &&i : ptr_range(ite, end() - 1)) {
@@ -491,21 +486,11 @@ public:
         mSize = newSize;
     }
     T &operator[](size_t index) noexcept {
-#if defined(DEBUG)
-        if (index >= mSize) {
-            VEngine_Log("Out of Range!");
-            VENGINE_EXIT;
-        };
-#endif
+        assert(index < mSize);
         return vec.arr[index];
     }
     const T &operator[](size_t index) const noexcept {
-#if defined(DEBUG)
-        if (index >= mSize) {
-            VEngine_Log("Out of Range!");
-            VENGINE_EXIT;
-        };
-#endif
+        assert(index < mSize);
         return vec.arr[index];
     }
 };

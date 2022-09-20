@@ -1,5 +1,6 @@
 #include "device_ser.h"
 #include "ser_tag.h"
+#include "cmd_ser.h"
 namespace luisa::compute {
 //TODO: process return value
 uint64_t DeviceSer::create_buffer(size_t size_bytes) noexcept {
@@ -78,27 +79,51 @@ void DeviceSer::remove_tex3d_in_bindless_array(uint64_t array, size_t index) noe
 // stream
 uint64_t DeviceSer::create_stream(bool allowPresent) noexcept {
 	assert(!allowPresent);
-	std::lock_guard lck(mtx);
-	auto handle = handleCounter++;
-	arr << SerTag::CreateStream << handle;
-	visitor->send_async(arr.steal());
+	auto strm = new Stream();
+	auto handle = reinterpret_cast<uint64>(strm);
+	{
+		std::lock_guard lck(mtx);
+		arr << SerTag::CreateStream << handle;
+		visitor->send_async(arr.steal());
+	}
+	return handle;
 }
 
 void DeviceSer::destroy_stream(uint64_t handle) noexcept {
-	std::lock_guard lck(mtx);
-	arr << SerTag::DestroyStream << handle;
-	visitor->send_async(arr.steal());
+	{
+		std::lock_guard lck(mtx);
+		arr << SerTag::DestroyStream << handle;
+		visitor->send_async(arr.steal());
+	}
+	delete reinterpret_cast<Stream*>(handle);
 }
 void DeviceSer::synchronize_stream(uint64_t stream_handle) noexcept {
-	std::lock_guard lck(mtx);
-	arr << SerTag::SyncStream << stream_handle;
-	visitor->send_async(arr.steal());
+	auto stream = reinterpret_cast<Stream*>(stream_handle);
+	std::unique_lock lck(stream->mtx);
+	while (stream->taskQueue.Length() > 0) {
+		stream->cv.wait(lck);
+	}
 }
 void DeviceSer::dispatch(uint64_t stream_handle, CommandList&& list) noexcept {
-	std::lock_guard lck(mtx);
+	CmdSer cmdSer;
+	{
+		std::lock_guard lck(mtx);
+		cmdSer.arr = &arr;
+		arr << SerTag::DispatchCommandList << stream_handle;
+		cmdSer.SerCommands(list);
+	}
+	dispatchTasks.Push(reinterpret_cast<Stream*>(stream_handle));
+	dispatchMtx.lock();
+	dispatchMtx.unlock();
+	dispatchCv.notify_one();
 }
 void DeviceSer::dispatch(uint64_t stream_handle, luisa::move_only_function<void()>&& func) noexcept {
-	std::lock_guard lck(mtx);
+	auto stream = reinterpret_cast<Stream*>(stream_handle);
+	stream->taskQueue.Push(std::move(func));
+	dispatchTasks.Push(stream);
+	dispatchMtx.lock();
+	dispatchMtx.unlock();
+	dispatchCv.notify_one();
 }
 uint64_t DeviceSer::create_shader(Function kernel, vstd::string_view file_name) noexcept {
 	auto astSerPtr = serializers.Pop();
@@ -155,21 +180,40 @@ void DeviceSer::destroy_shader(uint64_t handle) noexcept {
 
 // event
 uint64_t DeviceSer::create_event() noexcept {
-	std::lock_guard lck(mtx);
-	auto handle = handleCounter++;
-	arr << SerTag::CreateGpuEvent << handle;
-	visitor->send_async(arr.steal());
+	auto evt = new Event();
+	uint64 handle;
+	{
+		std::lock_guard lck(mtx);
+		handle = reinterpret_cast<uint64>(evt);
+		arr << SerTag::CreateGpuEvent << handle;
+		visitor->send_async(arr.steal());
+	}
+
 	return handle;
 }
 void DeviceSer::destroy_event(uint64_t handle) noexcept {
-	std::lock_guard lck(mtx);
-	arr << SerTag::DestroyGpuEvent << handle;
-	visitor->send_async(arr.steal());
+	{
+		std::lock_guard lck(mtx);
+		arr << SerTag::DestroyGpuEvent << handle;
+		visitor->send_async(arr.steal());
+	}
+	delete reinterpret_cast<Event*>(handle);
 }
 void DeviceSer::signal_event(uint64_t handle, uint64_t stream_handle) noexcept {
-	std::lock_guard lck(mtx);
-	arr << SerTag::SignalGpuEvent << handle << stream_handle;
-	visitor->send_async(arr.steal());
+	auto evt = reinterpret_cast<Event*>(handle);
+	{
+		std::lock_guard lck(mtx);
+		arr << SerTag::SignalGpuEvent << handle << stream_handle;
+		visitor->send_async(arr.steal());
+		evt->waitFunc = visitor->receive_async();
+		evt->count++;
+	}
+	dispatchTasks.Push(evt);
+	{
+		dispatchMtx.lock();
+		dispatchMtx.unlock();
+	}
+	dispatchCv.notify_one();
 }
 void DeviceSer::wait_event(uint64_t handle, uint64_t stream_handle) noexcept {
 	std::lock_guard lck(mtx);
@@ -177,12 +221,13 @@ void DeviceSer::wait_event(uint64_t handle, uint64_t stream_handle) noexcept {
 	visitor->send_async(arr.steal());
 }
 void DeviceSer::synchronize_event(uint64_t handle) noexcept {
-	std::lock_guard lck(mtx);
-	arr << SerTag::SyncGpuEvent << handle;
-	visitor->send_async(arr.steal());
-	auto vec = visitor->receive_async()();
-	assert(vec.size() == 1 && static_cast<vbyte>(vec[0]) == 0);
+	auto evt = reinterpret_cast<Event*>(handle);
+	auto lck = std::unique_lock(evt->mtx);
+	while (evt->count > 0) {
+		evt->cv.wait(lck);
+	}
 }
+
 // accel
 uint64_t DeviceSer::create_mesh(
 	AccelUsageHint hint,
@@ -228,21 +273,9 @@ void DeviceSer::destroy_accel(uint64_t handle) noexcept {
 	arr << SerTag::DestroyAccel << handle;
 	visitor->send_async(arr.steal());
 }
-luisa::vector<std::byte> const* DeviceSer::GetData(uint64 handle) {
-	auto ite = receivedData.Find(handle);
-	if (!ite) return nullptr;
-	auto& v = ite.Value();
-	assert(v.valid());
-	auto func = v.try_get<SocketVisitor::WaitReceive>();
-	if (func) {
-		auto vec = (*func)();
-		v.reset(std::move(vec));
-	}
-	return &v.get<0>();
-}
 DeviceSer::DeviceSer(Context ctx)
 	: Device::Interface(ctx),
-	  dispatchThread([this] { DispatchThead(); }) {
+	  dispatchThread([this] { DispatchThread(); }) {
 }
 DeviceSer::~DeviceSer() {
 	{
@@ -252,16 +285,47 @@ DeviceSer::~DeviceSer() {
 	dispatchCv.notify_one();
 	dispatchThread.join();
 }
-void DeviceSer::DispatchThead() {
+
+void DeviceSer::StreamDispatch::ExecuteCommand(DeviceSer* self) {
+	size_t receiveSize = 0;
+	for (auto&& i : vec) {
+		receiveSize += i.second;
+	}
+	auto result = waitFunc();
+	assert(result.size() == receiveSize);
+	auto ptr = result.data();
+	for (auto&& i : vec) {
+		memcpy(i.first, ptr, i.second);
+		ptr += i.second;
+	}
+}
+void DeviceSer::DispatchThread() {
 	while (threadEnable) {
 		while (auto v = dispatchTasks.Pop()) {
-			(*v)();
+			v->multi_visit(
+				[&](Event* evt) {
+					auto vec = evt->waitFunc();
+					std::unique_lock lck{evt->mtx};
+					if (--evt->count == 0) {
+						lck.unlock();
+						evt->cv.notify_all();
+					}
+				},
+				[&](Stream* strm) {
+					while (auto task = strm->taskQueue.Pop()) {
+						task->multi_visit(
+							[&](StreamDispatch& dispatch) {
+								dispatch.ExecuteCommand(this);
+							},
+							[&](luisa::move_only_function<void()> const& func) {
+								func();
+							});
+					}
+				});
 		}
-		{
-			std::unique_lock lck(dispatchMtx);
-			while (dispatchTasks.Length() == 0) {
-				dispatchCv.wait(lck);
-			}
+		std::unique_lock lck(dispatchMtx);
+		while (dispatchTasks.Length() == 0) {
+			dispatchCv.wait(lck);
 		}
 	}
 }

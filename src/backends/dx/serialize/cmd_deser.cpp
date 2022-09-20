@@ -124,7 +124,7 @@ void CmdDeser::DeserCommands(CommandList& cmds) {
 			default:
 				LUISA_ERROR("Illegal Command!");
 				break;
-		}
+			}
 	}
 }
 CmdDeser::CmdDeser(

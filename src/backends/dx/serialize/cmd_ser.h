@@ -29,7 +29,7 @@ private:
 
 public:
 	void SerCommands(CommandList const& cmds);
-    CmdSer();
-    ~CmdSer();
+	CmdSer();
+	~CmdSer();
 };
 }// namespace luisa::compute

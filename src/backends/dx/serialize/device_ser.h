@@ -8,19 +8,38 @@
 #include <serialize/DatabaseInclude.h>
 namespace luisa::compute {
 class DeviceSer : public vstd::IOperatorNewBase, public Device::Interface {
+	struct Event : public vstd::IOperatorNewBase {
+		SocketVisitor::WaitReceive waitFunc;
+		std::condition_variable cv;
+		std::mutex mtx;
+		std::atomic_size_t count = 0;
+		uint indexCount = 0;
+	};
+	struct StreamDispatch {
+		SocketVisitor::WaitReceive waitFunc;
+		luisa::vector<std::pair<void*, size_t>> vec;
+		void ExecuteCommand(DeviceSer* self);
+	};
+	struct Stream : public vstd::IOperatorNewBase {
+		std::condition_variable cv;
+		std::mutex mtx;
+		vstd::LockFreeArrayQueue<
+			vstd::variant<StreamDispatch, luisa::move_only_function<void()>>>
+			taskQueue;
+	};
 	std::mutex mtx;
-	using ReceivedData = vstd::variant<luisa::vector<std::byte>, SocketVisitor::WaitReceive>;
-	vstd::HashMap<uint64, ReceivedData> receivedData;
 	SocketVisitor* visitor = nullptr;
-	luisa::vector<std::byte> const* GetData(uint64 handle);
 	vstd::LockFreeArrayQueue<vstd::unique_ptr<AstSerializer>> serializers;
 	vstd::LockFreeArrayQueue<vstd::unique_ptr<IJsonDatabase>> dbs;
 	std::thread dispatchThread;
 	uint64 handleCounter = 0;
 	bool threadEnable = true;
-	vstd::LockFreeArrayQueue<vstd::function<void()>> dispatchTasks;
+	vstd::LockFreeArrayQueue<vstd::variant<Event*, Stream*>> dispatchTasks;
 	std::condition_variable dispatchCv;
 	std::mutex dispatchMtx;
+
+	uint64 finishedFence = 0;
+	vstd::optional<Event> dispatchEvt;
 
 public:
 	ArrayIStream arr;
@@ -94,6 +113,6 @@ public:
 	~DeviceSer();
 
 private:
-	void DispatchThead();
+	void DispatchThread();
 };
 }// namespace luisa::compute
