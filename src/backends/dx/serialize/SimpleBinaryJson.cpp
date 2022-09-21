@@ -34,17 +34,17 @@ SimpleBinaryJson ::~SimpleBinaryJson() {
 	root.Delete();
 }
 vstd::unique_ptr<IJsonDict> SimpleBinaryJson::CreateDict() {
-	return vstd::create_unique<IJsonDict>(dictValuePool.New_Lock(dictMtx, this));
+	return vstd::create_unique<IJsonDict>(dictValuePool.New(this));
 }
 vstd::unique_ptr<IJsonArray> SimpleBinaryJson::CreateArray() {
-	return vstd::create_unique<IJsonArray>(arrValuePool.New_Lock(arrMtx, this));
+	return vstd::create_unique<IJsonArray>(arrValuePool.New(this));
 }
 SimpleJsonValueDict* SimpleBinaryJson::CreateDict_Nake() {
-	auto ptr = dictValuePool.New_Lock(dictMtx, this);
+	auto ptr = dictValuePool.New(this);
 	return ptr;
 }
 SimpleJsonValueArray* SimpleBinaryJson::CreateArray_Nake() {
-	auto ptr = arrValuePool.New_Lock(arrMtx, this);
+	auto ptr = arrValuePool.New(this);
 	return ptr;
 }
 

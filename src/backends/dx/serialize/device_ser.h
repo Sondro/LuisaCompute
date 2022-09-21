@@ -40,6 +40,7 @@ class DeviceSer : public vstd::IOperatorNewBase, public Device::Interface {
 
 	uint64 finishedFence = 0;
 	vstd::optional<Event> dispatchEvt;
+	vstd::HashMap<uint64> seredFunctionHashes;
 
 public:
 	ArrayIStream arr;

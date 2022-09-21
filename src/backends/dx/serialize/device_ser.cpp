@@ -126,37 +126,43 @@ void DeviceSer::dispatch(uint64_t stream_handle, luisa::move_only_function<void(
 	dispatchCv.notify_one();
 }
 uint64_t DeviceSer::create_shader(Function kernel, vstd::string_view file_name) noexcept {
-	auto astSerPtr = serializers.Pop();
-	auto dbPtr = dbs.Pop();
-	if (!astSerPtr) {
-		astSerPtr.New(new AstSerializer());
+	auto ite = seredFunctionHashes.TryEmplace(kernel.hash());
+	if (ite.second) {
+		std::lock_guard lck(mtx);
+		arr << SerTag::TransportFunction;
+		auto astSerPtr = serializers.Pop();
+		auto dbPtr = dbs.Pop();
+		if (!astSerPtr) {
+			astSerPtr.New(new AstSerializer());
+		}
+		if (!dbPtr) {
+			dbPtr.New(CreateDatabase());
+		}
+		auto& astSer = *astSerPtr;
+		auto& db = *dbPtr;
+		auto returnTask = vstd::create_disposer([&] {
+			serializers.Push(std::move(astSer));
+			dbs.Push(std::move(db));
+		});
+		db->GetRootNode()->Reset();
+		astSer->SerializeKernel(
+			kernel,
+			db.get());
+		db->GetRootNode()->Serialize(
+			arr.bytes);
+		visitor->send_async(arr.steal());
 	}
-	if (!dbPtr) {
-		dbPtr.New(CreateDatabase());
-	}
-	auto& astSer = *astSerPtr;
-	auto& db = *dbPtr;
-	auto returnTask = vstd::create_disposer([&] {
-		serializers.Push(std::move(astSer));
-		dbs.Push(std::move(db));
-	});
-	db->GetRootNode()->Reset();
-	astSer->SerializeKernel(
-		kernel,
-		db.get());
 	size_t handle;
 	{
 		std::lock_guard lck(mtx);
 		handle = handleCounter++;
 		arr
 			<< SerTag::CreateShader
-			<< handle;
+			<< handle << kernel.hash();
 		if (!file_name.empty()) {
 			arr << file_name.size()
 				<< vstd::span<std::byte const>(reinterpret_cast<std::byte const*>(file_name.data()), file_name.size());
 		}
-		db->GetRootNode()->Serialize(
-			arr.bytes);
 		visitor->send_async(arr.steal());
 	}
 	return handle;

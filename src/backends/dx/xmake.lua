@@ -74,8 +74,10 @@ rule("copy_to_build")
 after_build(function(target)
     if is_mode("release") then
         os.cp("bin/release/*.dll", "$(buildir)/windows/x64/release/")
+        os.cp("dx_support/*.dll", "$(buildir)/windows/x64/release/")
     else
         os.cp("bin/debug/*.dll", "$(buildir)/windows/x64/debug/")
+        os.cp("dx_support/*.dll", "$(buildir)/windows/x64/debug/")
     end
 end)
 

@@ -20,7 +20,6 @@ enum class SerTag : uint32_t {
 	DestroyStream,
 	SyncStream,
 	DispatchCommandList,
-	DispatchCallback,
 	CreateShader,
 	DestroyShader,
 	LoadShader,
@@ -32,6 +31,8 @@ enum class SerTag : uint32_t {
 	CreateMesh,
 	DestroyMesh,
 	CreateAccel,
-	DestroyAccel
+	DestroyAccel,
+
+	TransportFunction
 };
 }// namespace luisa::compute

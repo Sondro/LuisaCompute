@@ -6,9 +6,18 @@
 namespace luisa::compute {
 class CmdDeser : public vstd::IOperatorNewBase {
 public:
+	class IHandleMapVisitor {
+	protected:
+		~IHandleMapVisitor() = default;
+
+	public:
+		virtual uint64 GetResource(uint64 handle) = 0;
+		virtual Function GetFunction(uint64 handle) = 0;
+	};
 	vstd::vector<std::byte> uploadDatas;
 	// readback cache data;
 	vstd::vector<std::byte> readbackDatas;
+	IHandleMapVisitor* visitor = nullptr;
 	ArrayOStream* arr = nullptr;
 
 	std::byte* DeserUploadData(size_t size);
@@ -17,7 +26,6 @@ public:
 private:
 	std::byte* uploadPtr;
 	std::byte* readbackPtr;
-	luisa::move_only_function<Function(uint64 hash)> getFunc;
 
 	void DeserCmdType(BufferUploadCommand* cmd);
 	void DeserCmdType(BufferDownloadCommand* cmd);
@@ -33,8 +41,7 @@ private:
 	void DeserCmdType(BindlessArrayUpdateCommand* cmd);
 
 public:
-	CmdDeser(
-		luisa::move_only_function<Function(uint64 hash)>&& getFunc);
+	CmdDeser();
 	~CmdDeser();
 	void DeserCommands(CommandList& cmds);
 };

@@ -12,8 +12,6 @@ public:
 	VSTD_SELF_PTR;
 	vstd::Pool<SimpleJsonValueArray, true> arrValuePool;
 	vstd::Pool<SimpleJsonValueDict, true> dictValuePool;
-	vstd::spin_mutex arrMtx;
-	vstd::spin_mutex dictMtx;
 	IJsonDict* GetRootNode() override;
 	vstd::unique_ptr<IJsonDict> CreateDict() override;
 	vstd::unique_ptr<IJsonArray> CreateArray() override;

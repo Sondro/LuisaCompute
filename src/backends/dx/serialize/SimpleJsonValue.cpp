@@ -522,10 +522,10 @@ void SimpleJsonValueDict::Reset() {
 }
 
 void SimpleJsonValueDict::Dispose() {
-	db->dictValuePool.Delete_Lock(db->dictMtx, this);
+	db->dictValuePool.Delete(this);
 }
 void SimpleJsonValueArray::Dispose() {
-	db->arrValuePool.Delete_Lock(db->arrMtx, this);
+	db->arrValuePool.Delete(this);
 }
 
 SimpleJsonValueArray::SimpleJsonValueArray(

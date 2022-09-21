@@ -11,7 +11,7 @@ public:
 	ShaderPaths shaderPaths;
 	Device nativeDevice;
 	vstd::unique_ptr<LCUtil> util;
-	static constexpr size_t maxAllocatorCount = 2;
+	static constexpr size_t maxAllocatorCount = 3;
 	//std::numeric_limits<size_t>::max();
 	LCDevice(const Context& ctx);
 	~LCDevice();
