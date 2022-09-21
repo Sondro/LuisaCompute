@@ -21,7 +21,6 @@ static AllocateCallback gAllocateCallback;
 }// namespace ma_detail
 class DefaultAllocator final : public IGpuAllocator {
 private:
-	std::mutex mtx;
 	D3D12MA::Allocator* allocator = nullptr;
 
 public:
@@ -58,10 +57,7 @@ public:
 			depthSlice,
 			mipCount);
 		Allocation* alloc;
-		{
-			std::lock_guard lck(mtx);
-			allocator->AllocateMemory(&desc, &info, &alloc);
-		}
+					allocator->AllocateMemory(&desc, &info, &alloc);
 		*heap = alloc->GetHeap();
 		*offset = alloc->GetOffset();
 		return reinterpret_cast<uint64>(alloc);
@@ -81,24 +77,20 @@ public:
 		info.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 		info.SizeInBytes = CalcPlacedOffsetAlignment(targetSizeInBytes);
 		Allocation* alloc;
-		{
-			std::lock_guard lck(mtx);
-			allocator->AllocateMemory(&desc, &info, &alloc);
-		}
-		*heap = alloc->GetHeap();
+					allocator->AllocateMemory(&desc, &info, &alloc);
+				*heap = alloc->GetHeap();
 		*offset = alloc->GetOffset();
 		return reinterpret_cast<uint64>(alloc);
 	}
 	void Release(uint64 alloc) override {
 		using namespace D3D12MA;
-		std::lock_guard lck(mtx);
-		reinterpret_cast<Allocation*>(alloc)->Release();
+				reinterpret_cast<Allocation*>(alloc)->Release();
 	}
 	DefaultAllocator(
 		Device* device) {
 		using namespace D3D12MA;
 		ALLOCATOR_DESC desc;
-		desc.Flags = ALLOCATOR_FLAGS::ALLOCATOR_FLAG_SINGLETHREADED | ALLOCATOR_FLAGS::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
+		desc.Flags = ALLOCATOR_FLAGS::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
 		desc.pAdapter = device->adapter.Get();
 		desc.pAllocationCallbacks = &ma_detail::gAllocateCallback.callbacks;
 		desc.pDevice = device->device.Get();
