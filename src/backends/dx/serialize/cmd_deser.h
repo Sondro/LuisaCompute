@@ -14,17 +14,15 @@ public:
 		virtual uint64 GetResource(uint64 handle) = 0;
 		virtual Function GetFunction(uint64 handle) = 0;
 	};
-	vstd::vector<std::byte> uploadDatas;
 	// readback cache data;
-	vstd::vector<std::byte> readbackDatas;
+	luisa::vector<std::byte> readbackDatas;
 	IHandleMapVisitor* visitor = nullptr;
 	ArrayOStream* arr = nullptr;
 
-	std::byte* DeserUploadData(size_t size);
+	std::byte const* DeserUploadData(size_t size);
 	std::byte* DeserDownloadData(size_t size);
 
 private:
-	std::byte* uploadPtr;
 	std::byte* readbackPtr;
 
 	void DeserCmdType(BufferUploadCommand* cmd);
@@ -43,6 +41,6 @@ private:
 public:
 	CmdDeser();
 	~CmdDeser();
-	void DeserCommands(CommandList& cmds);
+	void DeserCommands(size_t headerSize, CommandList& cmds);
 };
 }// namespace luisa::compute

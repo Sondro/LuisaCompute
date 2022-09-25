@@ -1,9 +1,8 @@
 #include "cmd_deser.h"
 namespace luisa::compute {
-std::byte* CmdDeser::DeserUploadData(size_t size) {
-	auto ptr = uploadPtr;
-	uploadPtr += size;
-	*arr >> vstd::span<std::byte>(ptr, size);
+std::byte const* CmdDeser::DeserUploadData(size_t size) {
+	auto ptr = arr->ptr;
+	arr->ptr += size;
 	return ptr;
 }
 std::byte* CmdDeser::DeserDownloadData(size_t size) {
@@ -89,18 +88,15 @@ void CmdDeser::DeserCmdType(BindlessArrayUpdateCommand* cmd) {
 	*arr >> (cmd->_handle);
 	cmd->_handle = visitor->GetResource(cmd->_handle);
 }
-void CmdDeser::DeserCommands(CommandList& cmds) {
+void CmdDeser::DeserCommands(size_t headerSize, CommandList& cmds) {
 	size_t cmdSize;
 	size_t readbackSize;
 	size_t uploadSize;
 	auto&& vec = cmds._commands;
 	*arr >> cmdSize >> readbackSize >> uploadSize;
-	readbackDatas.clear();
-	uploadDatas.clear();
-	readbackDatas.resize(readbackSize);
-	uploadDatas.resize(uploadSize);
-	readbackPtr = readbackDatas.data();
-	uploadPtr = uploadDatas.data();
+	readbackDatas.resize(headerSize + sizeof(size_t) + readbackSize);
+	memcpy(readbackDatas.data() + headerSize, &readbackSize, sizeof(size_t));
+	readbackPtr = readbackDatas.data() + headerSize;
 	vec.resize(cmdSize);
 	Command::Tag tag;
 	for (auto&& i : vec) {

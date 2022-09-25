@@ -27,12 +27,10 @@ enum class SerTag : uint32_t {
 	DestroyGpuEvent,
 	SignalGpuEvent,
 	WaitGpuEvent,
-	SyncGpuEvent,
 	CreateMesh,
 	DestroyMesh,
 	CreateAccel,
 	DestroyAccel,
-
 	TransportFunction
 };
 }// namespace luisa::compute

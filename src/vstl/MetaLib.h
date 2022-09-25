@@ -587,10 +587,7 @@ public:
         requires(PtrType::template CtorFunc<Func>())
     Iterator(Func &&func) : ptr(std::forward<Func>(func)) {}
     Iterator(Iterator const &) = delete;
-    Iterator(Iterator &&v)
-        : ptr(v.ptr) {
-        v.ptr = nullptr;
-    }
+    Iterator(Iterator &&v) : ptr(std::move(v.ptr)) {}
     ~Iterator() {
     }
     T operator*() const {
@@ -860,6 +857,7 @@ public:
     bool valid() const { return switcher < argSize; }
 
     template<typename Func>
+        requires(std::is_invocable_v<Func, void *>)
     void update(size_t typeIndex, Func &&setFunc) {
         this->~variant();
         if (typeIndex >= argSize) {
@@ -1184,6 +1182,23 @@ public:
         this->~variant();
         new (this) variant(std::forward<Args>(args)...);
     }
+    template<typename... Args>
+    void reset_as(size_t typeIndex, Args &&...args) {
+        this->~variant();
+        if (typeIndex >= argSize) {
+            switcher = argSize;
+            return;
+        }
+        switcher = typeIndex;
+        auto func = [&]<typename T>(T &t) {
+            constexpr bool cons = std::is_constructible_v<T, Args &&...>;
+            assert(cons);
+            if constexpr (cons)
+                new (&t) T(std::forward<Args>(args)...);
+        };
+        detail::Visitor<void, decltype(func), void, AA &...>(typeIndex, GetPlaceHolder(), std::move(func));
+    }
+
     template<typename T>
         requires(detail::AnyMap<std::is_assignable, false, T>::
                      template Run<AA...>())
@@ -1330,10 +1345,10 @@ auto erase_last(Vec &&vec) {
         return memcmp(this, &a, sizeof(T)) < 0;  \
     }
 template<typename T, typename... Args>
-	requires(!std::is_const_v<T> && std::is_constructible_v<T, Args&&...>)
-void reset(T& v, Args&&... args) {
-	v.~T();
-	new (&v) T(std::forward<Args>(args)...);
+    requires(!std::is_const_v<T> && std::is_constructible_v<T, Args &&...>)
+void reset(T &v, Args &&...args) {
+    v.~T();
+    new (&v) T(std::forward<Args>(args)...);
 }
 #define DECLARE_VENGINE_OVERRIDE_OPERATOR_NEW           \
     static void *operator new(                          \

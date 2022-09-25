@@ -159,9 +159,9 @@ uint64_t DeviceSer::create_shader(Function kernel, vstd::string_view file_name) 
 		arr
 			<< SerTag::CreateShader
 			<< handle << kernel.hash();
+		arr << file_name.size();
 		if (!file_name.empty()) {
-			arr << file_name.size()
-				<< vstd::span<std::byte const>(reinterpret_cast<std::byte const*>(file_name.data()), file_name.size());
+			arr << vstd::span<std::byte const>(reinterpret_cast<std::byte const*>(file_name.data()), file_name.size());
 		}
 		visitor->send_async(arr.steal());
 	}
@@ -175,6 +175,12 @@ uint64_t DeviceSer::load_shader(vstd::string_view file_name, vstd::span<Type con
 		<< handle
 		<< file_name.size()
 		<< vstd::span<std::byte const>(reinterpret_cast<std::byte const*>(file_name.data()), file_name.size());
+	arr << types.size();
+	for (auto i : types) {
+		auto desc = i->description();
+		arr << desc.size()
+			<< vstd::span<std::byte const>(reinterpret_cast<std::byte const*>(desc.data()), desc.size());
+	}
 	visitor->send_async(arr.steal());
 	return handle;
 }
@@ -186,24 +192,16 @@ void DeviceSer::destroy_shader(uint64_t handle) noexcept {
 
 // event
 uint64_t DeviceSer::create_event() noexcept {
-	auto evt = new Event();
-	uint64 handle;
-	{
-		std::lock_guard lck(mtx);
-		handle = reinterpret_cast<uint64>(evt);
-		arr << SerTag::CreateGpuEvent << handle;
-		visitor->send_async(arr.steal());
-	}
-
+	std::lock_guard lck(mtx);
+	auto handle = handleCounter++;
+	arr << SerTag::CreateGpuEvent << handle;
+	visitor->send_async(arr.steal());
 	return handle;
 }
 void DeviceSer::destroy_event(uint64_t handle) noexcept {
-	{
-		std::lock_guard lck(mtx);
-		arr << SerTag::DestroyGpuEvent << handle;
-		visitor->send_async(arr.steal());
-	}
-	delete reinterpret_cast<Event*>(handle);
+	std::lock_guard lck(mtx);
+	arr << SerTag::DestroyGpuEvent << handle;
+	visitor->send_async(arr.steal());
 }
 void DeviceSer::signal_event(uint64_t handle, uint64_t stream_handle) noexcept {
 	auto evt = reinterpret_cast<Event*>(handle);
@@ -211,15 +209,7 @@ void DeviceSer::signal_event(uint64_t handle, uint64_t stream_handle) noexcept {
 		std::lock_guard lck(mtx);
 		arr << SerTag::SignalGpuEvent << handle << stream_handle;
 		visitor->send_async(arr.steal());
-		evt->waitFunc = visitor->receive_async();
-		evt->count++;
 	}
-	dispatchTasks.Push(evt);
-	{
-		dispatchMtx.lock();
-		dispatchMtx.unlock();
-	}
-	dispatchCv.notify_one();
 }
 void DeviceSer::wait_event(uint64_t handle, uint64_t stream_handle) noexcept {
 	std::lock_guard lck(mtx);
@@ -227,11 +217,7 @@ void DeviceSer::wait_event(uint64_t handle, uint64_t stream_handle) noexcept {
 	visitor->send_async(arr.steal());
 }
 void DeviceSer::synchronize_event(uint64_t handle) noexcept {
-	auto evt = reinterpret_cast<Event*>(handle);
-	auto lck = std::unique_lock(evt->mtx);
-	while (evt->count > 0) {
-		evt->cv.wait(lck);
-	}
+	//TODO
 }
 
 // accel
@@ -308,26 +294,16 @@ void DeviceSer::StreamDispatch::ExecuteCommand(DeviceSer* self) {
 void DeviceSer::DispatchThread() {
 	while (threadEnable) {
 		while (auto v = dispatchTasks.Pop()) {
-			v->multi_visit(
-				[&](Event* evt) {
-					auto vec = evt->waitFunc();
-					std::unique_lock lck{evt->mtx};
-					if (--evt->count == 0) {
-						lck.unlock();
-						evt->cv.notify_all();
-					}
-				},
-				[&](Stream* strm) {
-					while (auto task = strm->taskQueue.Pop()) {
-						task->multi_visit(
-							[&](StreamDispatch& dispatch) {
-								dispatch.ExecuteCommand(this);
-							},
-							[&](luisa::move_only_function<void()> const& func) {
-								func();
-							});
-					}
-				});
+			auto strm = *v;
+			while (auto task = strm->taskQueue.Pop()) {
+				task->multi_visit(
+					[&](StreamDispatch& dispatch) {
+						dispatch.ExecuteCommand(this);
+					},
+					[&](luisa::move_only_function<void()> const& func) {
+						func();
+					});
+			}
 		}
 		std::unique_lock lck(dispatchMtx);
 		while (dispatchTasks.Length() == 0) {

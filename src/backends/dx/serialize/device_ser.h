@@ -8,13 +8,6 @@
 #include <serialize/DatabaseInclude.h>
 namespace luisa::compute {
 class DeviceSer : public vstd::IOperatorNewBase, public Device::Interface {
-	struct Event : public vstd::IOperatorNewBase {
-		SocketVisitor::WaitReceive waitFunc;
-		std::condition_variable cv;
-		std::mutex mtx;
-		std::atomic_size_t count = 0;
-		uint indexCount = 0;
-	};
 	struct StreamDispatch {
 		SocketVisitor::WaitReceive waitFunc;
 		luisa::vector<std::pair<void*, size_t>> vec;
@@ -34,12 +27,11 @@ class DeviceSer : public vstd::IOperatorNewBase, public Device::Interface {
 	std::thread dispatchThread;
 	uint64 handleCounter = 0;
 	bool threadEnable = true;
-	vstd::LockFreeArrayQueue<vstd::variant<Event*, Stream*>> dispatchTasks;
+	vstd::LockFreeArrayQueue<Stream*> dispatchTasks;
 	std::condition_variable dispatchCv;
 	std::mutex dispatchMtx;
 
 	uint64 finishedFence = 0;
-	vstd::optional<Event> dispatchEvt;
 	vstd::HashMap<uint64> seredFunctionHashes;
 
 public:

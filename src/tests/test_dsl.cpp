@@ -13,6 +13,7 @@
 #include <runtime/context.h>
 #include <ast/interface.h>
 #include <dsl/syntax.h>
+#include <dsl/sugar.h>
 
 using namespace luisa;
 using namespace luisa::compute;
@@ -94,7 +95,6 @@ int main(int argc, char *argv[]) {
         loop([] {
             if_(true, break_);
         });
-
         for (auto v : range(v_int)) {
             v_int += v;
         }

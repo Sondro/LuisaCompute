@@ -43,7 +43,25 @@ public:
 		new (this) SelfType(std::move(v));
 	}
 	LockFreeArrayQueue() : LockFreeArrayQueue(64) {}
-
+	void Reserve(size_t newCapa){
+		std::lock_guard<spin_mutex> lck(mtx);
+		size_t index = head;
+		if(newCapa > capacity){
+			auto newCapa = (capacity + 1) * 2;
+			T* newArr = (T*)Allocator().Malloc(sizeof(T) * newCapa);
+			newCapa--;
+			for (size_t s = tail; s != index; ++s) {
+				T* ptr = arr + GetIndex(s, capacity);
+				new (newArr + GetIndex(s, newCapa)) T(std::move(*ptr));
+				if constexpr (!std::is_trivially_destructible_v<T>) {
+					ptr->~T();
+				}
+			}
+			Allocator().Free(arr);
+			arr = newArr;
+			capacity = newCapa;
+		}
+	}
 	template<typename... Args>
 	void Push(Args&&... args) {
 		std::lock_guard<spin_mutex> lck(mtx);

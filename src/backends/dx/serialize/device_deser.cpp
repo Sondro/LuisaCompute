@@ -20,8 +20,21 @@ uint64 DeviceDeser::HandleFilter(uint64 handle) const {
 	return ite.Value();
 }
 void DeviceDeser::Receive(SocketVisitor* visitor) {
+	auto GetStr = [&](auto strLen) {
+		if (strLen > 0) {
+			vstd::string str;
+			str.resize(strLen);
+			return str;
+		} else {
+			return vstd::string();
+		}
+	};
+	socket = visitor;
 	dataArr.clear();
-	visitor->receive(dataArr);
+	{
+		std::lock_guard lck(socketMtx);
+		visitor->receive(dataArr);
+	}
 	ArrayOStream strm;
 	strm.ptr = dataArr.data();
 	strm.end = dataArr.data() + dataArr.size();
@@ -128,42 +141,92 @@ void DeviceDeser::Receive(SocketVisitor* visitor) {
 			strm >> handle;
 			auto nativeHandle = nativeDevice->create_stream(false);
 			vstd::optional<RemoteStream>* stream;
-			{
-				std::lock_guard lck(handleMtx);
-				stream = &streamMap.Emplace(handle).Value();
-			}
-			stream->New(nativeDevice, this, nativeHandle);
+			stream = &streamMap.Emplace(handle).Value();
+			stream->New(nativeDevice, this, handle, nativeHandle);
 		} break;
 		case SerTag::DestroyStream: {
 			uint64 handle;
 			strm >> handle;
-			std::lock_guard lck(handleMtx);
 			auto ite = streamMap.Find(handle);
 			assert(ite);
 			streamMap.Remove(ite);
 		} break;
 		case SerTag::SyncStream: {
-
+			uint64 handle;
+			strm >> handle;
+			auto stream = GetStream(handle);
+			nativeDevice->synchronize_stream(stream->nativeHandle);
 		} break;
 		case SerTag::DispatchCommandList: {
+			uint64 handle;
+			strm >> handle;
+			auto stream = GetStream(handle);
+			stream->Dispatch(strm);
 		} break;
 		case SerTag::CreateShader: {
+			uint64 handle, funcHash;
+			strm >> handle >> funcHash;
+			auto funcIte = funcMap.Find(funcHash);
+			assert(funcIte);
+			Function func(&funcIte.Value());
+			uint64 strLen;
+			strm >> strLen;
+			vstd::string fileName = GetStr(strLen);
+			auto nativeHandle = nativeDevice->create_shader(func, fileName);
+			{
+				std::lock_guard lck(handleMtx);
+				handleMap.Emplace(handle, nativeHandle);
+			}
 		} break;
 		case SerTag::DestroyShader: {
 			DEVICEDESER_DESTROY(destroy_shader)
 		} break;
 		case SerTag::LoadShader: {
+			uint64 handle, strLen;
+			strm >> handle >> strLen;
+			vstd::string fileName = GetStr(strLen);
+			uint64 typeCount;
+			strm >> typeCount;
+			vstd::vector<Type const*> types;
+			types.push_back_func(
+				typeCount,
+				[&] -> Type const* {
+					uint64 strLen;
+					strm >> strLen;
+					vstd::string typeDesc = GetStr(strLen);
+					return Type::from(typeDesc);
+				});
+			auto nativeHandle = nativeDevice->load_shader(fileName, types);
+			{
+				std::lock_guard lck(handleMtx);
+				handleMap.Emplace(handle, nativeHandle);
+			}
 		} break;
 		case SerTag::CreateGpuEvent: {
+			uint64 handle;
+			strm >> handle;
+			auto nativeHandle = nativeDevice->create_event();
+			{
+				std::lock_guard lck(handleMtx);
+				handleMap.Emplace(handle, nativeHandle);
+			}
 		} break;
 		case SerTag::DestroyGpuEvent: {
 			DEVICEDESER_DESTROY(destroy_event)
 		} break;
 		case SerTag::SignalGpuEvent: {
-		} break;
+			uint64 handle, streamHandle;
+			strm >> handle >> streamHandle;
+			handle = HandleFilter(handle);
+			streamHandle = HandleFilter(streamHandle);
+			nativeDevice->signal_event(handle, streamHandle);
+		}
 		case SerTag::WaitGpuEvent: {
-		} break;
-		case SerTag::SyncGpuEvent: {
+			uint64 handle, streamHandle;
+			strm >> handle >> streamHandle;
+			handle = HandleFilter(handle);
+			streamHandle = HandleFilter(streamHandle);
+			nativeDevice->wait_event(handle, streamHandle);
 		} break;
 		case SerTag::CreateMesh: {
 		} break;
@@ -181,36 +244,22 @@ void DeviceDeser::Receive(SocketVisitor* visitor) {
 			AstSerializer ser{};
 			auto db = vstd::create_unique(CreateDatabase());
 			detail::FunctionBuilder* builder;
-			{
-				std::lock_guard lck(handleMtx);
-				builder = &funcMap.Emplace(hash, Function::Tag::KERNEL).Value();
-			}
+			builder = &funcMap.Emplace(hash, Function::Tag::KERNEL).Value();
 			ser.DeserializeKernel(builder, db->GetRootNode());
 			break;
 		}
 	}
 }
 
-RemoteStream::RemoteStream(Device::Interface* device, DeviceDeser* deserDevice, uint64 nativeHandle)
-	: thd([this] { ThreadLogic(); }), device(device) {
-	visitor.deserDevice = deserDevice;
-	cmdDeser.visitor = &visitor;
+RemoteStream* DeviceDeser::GetStream(uint64 handle) const {
+	auto ite = streamMap.Find(handle);
+	assert(ite);
+	return ite.Value();
 }
-void RemoteStream::ThreadLogic() {
-	while (auto v = dstQueue.Pop()) {
-		ArrayOStream strm;
-		strm.ptr = v->vec.data() + v->startIndex;
-		strm.end = v->vec.data() + v->vec.size();
-		CommandList list;
-		cmdDeser.arr = &strm;
-		cmdDeser.DeserCommands(list);
-		device->dispatch(nativeHandle, std::move(list));
-		executedFrame++;
-	}
-	std::unique_lock lck(mtx);
-	while (dstQueue.Length() == 0) {
-		thdCv.wait(lck);
-	}
+
+RemoteStream::RemoteStream(Device::Interface* device, DeviceDeser* deserDevice, uint64 handle, uint64 nativeHandle)
+	: device(device), nativeHandle(nativeHandle), handle(handle) {
+	visitor.deserDevice = deserDevice;
 }
 uint64 RemoteStream::DeviceSearchVisitor::GetResource(uint64 handle) {
 	std::shared_lock lck(deserDevice->handleMtx);
@@ -219,11 +268,24 @@ uint64 RemoteStream::DeviceSearchVisitor::GetResource(uint64 handle) {
 	return ite.Value();
 }
 Function RemoteStream::DeviceSearchVisitor::GetFunction(uint64 handle) {
-	std::shared_lock lck(deserDevice->handleMtx);
 	auto ite = deserDevice->funcMap.Find(handle);
 	assert(ite);
 	return Function(&ite.Value());
 }
 RemoteStream::~RemoteStream() {}
+void RemoteStream::Dispatch(ArrayOStream& strm) {
+	CommandList list;
+	CmdDeser cmdDeser;
+	cmdDeser.visitor = &visitor;
+	cmdDeser.arr = &strm;
+	auto&& vec = cmdDeser.readbackDatas;
+	cmdDeser.DeserCommands(sizeof(uint64), list);
+	memcpy(vec.data(), &handle, sizeof(uint64));
+	device->dispatch(nativeHandle, std::move(list));
+	device->dispatch(nativeHandle, [this, readback = std::move(vec)]() mutable {
+		std::lock_guard lck(visitor.deserDevice->socketMtx);
+		visitor.deserDevice->socket->send_async(std::move(readback));
+	});
+}
 #undef DEVICEDESER_DESTROY
 }// namespace luisa::compute
