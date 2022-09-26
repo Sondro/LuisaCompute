@@ -169,9 +169,7 @@ private:
 		}
 
 		lastField = fieldStack.emplace_back(fieldPool->New());
-		lastField->data.update(1, [&](void* ptr) {
-			new (ptr) vstd::vector<std::pair<vstd::string_view, Field*>>();
-		});
+		lastField->data.reset_as(1);
 		streamer = StreamState::SearchKey;
 		++ptr;
 		return true;
@@ -253,9 +251,7 @@ private:
 				return false;
 		}
 		lastField = fieldStack.emplace_back(fieldPool->New());
-		lastField->data.update(2, [&](void* ptr) {
-			new (ptr) vstd::vector<Field*>();
-		});
+		lastField->data.reset_as(2);
 		streamer = StreamState::SearchElement;
 		++ptr;
 		return true;

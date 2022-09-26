@@ -856,17 +856,31 @@ private:
 public:
     bool valid() const { return switcher < argSize; }
 
-    template<typename Func>
-        requires(std::is_invocable_v<Func, void *>)
-    void update(size_t typeIndex, Func &&setFunc) {
+    template<typename... Args>
+    void reset_as(size_t typeIndex, Args &&...args) {
         this->~variant();
         if (typeIndex >= argSize) {
             switcher = argSize;
             return;
         }
         switcher = typeIndex;
-        setFunc(reinterpret_cast<void *>(&placeHolder));
+        auto func = [&]<typename T>(T &t) {
+            constexpr bool cons = std::is_constructible_v<T, Args &&...>;
+            assert(cons);
+            if constexpr (cons)
+                new (&t) T(std::forward<Args>(args)...);
+        };
+        detail::Visitor<void, decltype(func), void, AA &...>(typeIndex, GetPlaceHolder(), std::move(func));
     }
+    template<typename T, typename... Args>
+        requires(
+            IndexOf<T> < argSize && std::is_constructible_v<T, Args &&...>)
+    void reset_as(Args &&...args) {
+        this->~variant();
+        switcher = IndexOf<T>;
+        new (&placeHolder) T(std::forward<Args>(args)...);
+    }
+
 
     void *GetPlaceHolder() { return &placeHolder; }
     void const *GetPlaceHolder() const { return &placeHolder; }
@@ -1181,22 +1195,6 @@ public:
     void reset(Args &&...args) {
         this->~variant();
         new (this) variant(std::forward<Args>(args)...);
-    }
-    template<typename... Args>
-    void reset_as(size_t typeIndex, Args &&...args) {
-        this->~variant();
-        if (typeIndex >= argSize) {
-            switcher = argSize;
-            return;
-        }
-        switcher = typeIndex;
-        auto func = [&]<typename T>(T &t) {
-            constexpr bool cons = std::is_constructible_v<T, Args &&...>;
-            assert(cons);
-            if constexpr (cons)
-                new (&t) T(std::forward<Args>(args)...);
-        };
-        detail::Visitor<void, decltype(func), void, AA &...>(typeIndex, GetPlaceHolder(), std::move(func));
     }
 
     template<typename T>

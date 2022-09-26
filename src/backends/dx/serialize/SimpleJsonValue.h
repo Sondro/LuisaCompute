@@ -16,19 +16,17 @@ struct SimpleJsonKey {
 		: value(std::move(value)) {}
 	SimpleJsonKey(Key const& v) {
 		if (v.GetType() < ValueType::argSize) {
-			value.update(v.GetType(), [&](void* ptr) {
-				switch (v.GetType()) {
-					case ValueType::IndexOf<int64>:
-						new (ptr) int64(v. force_get<int64>());
-						break;
-					case ValueType::IndexOf<vstd::string>:
-						new (ptr) vstd::string(v. force_get<vstd::string_view>());
-						break;
-					case ValueType::IndexOf<vstd::Guid>:
-						new (ptr) vstd::Guid(v. force_get<vstd::Guid>());
-						break;
-				}
-			});
+			switch (v.GetType()) {
+				case ValueType::IndexOf<int64>:
+					value.reset_as<int64>(v.force_get<int64>());
+					break;
+				case ValueType::IndexOf<vstd::string>:
+					value.reset_as<vstd::string>(v.force_get<vstd::string_view>());
+					break;
+				case ValueType::IndexOf<vstd::Guid>:
+					value.reset_as<vstd::Guid>(v.force_get<vstd::Guid>());
+					break;
+			}
 		}
 	}
 	SimpleJsonKey(Key&& v)
@@ -36,11 +34,11 @@ struct SimpleJsonKey {
 	static Key GetKey(ValueType const& value) {
 		switch (value.GetType()) {
 			case ValueType::IndexOf<int64>:
-				return Key(value. force_get<int64>());
+				return Key(value.force_get<int64>());
 			case ValueType::IndexOf<vstd::Guid>:
-				return Key(value. force_get<vstd::Guid>());
+				return Key(value.force_get<vstd::Guid>());
 			case ValueType::IndexOf<vstd::string>:
-				return Key(value. force_get<vstd::string>());
+				return Key(value.force_get<vstd::string>());
 			default:
 				return Key();
 		}
@@ -53,15 +51,15 @@ struct SimpleJsonKey {
 			switch (value.GetType()) {
 				case ValueType::IndexOf<int64>: {
 					static const vstd::compare<int64> cm;
-					return cm(value. force_get<int64>(), key. force_get<int64>());
+					return cm(value.force_get<int64>(), key.force_get<int64>());
 				}
 				case ValueType::IndexOf<vstd::Guid>: {
 					static const vstd::compare<vstd::Guid> cm;
-					return cm(value. force_get<vstd::Guid>(), key. force_get<vstd::Guid>());
+					return cm(value.force_get<vstd::Guid>(), key.force_get<vstd::Guid>());
 				}
 				case ValueType::IndexOf<vstd::string>: {
 					static const vstd::compare<vstd::string_view> cm;
-					return cm(value. force_get<vstd::string>(), key. force_get<vstd::string_view>());
+					return cm(value.force_get<vstd::string>(), key.force_get<vstd::string_view>());
 				}
 			}
 			return 0;
@@ -73,15 +71,15 @@ struct SimpleJsonKey {
 			switch (value.GetType()) {
 				case ValueType::IndexOf<int64>: {
 					static const vstd::compare<int64> cm;
-					return cm(value. force_get<int64>(), key. force_get<int64>());
+					return cm(value.force_get<int64>(), key.force_get<int64>());
 				}
 				case ValueType::IndexOf<vstd::Guid>: {
 					static const vstd::compare<vstd::Guid> cm;
-					return cm(value. force_get<vstd::Guid>(), key. force_get<vstd::Guid>());
+					return cm(value.force_get<vstd::Guid>(), key.force_get<vstd::Guid>());
 				}
 				case ValueType::IndexOf<vstd::string>: {
 					static const vstd::compare<vstd::string_view> cm;
-					return cm(value. force_get<vstd::string>(), key. force_get<vstd::string>());
+					return cm(value.force_get<vstd::string>(), key.force_get<vstd::string>());
 				}
 				default:
 					return 0;

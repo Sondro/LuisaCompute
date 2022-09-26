@@ -161,10 +161,9 @@ struct SerDe<variant<Args...>, reverseBytes> {
         funcPtr_t<void(void *, vstd::span<std::byte const> &)> ptrs[sizeof...(Args)] = {
             ExecuteGet<Args>...};
         Value v;
-        v.update(type, [&](void *ptr) {
-            ptrs[type](ptr, sp);
-        });
-        return v;
+		v.reset_as(type);
+		ptrs[type](v.GetPlaceHolder(), sp);
+		return v;
     }
     static void Set(Value const &data, luisa::vector<std::byte> &arr) {
         SerDe<uint8_t, reverseBytes>::Set(data.GetType(), arr);
