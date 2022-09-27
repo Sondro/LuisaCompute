@@ -11,9 +11,9 @@ end
 function SetException(enableException)
     local value = GetValue(enableException)
     if (value ~= nil) and value then
-        add_cxflags("/EHsc", {
-            force = true
-        })
+        add_cxflags("/EHsc", "-fexceptions")
+    else
+        add_cxflags("-fno-exceptions")
     end
 end
 function BuildProject(config)
@@ -38,28 +38,25 @@ function BuildProject(config)
         })
     end
     SetException(config.exception)
-    if is_mode("release") then
-        set_optimize("fastest")
-        if is_plat("windows") then
-            set_runtimes("MD")
-        end
-        add_cxflags("/Zi", "/W0", "/Ob0", "/Oi", "/Ot", "/Oy", "/GT", "/GF", "/GS-", "/Gy", "/arch:AVX2", "/Gd",
-            "/sdl-", "/GL", "/Zc:preprocessor", "/TP", {
-                force = true
-            })
-        local event = GetValue(config.releaseEvent)
-        if (type(event) == "function") then
-            event()
-        end
-    else
+    set_warnings("none")
+    add_vectorexts("avx", "avx2")
+    if is_mode("debug") then
         set_optimize("none")
         if is_plat("windows") then
             set_runtimes("MDd")
         end
-        add_cxflags("/Zi", "/W0", "/Ob0", "/Oy-", "/GF", "/GS", "/arch:AVX2", "/TP", "/Gd", "/Zc:preprocessor", {
-            force = true
-        })
+        add_cxflags("/Ob0", "/GF", "/GS", "/Gd")
         local event = GetValue(config.debugEvent)
+        if (type(event) == "function") then
+            event()
+        end
+    else
+        set_optimize("aggressive")
+        if is_plat("windows") then
+            set_runtimes("MD")
+        end
+        add_cxflags("/Ob0", "/Oy", "/GF", "/GS-", "/Gy", "/Gd")
+        local event = GetValue(config.releaseEvent)
         if (type(event) == "function") then
             event()
         end
