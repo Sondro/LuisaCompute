@@ -1,4 +1,3 @@
-
 #include <Resource/BottomAccel.h>
 #include <DXRuntime/CommandAllocator.h>
 #include <DXRuntime/CommandBuffer.h>
@@ -12,10 +11,10 @@ void MeshPreprocess(
     ResourceStateTracker &tracker) {
     tracker.RecordState(
         vHandle,
-        VEngineShaderResourceState);
+        tracker.BufferReadState());
     tracker.RecordState(
         iHandle,
-        VEngineShaderResourceState);
+        tracker.BufferReadState());
 }
 void GetStaticTriangleGeometryDesc(
     D3D12_RAYTRACING_GEOMETRY_DESC &geometryDesc,

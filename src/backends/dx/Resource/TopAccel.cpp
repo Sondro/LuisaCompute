@@ -144,7 +144,7 @@ size_t TopAccel::PreProcess(
             if (needCopy) {
                 tracker.RecordState(
                     oldBuffer.get(),
-                    VEngineShaderResourceState);
+                    tracker.BufferReadState());
                 tracker.RecordState(
                     newBuffer,
                     D3D12_RESOURCE_STATE_COPY_DEST);
@@ -168,7 +168,7 @@ size_t TopAccel::PreProcess(
     size_t instanceByteCount = size * sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
     auto &&input = topLevelBuildDesc.Inputs;
     device->device->GetRaytracingAccelerationStructurePrebuildInfo(&input, &topLevelPrebuildInfo);
-    if (GenerateNewBuffer(instBuffer, instanceByteCount, true, VEngineShaderResourceState)) {
+    if (GenerateNewBuffer(instBuffer, instanceByteCount, true, tracker.BufferReadState())) {
         topLevelBuildDesc.Inputs.InstanceDescs = instBuffer->GetAddress();
     }
     if (GenerateNewBuffer(accelBuffer, topLevelPrebuildInfo.ResultDataMaxSizeInBytes, false, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE)) {

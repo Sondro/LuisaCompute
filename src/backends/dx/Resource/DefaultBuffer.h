@@ -21,7 +21,7 @@ public:
 		Device* device,
 		uint64 byteSize,
 		IGpuAllocator* allocator = nullptr,
-		D3D12_RESOURCE_STATES initState = VEngineShaderResourceState);
+		D3D12_RESOURCE_STATES initState = D3D12_RESOURCE_STATE_COMMON);
 	~DefaultBuffer();
 	D3D12_RESOURCE_STATES GetInitState() const override {
 		return initState;

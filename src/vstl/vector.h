@@ -19,16 +19,18 @@ template<typename T>
 struct vector_stack_obj<T, 0> {
     T *arr;
 };
-template<typename F, typename... Funcs>
-constexpr bool AllFunction() {
-    if constexpr (!(std::is_invocable_v<F> || std::is_invocable_v<F, size_t>)) {
-        return false;
-    } else if constexpr (sizeof...(Funcs) != 0) {
-        return AllFunction<Funcs...>();
-    } else {
-        return true;
-    }
+template<typename F>
+constexpr auto VectorFuncReturnType() {
+	if constexpr (std::is_invocable_v<F>) {
+		return TypeOf<std::invoke_result_t<F>>{};
+	} else if constexpr (std::is_invocable_v<F, size_t>) {
+		return TypeOf<std::invoke_result_t<F, size_t>>{};
+	} else {
+		return TypeOf<void>{};
+	}
 }
+template<typename F>
+using VectorFuncReturnType_t = typename decltype(VectorFuncReturnType<F>())::Type;
 }// namespace detail
 template<typename T, VEngine_AllocType allocType = VEngine_AllocType::VEngine, size_t stackCount = 0>
     requires(!(std::is_const_v<T> || std::is_reference_v<T>))
@@ -263,7 +265,7 @@ public:
         mSize += count;
     }
     template<typename... Func>
-        requires(detail::AllFunction<Func...>())
+        requires(std::is_constructible_v<T, detail::VectorFuncReturnType_t<Func>...>)
     void push_back_func(size_t count, Func &&...f) {
         ResizeRange(count);
         auto endPtr = vec.arr + mSize;

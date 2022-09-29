@@ -12,7 +12,7 @@ namespace toolhub::directx {
 BindlessArray::BindlessArray(
     Device *device, uint arraySize)
     : Resource(device),
-      buffer(device, arraySize * sizeof(BindlessStruct), device->defaultAllocator.get(), VEngineShaderResourceState) {
+      buffer(device, arraySize * sizeof(BindlessStruct), device->defaultAllocator.get()) {
     binded.resize(arraySize);
 }
 uint BindlessArray::GetNewIndex() {
