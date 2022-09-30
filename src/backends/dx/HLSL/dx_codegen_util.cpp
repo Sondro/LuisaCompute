@@ -974,10 +974,9 @@ void CodegenUtility::CodegenFunction(Function func, vstd::string &result) {
 
     auto codegenOneFunc = [&](Function func) {
         auto constants = func.constants();
-        for (auto &&kv : constants) {
-            auto &&i = kv.second;
+        for (auto &&i : constants) {
             vstd::string constValueName;
-            if (!GetConstName(kv.first, i.data, constValueName)) continue;
+            if (!GetConstName(i.data.hash(), i.data, constValueName)) continue;
             result << "static const "sv;
             GetTypeName(*i.type->element(), result, Usage::READ);
             result << ' ' << constValueName << '[';

@@ -407,7 +407,7 @@ void StringStateVisitor::VisitFunction(Function func) {
     }
     if (sharedVariables) {
         for (auto&& v : func.shared_variables()) {
-            sharedVariables->emplace(v.first, v.second);
+            sharedVariables->emplace(v.hash(), v);
         }
     }
     func.body()->accept(*this);
