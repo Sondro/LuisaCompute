@@ -6,6 +6,8 @@
 
 #include <core/basic_traits.h>
 #include <core/basic_types.h>
+#include <core/binary_buffer.h>
+#include <core/binary_io_visitor.h>
 #include <core/clock.h>
 #include <core/concepts.h>
 #include <core/constants.h>
@@ -61,6 +63,7 @@
 #include <runtime/shader.h>
 #include <runtime/stream.h>
 #include <runtime/swap_chain.h>
+#include <runtime/util.h>
 #include <runtime/volume.h>
 
 #include <dsl/arg.h>
@@ -86,5 +89,7 @@
 #include <rtx/mesh.h>
 #include <rtx/ray.h>
 
+#ifdef LUISA_GUI_ENABLED
 #include <gui/framerate.h>
 #include <gui/window.h>
+#endif

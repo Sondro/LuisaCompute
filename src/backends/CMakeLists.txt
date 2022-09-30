@@ -8,7 +8,6 @@ function(luisa_compute_add_backend name)
             luisa-compute-dsl
             luisa-compute-runtime
             luisa-compute-compile
-            luisa-compute-gui
             luisa-compute-vstl)
     add_dependencies(luisa-compute-backends luisa-compute-backend-${name})
     set_target_properties(luisa-compute-backend-${name} PROPERTIES
