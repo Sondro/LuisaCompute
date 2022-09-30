@@ -5,7 +5,6 @@
 #pragma once
 
 #include <nlohmann/json_fwd.hpp>
-#include <core/stl.h>
 #include <core/stl/vector.h>
 #include <core/stl/string.h>
 
@@ -17,4 +16,4 @@ using json = nlohmann::basic_json<
     luisa::allocator, ::nlohmann::adl_serializer,
     luisa::vector<std::uint8_t>>;
 
-}// namespace luisa
+}

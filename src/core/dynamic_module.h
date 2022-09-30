@@ -4,10 +4,11 @@
 #include <functional>
 
 #include <core/platform.h>
-#include <core/stl.h>
 #include <core/concepts.h>
 #include <core/stl/vector.h>
 #include <core/stl/optional.h>
+#include <core/stl/string.h>
+
 namespace luisa {
 
 /**

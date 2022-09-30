@@ -5,4 +5,5 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+#include <core/stl.h>
 #include <core/json_fwd.h>
