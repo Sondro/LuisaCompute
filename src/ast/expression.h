@@ -13,7 +13,6 @@
 #include <core/concepts.h>
 #include <core/basic_types.h>
 #include <core/logging.h>
-#include <core/hash.h>
 #include <core/stl.h>
 #include <ast/variable.h>
 #include <ast/function.h>
@@ -32,9 +31,8 @@ class FunctionBuilder;
  * @brief Base expression class
  * 
  */
-class AstSerializer;
 class LC_AST_API Expression : public concepts::Noncopyable {
-    friend class AstSerializer;
+
 public:
     /// Expression type
     enum struct Tag : uint32_t {

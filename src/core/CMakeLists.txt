@@ -1,8 +1,22 @@
 set(LUISA_COMPUTE_CORE_SOURCES
+        stl/fixed_map.h
+        stl/format.h
+        stl/functional.h
+        stl/hash.h
+        stl/list.h
+        stl/lru_cache.h
+        stl/map.h
+        stl/memory.cpp stl/memory.h
+        stl/optional.h
+        stl/queue.h
+        stl/string.h
+        stl/unordered_map.h
+        stl/variant.h
+        stl/vector.h
+        stl/vector_map.h
         logging.cpp
         logging.h
         concepts.h
-        hash.h
         macro.h
         spin_mutex.h
         platform.cpp platform.h
@@ -12,10 +26,10 @@ set(LUISA_COMPUTE_CORE_SOURCES
         dynamic_module.cpp dynamic_module.h
         intrin.h
         clock.h
-        stl.h stl.cpp
+        stl.h
         pool.h
         constants.h
-        lru_cache.h
+        stl/lru_cache.h
         dirty_range.cpp dirty_range.h
         first_fit.cpp first_fit.h
         observer.cpp observer.h

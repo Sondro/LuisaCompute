@@ -7,7 +7,7 @@
 #include <nvrtc.h>
 #include <cuda.h>
 
-#include <core/lru_cache.h>
+#include "core/stl/lru_cache.h"
 #include <ast/function.h>
 #include <runtime/context.h>
 

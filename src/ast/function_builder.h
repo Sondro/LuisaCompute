@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <core/stl.h>
-#include <core/hash.h>
 #include <core/spin_mutex.h>
 
 #include <ast/statement.h>
@@ -16,17 +15,12 @@
 #include <ast/expression.h>
 #include <ast/constant_data.h>
 #include <ast/type_registry.h>
-#include <core/stl/optional.h>
-#include <core/stl/smart_ptr.h>
-#include <core/stl/unordered_map.h>
-#include <core/stl/variant.h>
 
 
 namespace luisa::compute {
 class Statement;
 class Expression;
 class FunctionSerializer;
-class AstSerializer;
 }// namespace luisa::compute
 
 namespace luisa::compute::detail {
@@ -37,7 +31,6 @@ namespace luisa::compute::detail {
  * Build kernel or callable function
  */
 class LC_AST_API FunctionBuilder : public luisa::enable_shared_from_this<FunctionBuilder> {
-    friend class AstSerializer;
 
 private:
     /**

@@ -190,6 +190,7 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::BC7UNorm) + 1u;
             width = (width + 3) / 4;
             height = (height + 3) / 4;
             break;
+        default: break;
     }
     return pixel_size * width * height * volume;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <runtime/device.h>
-#include <core/hash.h>
+#include <core/stl/hash.h>
 #include <stdint.h>
 #include <vstl/Common.h>
 #include <runtime/command.h>

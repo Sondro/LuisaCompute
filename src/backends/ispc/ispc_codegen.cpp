@@ -4,7 +4,7 @@
 
 #include <string_view>
 
-#include <core/hash.h>
+#include <core/stl/hash.h>
 #include <ast/type_registry.h>
 #include <ast/constant_data.h>
 #include <ast/function_builder.h>

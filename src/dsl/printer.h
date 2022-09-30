@@ -14,7 +14,6 @@
 #include <dsl/var.h>
 #include <dsl/builtin.h>
 #include <dsl/operators.h>
-#include <core/stl/bit.h>
 
 namespace luisa::compute {
 

@@ -15,12 +15,12 @@
 #include <core/dll_export.h>
 #include <core/dynamic_module.h>
 #include <core/first_fit.h>
-#include <core/hash.h>
+#include <core/stl/hash.h>
 #include <core/intrin.h>
 #include <core/json.h>
 #include <core/json_fwd.h>
 #include <core/logging.h>
-#include <core/lru_cache.h>
+#include "core/stl/lru_cache.h"
 #include <core/macro.h>
 #include <core/mathematics.h>
 #include <core/observer.h>

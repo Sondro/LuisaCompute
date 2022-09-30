@@ -1,8 +1,10 @@
 #pragma once
-#include <core/stl.h>
+
+#include <core/stl/memory.h>
 #include <core/stl/string.h>
-#include <core/stl/smart_ptr.h>
+
 namespace luisa::compute {
+
 class IBinaryStream {
 public:
     virtual size_t length() const = 0;
@@ -20,4 +22,5 @@ public:
     virtual void write_bytecode(luisa::string_view name, luisa::span<std::byte const> data) = 0;
     virtual void write_cache(luisa::string_view name, luisa::span<std::byte const> data) = 0;
 };
+
 }// namespace luisa::compute

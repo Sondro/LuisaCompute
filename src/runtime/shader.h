@@ -188,7 +188,7 @@ private:
     AOTShader(Device::Interface *device,
               luisa::string_view file_path,
               luisa::span<Type const *const> types) noexcept
-        : Resource{device, Tag::AOT_SHADER, device->load_shader(file_path, types)} {
+        : Resource{device, Tag::SHADER, device->load_shader(file_path, types)} {
         if (handle() == 0)[[unlikely]] {
             LUISA_ERROR("Load AOT shader {} failed!", file_path);
         }

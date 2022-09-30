@@ -8,7 +8,7 @@
 #include <ast/variable.h>
 #include <ast/op.h>
 #include <ast/constant_data.h>
-#include <core/stl/smart_ptr.h>
+#include <core/stl/memory.h>
 #include <core/stl/unordered_map.h>
 
 namespace luisa::compute {

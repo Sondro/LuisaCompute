@@ -15,7 +15,6 @@ class FunctionBuilder;
 class AstSerializer;
 /// Variable class
 class Variable {
-    friend class AstSerializer;
 
 public:
     /// Variable tags

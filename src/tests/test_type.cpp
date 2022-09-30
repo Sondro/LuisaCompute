@@ -12,7 +12,7 @@
 #include <spdlog/spdlog.h>
 
 #include <core/logging.h>
-#include <core/hash.h>
+#include <core/stl/hash.h>
 #include <ast/type.h>
 #include <ast/type_registry.h>
 
