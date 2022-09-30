@@ -1,4 +1,3 @@
-#pragma vengine_package vengine_dll
 #include <vstl/StackAllocator.h>
 namespace vstd {
 StackAllocator::StackAllocator(

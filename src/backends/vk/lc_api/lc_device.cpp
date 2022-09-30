@@ -9,7 +9,7 @@
 #include <shader/pipeline_cache.h>
 #include <shader/compute_shader.h>
 #include <shader/rt_shader.h>
-#include <compile/hlsl/dx_codegen.h>
+#include "backends/dx/HLSL/dx_codegen.h"
 #include <dxc/dxc_util.h>
 #include <vstl/BinaryReader.h>
 namespace toolhub::vk {

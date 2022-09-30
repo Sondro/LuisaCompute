@@ -1,8 +1,8 @@
 
-#include <compile/hlsl/codegen_stack_data.h>
-#include <compile/hlsl/struct_generator.h>
-#include <compile/hlsl/dx_codegen.h>
-#include <vstl/CommonIterator.h>
+#include "codegen_stack_data.h"
+#include "struct_generator.h"
+#include "dx_codegen.h"
+#include "vstl/CommonIterator.h"
 namespace toolhub::directx {
 /*
 size_t StructureType::size() const {

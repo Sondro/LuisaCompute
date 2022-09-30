@@ -1,8 +1,8 @@
 
 
-#include <compile/hlsl/dx_codegen.h>
-#include <compile/hlsl/struct_generator.h>
-#include <compile/hlsl/codegen_stack_data.h>
+#include "dx_codegen.h"
+#include "struct_generator.h"
+#include "codegen_stack_data.h"
 namespace toolhub::directx {
 
 void StringStateVisitor::visit(const UnaryExpr *expr) {

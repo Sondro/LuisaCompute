@@ -7,7 +7,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <memory>
-#include <assert.h>
+#include <cassert>
+
 #include <fmt/format.h>
 
 #include <EASTL/span.h>
@@ -94,7 +95,6 @@ struct equal_to<void> {
     }
 };
 
-
 struct default_sentinel_t {};
 inline constexpr default_sentinel_t default_sentinel{};
 
@@ -116,6 +116,5 @@ template<typename F>
 [[nodiscard]] auto lazy_construct(F ctor) noexcept {
     return detail::LazyConstructor<F>(ctor);
 }
-
 
 }// namespace luisa

@@ -3,15 +3,6 @@
 #include <runtime/command_list.h>
 
 namespace luisa::compute {
-template<typename Func>
-    requires(std::is_invocable_v<Func, CommandReorderVisitor::ResourceView const &>)
-void CommandReorderVisitor::IterateMap(Func &&func, RangeHandle &handle, Range const &range) {
-    for (auto &&r : handle.views) {
-        if (r.first.collide(range)) {
-            func(r.second);
-        }
-    }
-}
 bool CommandReorderVisitor::Range::operator==(Range const &r) const {
     return min == r.min && max == r.max;
 }

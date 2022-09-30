@@ -3,7 +3,7 @@
 #include <Api/LCDevice.h>
 #include <runtime/command.h>
 #include <runtime/command_buffer.h>
-#include <compile/hlsl/dx_codegen.h>
+#include "HLSL/dx_codegen.h"
 #include <Shader/ComputeShader.h>
 #include <Resource/RenderTexture.h>
 #include <Resource/BottomAccel.h>

@@ -26,19 +26,17 @@ add_subdirectory(ext)
 add_library(luisa-compute-include INTERFACE)
 target_include_directories(luisa-compute-include INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(luisa-compute-include INTERFACE c_std_11 cxx_std_20)
-if(MSVC)
-    target_compile_options(luisa-compute-include INTERFACE
-            /EHs-c-)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     target_compile_options(luisa-compute-include INTERFACE
             /wd5105 # winbase.h: macro expansion producing 'defined' has undefined behavior
+            /wd4068 # unknown pragma
             /Zc:preprocessor
-            /EHs-c-)
+            /EHsc)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(luisa-compute-include INTERFACE
             -Wno-invalid-offsetof
-            -Wno-pragmas
-            -fno-exceptions)
+            -Wno-pragmas)
 endif ()
 
 add_subdirectory(core)
@@ -49,7 +47,6 @@ add_subdirectory(runtime)
 add_subdirectory(compile)
 add_subdirectory(dsl)
 add_subdirectory(rtx)
-add_subdirectory(gui)
 add_subdirectory(backends)
 
 add_library(luisa-compute INTERFACE luisa-compute.h)
@@ -62,9 +59,13 @@ target_link_libraries(luisa-compute INTERFACE
         luisa-compute-runtime
         luisa-compute-dsl
         luisa-compute-rtx
-        luisa-compute-gui
         luisa-compute-backends)
 add_library(luisa::compute ALIAS luisa-compute)
+
+if (LUISA_COMPUTE_ENABLE_GUI)
+    add_subdirectory(gui)
+    target_link_libraries(luisa-compute INTERFACE luisa-compute-gui)
+endif ()
 
 if (LUISA_COMPUTE_ENABLE_PYTHON)
     add_subdirectory(py)

@@ -1,10 +1,10 @@
-#include <compile/hlsl/dx_codegen.h>
-#include <vstl/StringUtility.h>
-#include <vstl/variant_util.h>
-#include <ast/constant_data.h>
-#include <compile/hlsl/struct_generator.h>
-#include <compile/hlsl/codegen_stack_data.h>
-#include <compile/hlsl/shader_header.h>
+#include "dx_codegen.h"
+#include "vstl/StringUtility.h"
+#include "vstl/variant_util.h"
+#include "ast/constant_data.h"
+#include "struct_generator.h"
+#include "codegen_stack_data.h"
+#include "shader_header.h"
 namespace toolhub::directx {
 namespace detail {
 static inline uint64 CalcAlign(uint64 value, uint64 align) {

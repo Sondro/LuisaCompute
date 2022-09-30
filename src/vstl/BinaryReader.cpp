@@ -1,4 +1,3 @@
-#pragma vengine_package vengine_dll
 #include <vstl/BinaryReader.h>
 #ifdef _WIN32
 #define VSTD_FSEEK _fseeki64_nolock
@@ -61,5 +60,6 @@ BinaryReader::~BinaryReader() {
     if (!isAvaliable) return;
     fclose(ifs);
 }
-#undef VSTD_FSEEK _fseeki64_nolock
-#undef VSTD_FTELL _ftelli64_nolock
+
+#undef VSTD_FSEEK
+#undef VSTD_FTELL

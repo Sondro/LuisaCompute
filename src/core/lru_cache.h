@@ -8,6 +8,7 @@
 #include <optional>
 
 #include <core/stl.h>
+#include <core/stl/smart_ptr.h>
 #include <EASTL/bonus/lru_cache.h>
 
 namespace luisa {

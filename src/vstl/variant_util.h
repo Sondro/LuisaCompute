@@ -91,7 +91,7 @@ public:
     using Type = VariantVisitor<vstd::variant<Args...>>;
 
     template<typename T>
-    static constexpr size_t IndexOf = vstd::variant<Args...>::IndexOf<T>;
+    static constexpr size_t IndexOf = vstd::variant<Args...>::template IndexOf<T>;
     template<typename Func>
     void operator()(Func &&func, size_t idx) {
         if (idx < sizeof...(Args)) {
