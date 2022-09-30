@@ -21,9 +21,9 @@
 namespace luisa {
 
 namespace detail {
-LUISA_IMPORT_API void *allocator_allocate(size_t size, size_t alignment) noexcept;
-LUISA_IMPORT_API void allocator_deallocate(void *p, size_t alignment) noexcept;
-LUISA_IMPORT_API void *allocator_reallocate(void *p, size_t size, size_t alignment) noexcept;
+LUISA_EXPORT_API void *allocator_allocate(size_t size, size_t alignment) noexcept;
+LUISA_EXPORT_API void allocator_deallocate(void *p, size_t alignment) noexcept;
+LUISA_EXPORT_API void *allocator_reallocate(void *p, size_t size, size_t alignment) noexcept;
 }// namespace detail
 
 [[nodiscard]] inline auto align(size_t s, size_t a) noexcept {

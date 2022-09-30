@@ -4,15 +4,15 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
+#include <iostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
-#include <filesystem>
-#include <sstream>
-#include <iostream>
 
 #include <core/clock.h>
-#include <core/platform.h>
 #include <core/logging.h>
+#include <core/platform.h>
 
 #if defined(LUISA_PLATFORM_WINDOWS)
 
@@ -25,9 +25,7 @@ void *aligned_alloc(size_t alignment, size_t size) noexcept {
     return _aligned_malloc(size, alignment);
 }
 
-void aligned_free(void *p) noexcept {
-    _aligned_free(p);
-}
+void aligned_free(void *p) noexcept { _aligned_free(p); }
 
 namespace detail {
 
@@ -35,14 +33,12 @@ namespace detail {
     // Retrieve the system error message for the last-error code
     void *buffer = nullptr;
     auto err_code = GetLastError();
-    FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        nullptr,
-        err_code,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPTSTR)&buffer,
-        0, nullptr);
-    luisa::string err_msg{fmt::format("{} (code = 0x{:x}).", static_cast<char *>(buffer), err_code)};
+    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                      FORMAT_MESSAGE_IGNORE_INSERTS,
+                  nullptr, err_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                  (LPTSTR)&buffer, 0, nullptr);
+    luisa::string err_msg{fmt::format("{} (code = 0x{:x}).",
+                                      static_cast<char *>(buffer), err_code)};
     LocalFree(buffer);
     return err_msg;
 }
@@ -63,24 +59,27 @@ void *dynamic_module_load(const std::filesystem::path &path) noexcept {
     auto module = LoadLibraryA(path_string.c_str());
     if (module == nullptr) [[unlikely]] {
         LUISA_WARNING_WITH_LOCATION(
-            "Failed to load dynamic module '{}', reason: {}.",
-            path_string, detail::win32_last_error_message());
+            "Failed to load dynamic module '{}', reason: {}.", path_string,
+            detail::win32_last_error_message());
     }
     return module;
 }
 
 void dynamic_module_destroy(void *handle) noexcept {
-    if (handle != nullptr) { FreeLibrary(reinterpret_cast<HMODULE>(handle)); }
+    if (handle != nullptr) {
+        FreeLibrary(reinterpret_cast<HMODULE>(handle));
+    }
 }
 
-void *dynamic_module_find_symbol(void *handle, std::string_view name_view) noexcept {
+void *dynamic_module_find_symbol(void *handle,
+                                 std::string_view name_view) noexcept {
     static thread_local luisa::string name;
     name = name_view;
     LUISA_VERBOSE_WITH_LOCATION("Loading dynamic symbol: {}.", name);
     auto symbol = GetProcAddress(reinterpret_cast<HMODULE>(handle), name.c_str());
     if (symbol == nullptr) [[unlikely]] {
-        LUISA_ERROR_WITH_LOCATION("Failed to load symbol '{}', reason: {}.",
-                                  name, detail::win32_last_error_message());
+        LUISA_ERROR_WITH_LOCATION("Failed to load symbol '{}', reason: {}.", name,
+                                  detail::win32_last_error_message());
     }
     return reinterpret_cast<void *>(symbol);
 }
@@ -92,13 +91,17 @@ luisa::string dynamic_module_name(std::string_view name) noexcept {
 }
 
 luisa::string demangle(const char *name) noexcept {
+#if defined(_DEBUG) || defined(DEBUG)
     char buffer[256u];
     auto length = UnDecorateSymbolName(name, buffer, 256, 0);
     return {buffer, length};
+#else
+    return {};
+#endif
 }
 
 luisa::vector<TraceItem> backtrace() noexcept {
-
+#if defined(_DEBUG) || defined(DEBUG)
     void *stack[100];
     auto process = GetCurrentProcess();
     SymInitialize(process, nullptr, true);
@@ -128,26 +131,30 @@ luisa::vector<TraceItem> backtrace() noexcept {
             item.offset = displacement;
             trace.emplace_back(std::move(item));
         } else {
-            LUISA_VERBOSE_WITH_LOCATION(
-                "Failed to get stacktrace at 0x{:012}: {}",
-                address, detail::win32_last_error_message());
+            LUISA_VERBOSE_WITH_LOCATION("Failed to get stacktrace at 0x{:012}: {}",
+                                        address, detail::win32_last_error_message());
         }
     }
     return trace;
+#else
+    return {};
+#endif
 }
 
 }// namespace luisa
 
 #elif defined(LUISA_PLATFORM_UNIX)
 
-#include <unistd.h>
+#include <cxxabi.h>
 #include <dlfcn.h>
 #include <execinfo.h>
-#include <cxxabi.h>
+#include <unistd.h>
 
 namespace luisa {
 
-void *aligned_alloc(size_t alignment, size_t size) noexcept { return ::aligned_alloc(alignment, size); }
+void *aligned_alloc(size_t alignment, size_t size) noexcept {
+    return ::aligned_alloc(alignment, size);
+}
 void aligned_free(void *p) noexcept { free(p); }
 
 size_t pagesize() noexcept {
@@ -163,28 +170,30 @@ void *dynamic_module_load(const std::filesystem::path &path) noexcept {
             return module;
         }
         LUISA_WARNING_WITH_LOCATION(
-            "Failed to load dynamic module '{}', reason: {}.",
-            p.string(), dlerror());
+            "Failed to load dynamic module '{}', reason: {}.", p.string(),
+            dlerror());
     }
     return nullptr;
 }
 
 void dynamic_module_destroy(void *handle) noexcept {
-    if (handle != nullptr) { dlclose(handle); }
+    if (handle != nullptr) {
+        dlclose(handle);
+    }
 }
 
-void *dynamic_module_find_symbol(void *handle, std::string_view name_view) noexcept {
+void *dynamic_module_find_symbol(void *handle,
+                                 std::string_view name_view) noexcept {
     static thread_local luisa::string name;
     name = name_view;
     Clock clock;
     auto symbol = dlsym(handle, name.c_str());
     if (symbol == nullptr) [[unlikely]] {
-        LUISA_ERROR_WITH_LOCATION("Failed to load symbol '{}', reason: {}.",
-                                  name, dlerror());
+        LUISA_ERROR_WITH_LOCATION("Failed to load symbol '{}', reason: {}.", name,
+                                  dlerror());
     }
-    LUISA_VERBOSE_WITH_LOCATION(
-        "Loading dynamic symbol '{}' in {} ms.",
-        name, clock.toc());
+    LUISA_VERBOSE_WITH_LOCATION("Loading dynamic symbol '{}' in {} ms.", name,
+                                clock.toc());
     return symbol;
 }
 
@@ -213,7 +222,8 @@ luisa::vector<TraceItem> backtrace() noexcept {
         auto index = 0;
         char plus = '+';
         TraceItem item{};
-        iss >> index >> item.module >> std::hex >> item.address >> item.symbol >> plus >> std::dec >> item.offset;
+        iss >> index >> item.module >> std::hex >> item.address >> item.symbol >>
+            plus >> std::dec >> item.offset;
         item.symbol = demangle(item.symbol.c_str());
         trace_info.emplace_back(std::move(item));
     }

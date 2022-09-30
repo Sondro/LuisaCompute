@@ -15,7 +15,7 @@
 #include <runtime/command_reorder_visitor.h>
 #include <runtime/image.h>
 #include <runtime/swap_chain.h>
-#include <runtime/command_scheduler.h>
+//#include <runtime/command_scheduler.h>
 
 namespace luisa::compute {
 
@@ -24,7 +24,7 @@ class LC_RUNTIME_API Stream final : public Resource {
 public:
     friend class CommandBuffer;
 
-    class Delegate {
+    class LC_RUNTIME_API Delegate {
 
     private:
         Stream *_stream;
@@ -59,7 +59,7 @@ public:
     };
 
 private:
-    luisa::unique_ptr<CommandScheduler> _scheduler;
+    //luisa::unique_ptr<CommandScheduler> _scheduler;
     friend class Device;
     void _dispatch(CommandList command_buffer) noexcept;
     explicit Stream(Device::Interface *device, bool for_present = false) noexcept;

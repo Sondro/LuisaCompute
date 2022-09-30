@@ -35,6 +35,11 @@
 #else
 #define LC_VSTL_API __declspec(dllimport)
 #endif
+#ifdef LC_COMPILE_EXPORT_DLL
+#define LC_COMPILE_API __declspec(dllexport)
+#else
+#define LC_COMPILE_API __declspec(dllimport)
+#endif
 
 #ifdef LC_AST_EXPORT_DLL
 #define LC_AST_API __declspec(dllexport)
@@ -58,6 +63,11 @@
 #define LC_RTX_API __declspec(dllexport)
 #else
 #define LC_RTX_API __declspec(dllimport)
+#endif
+#ifdef LC_RASTER_EXPORT_DLL
+#define LC_RASTER_API __declspec(dllexport)
+#else
+#define LC_RASTER_API __declspec(dllimport)
 #endif
 /*
 #ifdef LC_REMOTE_EXPORT_DLL
