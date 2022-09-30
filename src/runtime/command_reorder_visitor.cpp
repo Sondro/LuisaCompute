@@ -57,12 +57,15 @@ size_t CommandReorderVisitor::GetLastLayerWrite(NoRangeHandle *handle) {
         case ResourceType::Mesh: {
             auto maxAccelLevel = std::max(maxAccelReadLevel, maxAccelWriteLevel);
             layer = std::max<int64_t>(layer, maxAccelLevel + 1);
-        } break;
+            break;
+        }
         case ResourceType::Accel: {
             auto maxAccelLevel = std::max(maxAccelReadLevel, maxAccelWriteLevel);
             layer = std::max<int64_t>(layer, maxAccelLevel + 1);
             layer = std::max<int64_t>(layer, maxMeshLevel + 1);
-        } break;
+            break;
+        }
+        default: break;
     }
     return layer;
 }

@@ -212,7 +212,7 @@ void CodegenUtility::GetTypeName(Type const &type, vstd::string &str, Usage usag
                 if (ele->is_vector() && ele->dimension() == 3) {
                     typeName << "float4"sv;
                 } else {
-                    if (opt->kernel.is_atomic_float_used() && ele->tag() == Type::Tag::FLOAT) {
+                    if (opt->kernel.requires_atomic_float() && ele->tag() == Type::Tag::FLOAT) {
                         typeName << "int";
                     } else {
                         GetTypeName(*ele, typeName, usage);
@@ -717,7 +717,7 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             }
         } break;
         case CallOp::BUFFER_READ: {
-            if (opt->kernel.is_atomic_float_used() && expr->type()->tag() == Type::Tag::FLOAT) {
+            if (opt->kernel.requires_atomic_float() && expr->type()->tag() == Type::Tag::FLOAT) {
                 str << "bfread_float"sv;
             } else {
                 str << "bfread"sv;
@@ -730,7 +730,7 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             }
         } break;
         case CallOp::BUFFER_WRITE: {
-            if (opt->kernel.is_atomic_float_used()) {
+            if (opt->kernel.requires_atomic_float()) {
                 str << "bfwrite_float"sv;
             } else {
                 str << "bfwrite"sv;
@@ -749,7 +749,7 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             str << "TraceAny"sv;
             break;
         case CallOp::BINDLESS_BUFFER_READ: {
-            if (opt->kernel.is_atomic_float_used() && expr->type()->tag() == Type::Tag::FLOAT) {
+            if (opt->kernel.requires_atomic_float() && expr->type()->tag() == Type::Tag::FLOAT) {
                 str << "READ_BUFFER_FLOAT"sv;
             } else {
                 str << "READ_BUFFER"sv;
@@ -1141,7 +1141,7 @@ CodegenResult CodegenUtility::Codegen(
     finalResult.reserve(65500);
 
     finalResult << detail::HLSLHeader(internalDataPath);
-    if (kernel.raytracing()) {
+    if (kernel.requires_raytracing()) {
         finalResult << detail::RayTracingHeader(internalDataPath);
     }
     opt->isKernel = false;
@@ -1306,7 +1306,7 @@ vstd::optional<vstd::string> CodegenUtility::CodegenSpirv(Function kernel, vstd:
     vstd::string finalResult;
     finalResult.reserve(65500);
     finalResult << detail::HLSLHeaderSpirv(internalDataPath);
-    if (kernel.raytracing()) {
+    if (kernel.requires_raytracing()) {
         finalResult << detail::RayTracingHeader(internalDataPath);
     }
     size_t unChangedOffset = finalResult.size();

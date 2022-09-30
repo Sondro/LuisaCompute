@@ -145,11 +145,12 @@ private:
     luisa::unordered_map<uint64_t, Variable> _shared_variables;
     luisa::vector<Usage> _variable_usages;
     luisa::vector<std::pair<std::byte *, size_t /* alignment */>> _temporary_data;
+    CallOpSet _propagated_builtin_callables;
     CallOpSet _used_builtin_callables;
-    uint64_t _hash;
+    uint64_t _hash{};
     uint3 _block_size;
     Tag _tag;
-    bool _use_atomic_float = false;
+    bool _requires_atomic_float{false};
 
 protected:
     [[nodiscard]] static luisa::vector<FunctionBuilder *> &_function_stack() noexcept;
@@ -241,8 +242,10 @@ public:
     [[nodiscard]] auto argument_bindings() const noexcept { return luisa::span{_argument_bindings}; }
     /// Return a span of custom callables.
     [[nodiscard]] auto custom_callables() const noexcept { return luisa::span{_used_custom_callables}; }
-    /// Return a CallOpSet of builtin callables.
+    /// Return a CallOpSet of builtin callables that are directly used in this functions.
     [[nodiscard]] auto builtin_callables() const noexcept { return _used_builtin_callables; }
+    /// Return a CallOpSet of builtin callables that are used in this functions and the functions that it calls.
+    [[nodiscard]] auto propagated_builtin_callables() const noexcept { return _propagated_builtin_callables; }
     /// Return tag(KERNEL, CALLABLE).
     [[nodiscard]] auto tag() const noexcept { return _tag; }
     /// Return pointer to body.
@@ -258,7 +261,11 @@ public:
     /// Return hash.
     [[nodiscard]] auto hash() const noexcept { return _hash; }
     /// Return if is raytracing.
-    [[nodiscard]] bool raytracing() const noexcept;
+    [[nodiscard]] bool requires_raytracing() const noexcept;
+    /// Return if uses atomic operations
+    [[nodiscard]] bool requires_atomic() const noexcept;
+    /// Return if uses atomic floats.
+    [[nodiscard]] bool requires_atomic_float() const noexcept;
 
     // build primitives
     /// Define a kernel function with given definition
@@ -408,7 +415,6 @@ public:
 
     /// Return a Function object constructed from this
     [[nodiscard]] auto function() const noexcept { return Function{this}; }
-    [[nodiscard]] bool is_atomic_float_used() const;
 };
 
 }// namespace luisa::compute::detail

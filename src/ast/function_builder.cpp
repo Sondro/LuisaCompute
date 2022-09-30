@@ -30,10 +30,9 @@ void FunctionBuilder::pop(FunctionBuilder *func) noexcept {
         f->_return_type.value_or(nullptr) != nullptr) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION("Kernels cannot have non-void return types.");
     }
-    if (f->raytracing() &&
+    if (f->requires_raytracing() &&
         (!f->_shared_variables.empty() ||
-         f->_used_builtin_callables.test(
-             CallOp::SYNCHRONIZE_BLOCK))) [[unlikely]] {
+         f->_used_builtin_callables.test(CallOp::SYNCHRONIZE_BLOCK))) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(
             "Raytracing functions are not allowed to "
             "use shared storage or call synchronize_block().");
@@ -140,7 +139,7 @@ const RefExpr *FunctionBuilder::local(const Type *type) noexcept {
 
 const RefExpr *FunctionBuilder::shared(const Type *type) noexcept {
     Variable sv{type, Variable::Tag::SHARED, _next_variable_uid()};
-    _shared_variables.emplace(sv.uid(), std::move(sv));
+    _shared_variables.emplace(sv.uid(), sv);
     return _ref(sv);
 }
 
@@ -403,23 +402,11 @@ const CallExpr *FunctionBuilder::call(const Type *type, CallOp call_op, luisa::s
             "be called with enum CallOp.");
     }
     _used_builtin_callables.mark(call_op);
-    if (!_use_atomic_float) {
-        switch (call_op) {
-            case CallOp::ATOMIC_EXCHANGE:
-            case CallOp::ATOMIC_COMPARE_EXCHANGE:
-            case CallOp::ATOMIC_FETCH_ADD:
-            case CallOp::ATOMIC_FETCH_SUB:
-            case CallOp::ATOMIC_FETCH_AND:
-            case CallOp::ATOMIC_FETCH_OR:
-            case CallOp::ATOMIC_FETCH_XOR:
-            case CallOp::ATOMIC_FETCH_MIN:
-            case CallOp::ATOMIC_FETCH_MAX: {
-                auto type = args[0]->type();
-                if (type->tag() == Type::Tag::BUFFER && type->element()->tag() == Type::Tag::FLOAT) {
-                    _use_atomic_float = true;
-                }
-            } break;
-        }
+    _propagated_builtin_callables.mark(call_op);
+    if (is_atomic_operation(call_op) &&
+        args.front()->type()->is_buffer() &&
+        args.front()->type()->element()->tag() == Type::Tag::FLOAT) {
+        _requires_atomic_float = true;
     }
     auto expr = _create_expression<CallExpr>(
         type, call_op, CallExpr::ArgumentList{args.begin(), args.end()});
@@ -475,19 +462,8 @@ const CallExpr *FunctionBuilder::call(const Type *type, Function custom, luisa::
             [&](auto &&p) noexcept { return f->hash() == p->hash(); });
         iter == _used_custom_callables.cend()) {
         _used_custom_callables.emplace_back(custom.shared_builder());
-        // propagate used builtin/custom callables and constants
-        //_used_builtin_callables.propagate(f->_used_builtin_callables);
-        //for (auto c : f->_captured_constants) {
-        //    _captured_constants.emplace(c.first, c.second);
-        //}
-        for (auto &&c : f->_used_custom_callables) {
-            if (auto it = std::find_if(
-                    _used_custom_callables.begin(), _used_custom_callables.end(),
-                    [&](auto &&f) { return f->hash() == c->hash(); });
-                it == _used_custom_callables.end()) {
-                _used_custom_callables.push_back(c);
-            }
-        }
+        _propagated_builtin_callables.propagate(f->_used_builtin_callables);
+        _requires_atomic_float |= f->_requires_atomic_float;
     }
     if (type == nullptr) {
         _void_expr(expr);
@@ -526,13 +502,16 @@ void FunctionBuilder::set_block_size(uint3 size) noexcept {
     }
 }
 
-bool FunctionBuilder::raytracing() const noexcept {
-    return _used_builtin_callables.test(CallOp::TRACE_CLOSEST) ||
-           _used_builtin_callables.test(CallOp::TRACE_ANY);
-}
-bool FunctionBuilder::is_atomic_float_used() const {
-    return _use_atomic_float;
+bool FunctionBuilder::requires_raytracing() const noexcept {
+    return _propagated_builtin_callables.uses_raytracing();
 }
 
+bool FunctionBuilder::requires_atomic() const noexcept {
+    return _propagated_builtin_callables.uses_atomic();
+}
+
+bool FunctionBuilder::requires_atomic_float() const noexcept {
+    return _requires_atomic_float;
+}
 
 }// namespace luisa::compute::detail

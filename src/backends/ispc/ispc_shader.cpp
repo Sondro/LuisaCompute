@@ -68,7 +68,7 @@ ISPCShader::ISPCShader(const Context &ctx, Function func, uint64_t lib_hash) noe
 #endif
             emit_opt,
             include_opt.c_str(),
-            func.raytracing() ? "-DLC_ISPC_RAYTRACING" : "-DLC_ISPC_NO_RAYTRACING"
+            func.requires_raytracing() ? "-DLC_ISPC_RAYTRACING" : "-DLC_ISPC_NO_RAYTRACING"
     };
 
     auto opt_hash = hash64("__ispc_opt");

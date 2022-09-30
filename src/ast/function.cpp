@@ -36,6 +36,10 @@ CallOpSet Function::builtin_callables() const noexcept {
     return _builder->builtin_callables();
 }
 
+CallOpSet Function::propagated_builtin_callables() const noexcept {
+    return _builder->propagated_builtin_callables();
+}
+
 const Type *Function::return_type() const noexcept {
     return _builder->return_type();
 }
@@ -51,12 +55,17 @@ uint3 Function::block_size() const noexcept {
 uint64_t Function::hash() const noexcept {
     return _builder->hash();
 }
-bool Function::is_atomic_float_used() const {
-    return _builder->is_atomic_float_used();
+
+bool Function::requires_atomic() const noexcept {
+    return _builder->requires_atomic();
 }
 
-bool Function::raytracing() const noexcept {
-    return _builder->raytracing();
+bool Function::requires_atomic_float() const noexcept {
+    return _builder->requires_atomic_float();
+}
+
+bool Function::requires_raytracing() const noexcept {
+    return _builder->requires_raytracing();
 }
 
 luisa::shared_ptr<const detail::FunctionBuilder> Function::shared_builder() const noexcept {

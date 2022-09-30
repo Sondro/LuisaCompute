@@ -280,13 +280,13 @@ uint64_t LCDevice::create_shader(Function kernel, std::string_view meta_options)
 		return nullptr;
 	};
 	//Test raytracing
-	//if(kernel.raytracing())
+	//if(kernel.requires_raytracing())
 	auto Cast = [](auto&& value) {
 		return reinterpret_cast<uint64>(static_cast<IShader*>(value));
 	};
 	//Spirv Compile
 	/*
-	if (kernel.raytracing()) {
+	if (kernel.requires_raytracing()) {
 		auto raygenResult = compiler.CompileSpirV(kernel, true, false);
 		//auto raygenResult = compiler.CompileExistsFile(kernel, true, false, "output.spvasm");
 		auto missResult = compiler.CompileExistsFile(kernel, true, false, "rt_spvasm/miss_output.spvasm");

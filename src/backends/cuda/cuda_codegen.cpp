@@ -463,7 +463,7 @@ void CUDACodegen::_emit_function(Function f) noexcept {
     }
 
     // ray tracing kernels use __constant__ args
-    if (f.tag() == Function::Tag::KERNEL && f.raytracing()) {
+    if (f.tag() == Function::Tag::KERNEL && f.requires_raytracing()) {
         _scratch << "struct alignas(16) Params {";
         for (auto arg : f.arguments()) {
             _scratch << "\n  alignas(16) ";
@@ -477,7 +477,7 @@ void CUDACodegen::_emit_function(Function f) noexcept {
     // signature
     if (f.tag() == Function::Tag::KERNEL) {
         _scratch << "extern \"C\" __global__ void "
-                 << (f.raytracing() ? "__raygen__rg_" : "kernel_")
+                 << (f.requires_raytracing() ? "__raygen__rg_" : "kernel_")
                  << hash_to_string(f.hash());
     } else if (f.tag() == Function::Tag::CALLABLE) {
         _scratch << "inline __device__ ";
@@ -491,7 +491,7 @@ void CUDACodegen::_emit_function(Function f) noexcept {
         LUISA_ERROR_WITH_LOCATION("Invalid function type.");
     }
     _scratch << "(";
-    if (f.tag() == Function::Tag::KERNEL && f.raytracing()) {
+    if (f.tag() == Function::Tag::KERNEL && f.requires_raytracing()) {
         _scratch << ") {"
                  // block size
                  << "\n  constexpr auto bs = lc_make_uint3("
