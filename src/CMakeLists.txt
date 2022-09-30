@@ -49,6 +49,7 @@ add_subdirectory(runtime)
 add_subdirectory(compile)
 add_subdirectory(dsl)
 add_subdirectory(rtx)
+add_subdirectory(raster)
 add_subdirectory(gui)
 add_subdirectory(backends)
 
@@ -62,6 +63,7 @@ target_link_libraries(luisa-compute INTERFACE
         luisa-compute-runtime
         luisa-compute-dsl
         luisa-compute-rtx
+        luisa-compute-raster
         luisa-compute-gui
         luisa-compute-backends)
 add_library(luisa::compute ALIAS luisa-compute)

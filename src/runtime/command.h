@@ -62,7 +62,7 @@ class CommandList;
 namespace detail {
 
 #define LUISA_MAKE_COMMAND_POOL_DECL(Cmd) \
-    [[nodiscard]] Pool<Cmd> &pool_##Cmd() noexcept;
+    LC_RUNTIME_API Pool<Cmd> &pool_##Cmd() noexcept;
 LUISA_MAP(LUISA_MAKE_COMMAND_POOL_DECL, LUISA_COMPUTE_RUNTIME_COMMANDS)
 #undef LUISA_MAKE_COMMAND_POOL_DECL
 
@@ -329,7 +329,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(TextureDownloadCommand)
 };
 
-class ShaderDispatchCommand final : public Command {
+class LC_RUNTIME_API ShaderDispatchCommand final : public Command {
     friend class CmdSer;
     friend class CmdDeser;
 
@@ -522,12 +522,12 @@ public:
     [[nodiscard]] auto triangle_buffer_size() const noexcept { return _triangle_buffer_size; }
     LUISA_MAKE_COMMAND_COMMON(MeshBuildCommand)
 };
-class AccelBuildCommand final : public Command {
+class LC_RUNTIME_API AccelBuildCommand final : public Command {
     friend class CmdSer;
     friend class CmdDeser;
 
 public:
-    struct alignas(16) Modification {
+    struct LC_RUNTIME_API alignas(16) Modification {
 
         // flags
         static constexpr auto flag_mesh = 1u << 0u;

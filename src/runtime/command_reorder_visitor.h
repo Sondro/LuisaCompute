@@ -7,7 +7,7 @@
 #include <runtime/command.h>
 namespace luisa::compute {
 
-class CommandReorderVisitor : public CommandVisitor {
+class LC_RUNTIME_API CommandReorderVisitor : public CommandVisitor {
 public:
     enum class ResourceRW : uint8_t {
         Read,

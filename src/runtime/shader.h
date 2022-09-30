@@ -39,7 +39,7 @@ struct prototype_to_shader_invocation<Volume<T>> {
 template<typename T>
 using prototype_to_shader_invocation_t = typename prototype_to_shader_invocation<T>::type;
 
-class ShaderInvokeBase {
+class LC_RUNTIME_API ShaderInvokeBase {
 
 private:
     ShaderDispatchCommand *_command;

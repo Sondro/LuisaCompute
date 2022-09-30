@@ -53,17 +53,17 @@
 
 namespace luisa {
 
-[[nodiscard]] void *aligned_alloc(size_t alignment, size_t size) noexcept;
-void aligned_free(void *p) noexcept;
-[[nodiscard]] size_t pagesize() noexcept;
+[[nodiscard]] LC_CORE_API void *aligned_alloc(size_t alignment, size_t size) noexcept;
+LC_CORE_API void aligned_free(void *p) noexcept;
+[[nodiscard]] LC_CORE_API size_t pagesize() noexcept;
 
-[[nodiscard]] std::string_view dynamic_module_prefix() noexcept;
-[[nodiscard]] std::string_view dynamic_module_extension() noexcept;
-[[nodiscard]] void *dynamic_module_load(const std::filesystem::path &path) noexcept;
-void dynamic_module_destroy(void *handle) noexcept;
-[[nodiscard]] void *dynamic_module_find_symbol(void *handle, std::string_view name) noexcept;
-[[nodiscard]] luisa::string dynamic_module_name(std::string_view name) noexcept;
-[[nodiscard]] luisa::string demangle(const char *name) noexcept;
+[[nodiscard]] LC_CORE_API std::string_view dynamic_module_prefix() noexcept;
+[[nodiscard]] LC_CORE_API std::string_view dynamic_module_extension() noexcept;
+[[nodiscard]] LC_CORE_API void *dynamic_module_load(const std::filesystem::path &path) noexcept;
+LC_CORE_API void dynamic_module_destroy(void *handle) noexcept;
+[[nodiscard]] LC_CORE_API void *dynamic_module_find_symbol(void *handle, std::string_view name) noexcept;
+[[nodiscard]] LC_CORE_API luisa::string dynamic_module_name(std::string_view name) noexcept;
+[[nodiscard]] LC_CORE_API luisa::string demangle(const char *name) noexcept;
 
 struct TraceItem {
     luisa::string module;
@@ -72,7 +72,7 @@ struct TraceItem {
     size_t offset;
 };
 
-[[nodiscard]] LUISA_NEVER_INLINE luisa::vector<TraceItem> backtrace() noexcept;
+[[nodiscard]] LC_CORE_API LUISA_NEVER_INLINE luisa::vector<TraceItem> backtrace() noexcept;
 
 }// namespace luisa
 

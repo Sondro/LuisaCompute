@@ -30,7 +30,7 @@ struct CodegenResult {
     CodegenResult(CodegenResult const &) = delete;
     CodegenResult(CodegenResult&&) = default;
 };
-class CodegenUtility {
+class LC_COMPILE_API CodegenUtility {
 
 public:
     static constexpr vstd::string_view rayTypeDesc = "struct<16,array<float,3>,float,array<float,3>,float>"sv;
@@ -76,7 +76,7 @@ public:
 #endif
     static vstd::string GetNewTempVarName();
 };
-class StringStateVisitor final : public StmtVisitor, public ExprVisitor {
+class LC_COMPILE_API StringStateVisitor final : public StmtVisitor, public ExprVisitor {
     Function f;
 
 public:
