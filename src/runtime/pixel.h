@@ -170,22 +170,21 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::BC7UNorm) + 1u;
         case PixelStorage::FLOAT1: return sizeof(float) * 1u;
         case PixelStorage::FLOAT2: return sizeof(float) * 2u;
         case PixelStorage::FLOAT4: return sizeof(float) * 4u;
-        case PixelStorage::BC4:
-            return size_t(8u);
-        case PixelStorage::BC5:
-        case PixelStorage::BC6:
-        case PixelStorage::BC7:
-            return size_t(16u);
+        case PixelStorage::BC4: return static_cast<size_t>(8u);
+        case PixelStorage::BC5: [[fallthrough]];
+        case PixelStorage::BC6: [[fallthrough]];
+        case PixelStorage::BC7: return static_cast<size_t>(16u);
         default: break;
     }
     return static_cast<size_t>(0u);
 }
+
 [[nodiscard]] constexpr auto pixel_storage_size(PixelStorage storage, uint width, uint height, uint volume) noexcept {
     auto pixel_size = pixel_storage_size(storage);
     switch (storage) {
-        case PixelStorage::BC4:
-        case PixelStorage::BC5:
-        case PixelStorage::BC6:
+        case PixelStorage::BC4: [[fallthrough]];
+        case PixelStorage::BC5: [[fallthrough]];
+        case PixelStorage::BC6: [[fallthrough]];
         case PixelStorage::BC7:
             width = (width + 3) / 4;
             height = (height + 3) / 4;
@@ -212,14 +211,10 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::BC7UNorm) + 1u;
         case PixelStorage::FLOAT1: return 1u;
         case PixelStorage::FLOAT2: return 2u;
         case PixelStorage::FLOAT4: return 4u;
-        case PixelStorage::BC4:
-            return 1u;
-        case PixelStorage::BC5:
-            return 2u;
-        case PixelStorage::BC6:
-            return 3u;
-        case PixelStorage::BC7:
-            return 4u;
+        case PixelStorage::BC4: return 1u;
+        case PixelStorage::BC5: return 2u;
+        case PixelStorage::BC6: return 3u;
+        case PixelStorage::BC7: return 4u;
         default: break;
     }
     return 0u;

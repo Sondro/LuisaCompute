@@ -167,14 +167,12 @@ public:
     using Resource::operator bool;
     [[nodiscard]] auto operator()(detail::prototype_to_shader_invocation_t<Args>... args) const noexcept {
         using invoke_type = detail::ShaderInvoke<dimension>;
-        for (auto &&i : _kernel->argument_bindings()) {
-            assert(i.index() == 0);
-        }
         invoke_type invoke{handle(), _kernel->function()};
         return static_cast<invoke_type &&>((invoke << ... << args));
     }
 };
 
+// TODO: merge with conventional shaders
 template<size_t dimension, typename... Args>
 class AOTShader final : public Resource {
 

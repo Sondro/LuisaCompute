@@ -300,7 +300,7 @@ public:
     explicit Expr(const RefExpr *expr) noexcept
         : _expression{expr} {}
     /// Construct from BufferView. Will call buffer_binding() to bind buffer
-    explicit Expr(BufferView<T> buffer) noexcept
+    Expr(BufferView<T> buffer) noexcept
         : _expression{detail::FunctionBuilder::current()->buffer_binding(
               Type::of<Buffer<T>>(), buffer.handle(),
               buffer.offset_bytes(), buffer.size_bytes())} {}
@@ -493,7 +493,7 @@ public:
     /// Construct from RefExpr
     explicit Expr(const RefExpr *expr) noexcept : _expression{expr} {}
     /// Construct from ImageView. Will create texture binding.
-    explicit Expr(ImageView<T> image) noexcept
+    Expr(ImageView<T> image) noexcept
         : _expression{detail::FunctionBuilder::current()->texture_binding(
               Type::of<Image<T>>(), image.handle(), image.level())} {}
     [[nodiscard]] auto expression() const noexcept { return _expression; }
@@ -531,7 +531,7 @@ public:
     /// Construct from RefExpr
     explicit Expr(const RefExpr *expr, const Expression *offset) noexcept : _expression{expr} {}
     /// Construct from VolumeView. Will create texture binding.
-    explicit Expr(VolumeView<T> volume) noexcept
+    Expr(VolumeView<T> volume) noexcept
         : _expression{detail::FunctionBuilder::current()->texture_binding(
               Type::of<Volume<T>>(), volume.handle(), volume.level())} {}
 
@@ -572,8 +572,7 @@ private:
 public:
     /// Construct from array RefExpr and index Expression
     BindlessBuffer(const RefExpr *array, const Expression *index) noexcept
-        : _array{array},
-          _index{index} {}
+        : _array{array}, _index{index} {}
 
     /// Read at index i
     template<typename I>
@@ -597,8 +596,7 @@ private:
 public:
     /// Construct from array RefExpr and index Expression
     BindlessTexture2D(const RefExpr *array, const Expression *index) noexcept
-        : _array{array},
-          _index{index} {}
+        : _array{array}, _index{index} {}
     /// Sample at (u, v)
     [[nodiscard]] Var<float4> sample(Expr<float2> uv) const noexcept;
     /// Sample at (u, v) at mip level
@@ -636,8 +634,7 @@ private:
 public:
     /// Construct from array RefExpr and index Expression
     BindlessTexture3D(const RefExpr *array, const Expression *index) noexcept
-        : _array{array},
-          _index{index} {}
+        : _array{array}, _index{index} {}
     /// Sample at (u, v, w)
     [[nodiscard]] Var<float4> sample(Expr<float3> uvw) const noexcept;
     /// Sample at (u, v, w) at mip level
@@ -678,7 +675,7 @@ public:
         : _expression{expr} {}
 
     /// Construct from BindlessArray. Will create bindless array binding
-    explicit Expr(const BindlessArray &array) noexcept
+    Expr(const BindlessArray &array) noexcept
         : _expression{detail::FunctionBuilder::current()->bindless_array_binding(array.handle())} {}
     [[nodiscard]] auto expression() const noexcept { return _expression; }
 

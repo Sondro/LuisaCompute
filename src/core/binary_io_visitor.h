@@ -7,11 +7,12 @@ namespace luisa::compute {
 
 class IBinaryStream {
 public:
-    virtual size_t length() const = 0;
-    virtual size_t pos() const = 0;
+    [[nodiscard]] virtual size_t length() const = 0;
+    [[nodiscard]] virtual size_t pos() const = 0;
     virtual void read(luisa::span<std::byte> dst) = 0;
 	virtual ~IBinaryStream() = default;
 };
+
 class BinaryIOVisitor {
 protected:
     ~BinaryIOVisitor() = default;
