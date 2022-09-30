@@ -21,7 +21,6 @@ public:
         STREAM,
         EVENT,
         SHADER,
-        AOT_SHADER,
         SWAP_CHAIN
     };
 
