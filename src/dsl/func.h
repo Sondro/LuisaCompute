@@ -205,7 +205,6 @@ private:
     using SharedFunctionBuilder = luisa::shared_ptr<const detail::FunctionBuilder>;
     SharedFunctionBuilder _builder{nullptr};
     explicit Kernel(SharedFunctionBuilder builder) noexcept : _builder{std::move(builder)} {}
-    mutable luisa::unordered_map<const Device::Interface *, luisa::shared_ptr<Shader<N, Args...>>> _compiled_shaders;
 
 public:
     /**
@@ -218,9 +217,8 @@ public:
      */
     template<typename Def>
         requires std::negation_v<is_callable<std::remove_cvref_t<Def>>> &&
-            std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
-            Kernel(Def &&def)
-    noexcept {
+                 std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
+    Kernel(Def &&def) noexcept {
         static_assert(std::is_invocable_r_v<void, Def, detail::prototype_to_creation_t<Args>...>);
         _builder = detail::FunctionBuilder::define_kernel([&def] {
             detail::FunctionBuilder::current()->set_block_size(detail::kernel_default_block_size<N>());
@@ -238,21 +236,6 @@ public:
         });
     }
     [[nodiscard]] const auto &function() const noexcept { return _builder; }
-
-    /**
-     * @brief Convenient interface that compiles the kernel and then launches it
-     * @param device the device to run on
-     * @param args kernel arguments
-     * @return shader dispatch delegate
-     */
-    [[nodiscard]] decltype(auto) operator()(Device &device, detail::prototype_to_shader_invocation_t<Args>... args) const noexcept {
-        auto impl = device.impl();
-        auto [iter, _] = _compiled_shaders.try_emplace(impl, nullptr);
-        if (iter->second == nullptr) {
-            iter->second = luisa::make_shared<Shader<N, Args...>>(device.compile(*this));
-        }
-        return (*iter->second)(args...);
-    }
 };
 
 #define LUISA_KERNEL_BASE(N)                                     \
@@ -361,9 +344,8 @@ public:
      */
     template<typename Def>
         requires std::negation_v<is_callable<std::remove_cvref_t<Def>>> &&
-            std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
-            Callable(Def &&f)
-    noexcept
+                 std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
+    Callable(Def &&f) noexcept
         : _builder{detail::FunctionBuilder::define_callable([&f] {
               static_assert(std::is_invocable_v<Def, detail::prototype_to_creation_t<Args>...>);
               auto create = []<size_t... i>(auto &&def, std::index_sequence<i...>) noexcept {

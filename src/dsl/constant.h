@@ -34,10 +34,12 @@ public:
 
     /// Construct constant from array-like data
     template<typename U>
-    Constant(U &&data) noexcept : Constant{luisa::span<const T>{std::forward<U>(data)}} {}
+    Constant(U &&data) noexcept
+        : Constant{luisa::span<const T>{std::forward<U>(data)}} {}
 
     /// Construct constant from initializer list
-    Constant(std::initializer_list<T> init) noexcept : Constant{luisa::span<const T>{init.begin(), init.end()}} {}
+    Constant(std::initializer_list<T> init) noexcept
+        : Constant{luisa::span<const T>{init.begin(), init.end()}} {}
 
     Constant(Constant &&) noexcept = default;
     Constant(const Constant &) noexcept = delete;

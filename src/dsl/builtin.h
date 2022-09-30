@@ -7,6 +7,7 @@
 #include <core/constants.h>
 #include <dsl/var.h>
 #include <dsl/operators.h>
+#include <dsl/expr_traits.h>
 
 namespace luisa::compute {
 
@@ -14,16 +15,30 @@ inline namespace dsl {
 
 /// Expression cast operation
 template<typename Dest, typename Src>
+    requires is_dsl_v<Src>
 [[nodiscard]] inline auto cast(Src &&s) noexcept {
     Expr expr{std::forward<Src>(s)};
-    return expr.template cast<Dest>();
+    return expr.template cast<expr_value_t<Dest>>();
+}
+
+template<typename Dest, typename Src>
+    requires std::negation_v<is_dsl<Src>>
+[[nodiscard]] inline auto cast(Src &&s) noexcept {
+    return static_cast<Dest>(std::forward<Src>(s));
 }
 
 /// Expression as operation
 template<typename Dest, typename Src>
+    requires is_dsl_v<Src>
 [[nodiscard]] inline auto as(Src &&s) noexcept {
     Expr expr{std::forward<Src>(s)};
     return expr.template as<Dest>();
+}
+
+template<typename Dest, typename Src>
+    requires std::negation_v<is_dsl<Src>>
+[[nodiscard]] inline auto as(Src &&s) noexcept {
+    return luisa::bit_cast<Dest>(std::forward<Src>(s));
 }
 
 /// Call assume on bool expression
@@ -1194,14 +1209,16 @@ template<typename X>
 }
 
 /// Is x infinity.
-template<typename X, std::enable_if_t<std::conjunction_v<is_dsl<X>, is_float_or_vector_expr<X>>, int> = 0>
+template<typename X>
+    requires is_dsl_v<X> && is_float_or_vector_expr_v<X>
 [[nodiscard]] inline auto isinf(X &&x) noexcept {
     return detail::make_vector_call<bool>(
         CallOp::ISINF, std::forward<X>(x));
 }
 
 /// Is x nan.
-template<typename X, std::enable_if_t<std::conjunction_v<is_dsl<X>, is_float_or_vector_expr<X>>, int> = 0>
+template<typename X>
+    requires is_dsl_v<X> && is_float_or_vector_expr_v<X>
 [[nodiscard]] inline auto isnan(X &&x) noexcept {
     return detail::make_vector_call<bool>(
         CallOp::ISNAN, std::forward<X>(x));
