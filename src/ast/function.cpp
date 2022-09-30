@@ -12,7 +12,7 @@ luisa::span<const Variable> Function::builtin_variables() const noexcept {
     return _builder->builtin_variables();
 }
 
-luisa::unordered_map<uint64_t, Function::Constant> const &Function::constants() const noexcept {
+luisa::span<const Function::Constant> Function::constants() const noexcept {
     return _builder->constants();
 }
 
@@ -34,10 +34,6 @@ luisa::span<const luisa::shared_ptr<const detail::FunctionBuilder>> Function::cu
 
 CallOpSet Function::builtin_callables() const noexcept {
     return _builder->builtin_callables();
-}
-
-CallOpSet Function::propagated_builtin_callables() const noexcept {
-    return _builder->propagated_builtin_callables();
 }
 
 const Type *Function::return_type() const noexcept {
@@ -76,7 +72,7 @@ luisa::span<const Variable> Function::local_variables() const noexcept {
     return _builder->local_variables();
 }
 
-luisa::unordered_map<uint64_t, Variable> const &Function::shared_variables() const noexcept {
+luisa::span<const Variable> Function::shared_variables() const noexcept {
     return _builder->shared_variables();
 }
 

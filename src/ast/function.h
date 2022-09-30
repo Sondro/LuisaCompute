@@ -8,8 +8,6 @@
 #include <ast/variable.h>
 #include <ast/op.h>
 #include <ast/constant_data.h>
-#include <core/stl/memory.h>
-#include <core/stl/unordered_map.h>
 
 namespace luisa::compute {
 
@@ -63,12 +61,12 @@ public:
     /// Return local variables
     [[nodiscard]] luisa::span<const Variable> local_variables() const noexcept;
     /// Return shared variables
-    [[nodiscard]] luisa::unordered_map<uint64_t, Variable> const &shared_variables() const noexcept;
+    [[nodiscard]] luisa::span<const Variable> shared_variables() const noexcept;
     /// Return constants
-    [[nodiscard]] luisa::unordered_map<uint64_t, Constant> const &constants() const noexcept;
+    [[nodiscard]] luisa::span<const Constant> constants() const noexcept;
     /// Return arguments
     [[nodiscard]] luisa::span<const Variable> arguments() const noexcept;
-    /// Return custom callables that are *directly* called by this function
+    /// Return custom callables
     [[nodiscard]] luisa::span<const luisa::shared_ptr<const detail::FunctionBuilder>> custom_callables() const noexcept;
     /// Return builtin callables that are *directly* used by this function
     [[nodiscard]] CallOpSet builtin_callables() const noexcept;

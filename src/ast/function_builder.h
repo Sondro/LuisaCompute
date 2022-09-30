@@ -147,12 +147,12 @@ private:
     luisa::vector<luisa::unique_ptr<Statement>> _all_statements;
     luisa::vector<ScopeStmt *> _scope_stack;
     luisa::vector<Variable> _builtin_variables;
-    luisa::unordered_map<uint64_t, Constant> _captured_constants;
+    luisa::vector<Constant> _captured_constants;
     luisa::vector<Variable> _arguments;
     luisa::vector<Binding> _argument_bindings;
     luisa::vector<luisa::shared_ptr<const FunctionBuilder>> _used_custom_callables;
     luisa::vector<Variable> _local_variables;
-    luisa::unordered_map<uint64_t, Variable> _shared_variables;
+    luisa::vector<Variable> _shared_variables;
     luisa::vector<Usage> _variable_usages;
     luisa::vector<std::pair<std::byte *, size_t /* alignment */>> _temporary_data;
     CallOpSet _propagated_builtin_callables;
@@ -234,9 +234,9 @@ public:
     /// Return a span of local variables.
     [[nodiscard]] auto local_variables() const noexcept { return luisa::span{_local_variables}; }
     /// Return a span of shared variables.
-    [[nodiscard]] auto const &shared_variables() const noexcept { return _shared_variables; }
+    [[nodiscard]] auto shared_variables() const noexcept { return luisa::span{_shared_variables}; }
     /// Return a span of constants.
-    [[nodiscard]] auto const &constants() const noexcept { return _captured_constants; }
+    [[nodiscard]] auto constants() const noexcept { return luisa::span{_captured_constants}; }
     /// Return a span of arguments.
     [[nodiscard]] auto arguments() const noexcept { return luisa::span{_arguments}; }
     /// Return a span of argument bindings.

@@ -205,7 +205,6 @@ static constexpr size_t call_op_count = to_underlying(CallOp::TRACE_ANY) + 1u;
  * @brief Set of call operations.
  * 
  */
-class AstSerializer;
 class LC_AST_API CallOpSet {
 
 public:

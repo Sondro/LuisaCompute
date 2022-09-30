@@ -140,7 +140,7 @@ const RefExpr *FunctionBuilder::local(const Type *type) noexcept {
 
 const RefExpr *FunctionBuilder::shared(const Type *type) noexcept {
     Variable sv{type, Variable::Tag::SHARED, _next_variable_uid()};
-    _shared_variables.emplace(sv.uid(), sv);
+    _shared_variables.emplace_back(sv);
     return _ref(sv);
 }
 
@@ -251,8 +251,12 @@ const RefExpr *FunctionBuilder::_ref(Variable v) noexcept {
 
 const ConstantExpr *FunctionBuilder::constant(const Type *type, ConstantData data) noexcept {
     if (!type->is_array()) [[unlikely]] { LUISA_ERROR_WITH_LOCATION("Constant data must be array."); }
-    auto c = Constant{type, data};
-    _captured_constants.emplace(data.hash(), std::move(c));
+    if (auto iter = std::find_if(
+            _captured_constants.begin(), _captured_constants.end(),
+            [data](auto &&c) noexcept { return c.data.hash() == data.hash(); });
+        iter == _captured_constants.end()) {
+        _captured_constants.emplace_back(Constant{type, data});
+    }
     return _create_expression<ConstantExpr>(type, data);
 }
 
@@ -337,7 +341,7 @@ void FunctionBuilder::_compute_hash() noexcept {
     _hash = hash64(_body.hash(), hash64(_tag, hash64("__hash_function")));
     _hash = hash64(_return_type ? _return_type.value()->description() : "void", _hash);
     for (auto &&arg : _arguments) { _hash = hash64(arg.hash(), _hash); }
-    for (auto &&c : _captured_constants) { _hash = hash64(c.first, _hash); }
+    for (auto &&c : _captured_constants) { _hash = hash64(c.hash(), _hash); }
     _hash = hash64(_block_size, _hash);
 }
 

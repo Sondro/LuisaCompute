@@ -300,8 +300,8 @@ void FunctionSerializer::dump(Function f) const noexcept {
     }
     // shared variables
     for (auto v : f.shared_variables()) {
-        variables[v.first].emplace("tag", "shared");
-        variables[v.first].emplace("type", v.second.type()->description());
+        variables[v.uid()].emplace("tag", "shared");
+        variables[v.uid()].emplace("type", v.type()->description());
     }
     // local variables
     for (auto v : f.local_variables()) {

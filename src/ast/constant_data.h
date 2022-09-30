@@ -11,7 +11,6 @@
 #include <vector>
 #include <array>
 
-#include <core/stl/variant.h>
 #include <core/basic_types.h>
 #include <core/concepts.h>
 

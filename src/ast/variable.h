@@ -12,7 +12,7 @@ namespace luisa::compute {
 namespace detail {
 class FunctionBuilder;
 }
-class AstSerializer;
+
 /// Variable class
 class Variable {
 
