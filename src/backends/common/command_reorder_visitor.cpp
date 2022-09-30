@@ -292,7 +292,7 @@ size_t CommandReorderVisitor::SetRW(
     setReadLayer();
     return layer;
 }
-//TODO: Most backend can not support copy & kernel-write at same time, disable copy's range
+//TODO: Most backend can not support copy & kernel-write at the same time, disable copy's range
 static CommandReorderVisitor::Range CopyRange(int64_t min = std::numeric_limits<int64_t>::min(), int64_t max = std::numeric_limits<int64_t>::max()) {
     return CommandReorderVisitor::Range();
 }

@@ -2,13 +2,13 @@
 
 #include <runtime/device.h>
 #include <core/stl/hash.h>
-#include <stdint.h>
+#include <cstdint>
 #include <vstl/Common.h>
 #include <runtime/command.h>
 
 namespace luisa::compute {
 
-class LC_RUNTIME_API CommandReorderVisitor : public CommandVisitor {
+class CommandReorderVisitor : public CommandVisitor {
 public:
     enum class ResourceRW : uint8_t {
         Read,
