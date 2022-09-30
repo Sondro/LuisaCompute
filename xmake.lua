@@ -28,12 +28,13 @@ end
         end
     })
 ]]
-if is_mode("release") then
-    set_targetdir("bin/release")
-    LC_BinDir = "bin/release/"
-else
+
+if is_mode("debug") then
     set_targetdir("bin/debug")
-    LC_BinDir = "bin/debug/"
+    add_linkdirs("lib/debug")
+else
+    set_targetdir("bin/release")
+    add_linkdirs("lib/release")
 end
 function BuildProject(config)
     local projectName = GetValue(config.projectName)
@@ -64,7 +65,7 @@ function BuildProject(config)
         if is_plat("windows") then
             set_runtimes("MDd")
         end
-        add_cxflags("/Ob0", "/GF", "/GS", "/Gd")
+        add_cxflags("/GS", "/Gd")
         local event = GetValue(config.debugEvent)
         if (type(event) == "function") then
             event()
@@ -74,7 +75,7 @@ function BuildProject(config)
         if is_plat("windows") then
             set_runtimes("MD")
         end
-        add_cxflags("/Ob0", "/Oy", "/GF", "/GS-", "/Gy", "/Gd", "/Oi", "/Ot", "/Oy", "/GT")
+        add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/Oy", "/GT")
         local event = GetValue(config.releaseEvent)
         if (type(event) == "function") then
             event()
@@ -82,5 +83,3 @@ function BuildProject(config)
     end
 end
 add_subdirs("src")
-add_linkdirs("lib/debug")
-add_linkdirs("lib/release")

@@ -26,7 +26,7 @@ add_includedirs("../", "../ext/abseil-cpp/", "../ext/EASTL/include/", "../ext/js
 add_files("**.cpp")
 add_defines("UNICODE", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", "NOMINMAX", "EASTL_DLL=1", "ABSL_CONSUME_DLL=1",
     "FMT_CONSTEVAL=constexpr", "FMT_USE_CONSTEXPR=1", "FMT_HEADER_ONLY=1", "FMT_EXCEPTIONS=0", "SPDLOG_NO_EXCEPTIONS=1",
-    "_ENABLE_EXTENDED_ALIGNED_STORAGE", {
+    "_ENABLE_EXTENDED_ALIGNED_STORAGE", "EASTL_USER_DEFINED_ALLOCATOR=1", {
         public = true
     })
 add_defines("LC_CORE_EXPORT_DLL")
