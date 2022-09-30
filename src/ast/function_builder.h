@@ -16,7 +16,6 @@
 #include <ast/constant_data.h>
 #include <ast/type_registry.h>
 
-
 namespace luisa::compute {
 class Statement;
 class Expression;
@@ -48,6 +47,17 @@ private:
         explicit ScopeGuard(FunctionBuilder *builder, ScopeStmt *scope) noexcept
             : _builder{builder}, _scope{scope} { _builder->push_scope(_scope); }
         ~ScopeGuard() noexcept { _builder->pop_scope(_scope); }
+    };
+
+    class FunctionStackGuard {
+
+    private:
+        FunctionBuilder *_builder;
+
+    public:
+        explicit FunctionStackGuard(FunctionBuilder *builder) noexcept
+            : _builder{builder} { push(builder); }
+        ~FunctionStackGuard() noexcept { pop(_builder); }
     };
 
 public:
@@ -191,17 +201,8 @@ private:
     template<typename Def>
     static auto _define(Function::Tag tag, Def &&def) {
         auto f = make_shared<FunctionBuilder>(tag);
-        push(f.get());
-        struct Dispose {
-            FunctionBuilder *builder;
-            ~Dispose() {
-                pop(builder);
-            }
-        };
-        {
-            Dispose disp{f.get()};
-            f->with(&f->_body, std::forward<Def>(def));
-        }
+        FunctionStackGuard guard{f.get()};
+        f->with(&f->_body, std::forward<Def>(def));
         return luisa::const_pointer_cast<const FunctionBuilder>(f);
     }
 
