@@ -36,6 +36,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 12)
 set(BUILD_SHARED_LIBS ON)
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64" OR
+        CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+    # enable AVX2 for embree on x64
+    if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:AVX2")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
+    else ()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -mf16c")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mf16c")
+    endif ()
+endif ()
+
 if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "LuisaCompute only supports 64-bit platforms")
 endif ()
@@ -54,6 +66,11 @@ if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
             message(STATUS "Could not find sccache")
         endif ()
     endif ()
+endif ()
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND
+        CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 15.0)
+    add_compile_options(-Wno-deprecated-builtins)
 endif ()
 
 option(LUISA_COMPUTE_BUILD_TESTS "Build tests for LuisaCompute" ${LUISA_COMPUTE_MASTER_PROJECT})

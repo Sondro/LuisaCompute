@@ -31,8 +31,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     target_compile_options(luisa-compute-include INTERFACE
             /wd5105 # winbase.h: macro expansion producing 'defined' has undefined behavior
             /wd4068 # unknown pragma
-            /Zc:preprocessor
-            /EHsc)
+            /Zc:preprocessor)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(luisa-compute-include INTERFACE
             -Wno-invalid-offsetof
@@ -41,7 +40,6 @@ endif ()
 
 add_subdirectory(core)
 add_subdirectory(vstl)
-add_subdirectory(meta)
 add_subdirectory(ast)
 add_subdirectory(runtime)
 add_subdirectory(compile)
@@ -53,7 +51,6 @@ add_library(luisa-compute INTERFACE luisa-compute.h)
 target_link_libraries(luisa-compute INTERFACE
         luisa-compute-core
         luisa-compute-vstl
-        luisa-compute-meta
         luisa-compute-ast
         luisa-compute-compile
         luisa-compute-runtime
