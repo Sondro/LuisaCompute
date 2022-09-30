@@ -17,7 +17,7 @@ ShaderInvokeBase &ShaderInvokeBase::operator<<(const Accel &accel) noexcept {
 
 }// namespace detail
 
-LC_RTX_API Accel Device::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
+Accel Device::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
     return _create<Accel>(hint, allow_compact, allow_update);
 }
 
