@@ -23,8 +23,8 @@ public:
           _size{n} {}
 
     template<typename U>
-        requires is_array_expr_v<U> Local(U &&array)
-    noexcept
+        requires is_array_expr_v<U>
+    Local(U &&array) noexcept
         : _expression{detail::extract_expression(def(std::forward<U>(array)))},
           _size{array_expr_dimension_v<U>} {}
 
@@ -51,7 +51,8 @@ public:
     }
 
     template<typename U>
-    requires is_array_expr_v<U> Local &operator=(U &&rhs) noexcept {
+        requires is_array_expr_v<U>
+    Local &operator=(U &&rhs) noexcept {
         constexpr auto n = array_expr_dimension_v<U>;
         LUISA_ASSERT(_size == n, "Incompatible sizes ({} and {}).", _size, n);
         detail::FunctionBuilder::current()->assign(

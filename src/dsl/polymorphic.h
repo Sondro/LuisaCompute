@@ -64,7 +64,8 @@ public:
         if (hi > _impl.size()) [[unlikely]] {
             LUISA_WARNING_WITH_LOCATION(
                 "Out-of-bound polymorphic tag range [{}, {}). "
-                "Registered tag count: {}.", lo, hi, _impl.size());
+                "Registered tag count: {}.",
+                lo, hi, _impl.size());
             hi = _impl.size();
         }
         if (hi == lo) [[unlikely]] {
@@ -94,7 +95,8 @@ public:
             } else {
                 LUISA_WARNING_WITH_LOCATION(
                     "Out-of-bound polymorphic tag {}. "
-                    "Registered tag count: {}.", t, _impl.size());
+                    "Registered tag count: {}.",
+                    t, _impl.size());
             }
         }
         std::sort(tags.begin(), tags.end());
