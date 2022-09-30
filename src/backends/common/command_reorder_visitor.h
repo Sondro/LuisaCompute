@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <vstl/Common.h>
 #include <runtime/command.h>
+
 namespace luisa::compute {
 
 class LC_RUNTIME_API CommandReorderVisitor : public CommandVisitor {

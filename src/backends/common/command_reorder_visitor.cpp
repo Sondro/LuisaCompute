@@ -1,6 +1,7 @@
 #include <core/mathematics.h>
-#include <runtime/command_reorder_visitor.h>
 #include <runtime/command_list.h>
+
+#include <backends/common/command_reorder_visitor.h>
 
 namespace luisa::compute {
 bool CommandReorderVisitor::Range::operator==(Range const &r) const {
