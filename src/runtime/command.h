@@ -397,7 +397,6 @@ public:
 private:
     uint64_t _handle{};
     Function _kernel{};
-    size_t _argument_buffer_size{0u};
     uint _dispatch_size[3]{};
     uint32_t _argument_count{0u};
     luisa::vector<std::byte> _argument_buffer;

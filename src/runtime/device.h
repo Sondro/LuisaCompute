@@ -126,12 +126,9 @@ public:
         virtual void destroy_stream(uint64_t handle) noexcept = 0;
         virtual void synchronize_stream(uint64_t stream_handle) noexcept = 0;
         virtual void dispatch(uint64_t stream_handle, CommandList &&list) noexcept = 0;
-        //TODO: need re-design
-        /*virtual void dispatch(uint64_t stream_handle, luisa::span<const CommandList> lists) noexcept {
-            for (auto &&list : lists) { dispatch(stream_handle, list); }
-        }*/
         virtual void dispatch(uint64_t stream_handle, luisa::move_only_function<void()> &&func) noexcept = 0;
         [[nodiscard]] virtual void *stream_native_handle(uint64_t handle) const noexcept = 0;
+
         // swap chain
         [[nodiscard]] virtual uint64_t create_swap_chain(
             uint64_t window_handle, uint64_t stream_handle, uint width, uint height,
@@ -139,8 +136,9 @@ public:
         virtual void destroy_swap_chain(uint64_t handle) noexcept = 0;
         virtual PixelStorage swap_chain_pixel_storage(uint64_t handle) noexcept = 0;
         virtual void present_display_in_stream(uint64_t stream_handle, uint64_t swapchain_handle, uint64_t image_handle) noexcept = 0;
+
         // kernel
-        [[nodiscard]] virtual uint64_t create_shader(Function kernel, luisa::string_view ser_path) noexcept = 0;
+        [[nodiscard]] virtual uint64_t create_shader(Function kernel, luisa::string_view serialization_path) noexcept = 0;
         [[nodiscard]] virtual uint64_t load_shader(luisa::string_view ser_path, luisa::span<Type const *const> types) noexcept = 0;
         virtual void destroy_shader(uint64_t handle) noexcept = 0;
 
@@ -160,8 +158,7 @@ public:
         virtual void destroy_accel(uint64_t handle) noexcept = 0;
 
         // query
-        [[nodiscard]] virtual luisa::string query(std::string_view meta_expr) noexcept { return {}; }
-        [[nodiscard]] virtual bool requires_command_reordering() const noexcept { return true; }
+        [[nodiscard]] virtual luisa::string query(std::string_view property) noexcept { return {}; }
         [[nodiscard]] virtual IUtil *get_util() { return nullptr; }
     };
 

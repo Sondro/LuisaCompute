@@ -12,8 +12,8 @@ void Command::recycle() {
 }
 
 std::byte *ShaderDispatchCommand::_make_space(size_t size) noexcept {
-    auto offset = _argument_buffer_size;
-    _argument_buffer_size += size;
+    auto offset = _argument_buffer.size();
+    _argument_buffer.resize(offset + size);
     return _argument_buffer.data() + offset;
 }
 
