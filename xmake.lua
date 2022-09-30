@@ -75,7 +75,7 @@ function BuildProject(config)
         if is_plat("windows") then
             set_runtimes("MD")
         end
-        add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/Oy", "/GT")
+        add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT")
         local event = GetValue(config.releaseEvent)
         if (type(event) == "function") then
             event()
