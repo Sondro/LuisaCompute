@@ -343,3 +343,6 @@ doxygen_output
 *.ll
 *.bc
 *.S
+
+# XMake
+.xmake/
