@@ -16,6 +16,7 @@ namespace luisa::compute {
 class LC_RTX_API Accel final : public Resource {
 
 public:
+    using BuildHint = AccelBuildHint;
     using UsageHint = AccelUsageHint;
     using BuildRequest = AccelBuildRequest;
     using Modification = AccelBuildCommand::Modification;
@@ -27,7 +28,9 @@ private:
 private:
     friend class Device;
     friend class Mesh;
-    explicit Accel(Device::Interface *device, UsageHint hint = UsageHint::FAST_TRACE, bool allow_compact = false, bool allow_update = true) noexcept;
+    explicit Accel(Device::Interface *device,
+                   BuildHint build_hint = BuildHint::FAST_TRACE,
+                   UsageHint usage_hint = UsageHint::ALWAYS_REBUILD) noexcept;
 
 public:
     Accel() noexcept = default;

@@ -17,12 +17,12 @@ ShaderInvokeBase &ShaderInvokeBase::operator<<(const Accel &accel) noexcept {
 
 }// namespace detail
 
-Accel Device::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
-    return _create<Accel>(hint, allow_compact, allow_update);
+Accel Device::create_accel(Accel::BuildHint build_hint, Accel::UsageHint usage_hint) noexcept {
+    return _create<Accel>(build_hint, usage_hint);
 }
 
-Accel::Accel(Device::Interface *device, AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept
-    : Resource{device, Resource::Tag::ACCEL, device->create_accel(hint, allow_compact, allow_update)} {}
+Accel::Accel(Device::Interface *device, Accel::BuildHint build_hint, Accel::UsageHint usage_hint) noexcept
+    : Resource{device, Resource::Tag::ACCEL, device->create_accel(build_hint, usage_hint)} {}
 
 Command *Accel::build(Accel::BuildRequest request) noexcept {
     if (_mesh_handles.empty()) { LUISA_ERROR_WITH_LOCATION(

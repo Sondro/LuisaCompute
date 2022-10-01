@@ -16,6 +16,8 @@ class Accel;
 class LC_RTX_API Mesh final : public Resource {
 
 public:
+    using BuildHint = AccelBuildHint;
+    using UsageHint = AccelUsageHint;
     using BuildRequest = AccelBuildRequest;
 
 private:
@@ -33,12 +35,10 @@ private:
 
     template<typename VBuffer, typename TBuffer>
         requires is_buffer_or_view_v<VBuffer> &&
-            is_buffer_or_view_v<TBuffer> &&
-            std::same_as<buffer_element_t<TBuffer>, Triangle>
+                 is_buffer_or_view_v<TBuffer> &&
+                 std::same_as<buffer_element_t<TBuffer>, Triangle>
     [[nodiscard]] static uint64_t _create_resource(
-        Device::Interface *device, AccelUsageHint hint,
-        bool allow_compact,
-        bool allow_update,
+        Device::Interface *device, BuildHint build_hint, UsageHint usage_hint,
         const VBuffer &vertex_buffer, const TBuffer &triangle_buffer) noexcept {
         BufferView vertices{vertex_buffer};
         BufferView triangles{triangle_buffer};
@@ -49,17 +49,17 @@ private:
         auto triangle_buffer_handle = triangles.handle();
         auto triangle_buffer_offset = triangles.offset_bytes();
         auto triangle_count = triangles.size();
-        return device->create_mesh(hint, allow_compact, allow_update);
+        return device->create_mesh(build_hint, usage_hint);
     }
 
 private:
     template<typename VBuffer, typename TBuffer>
     Mesh(Device::Interface *device, const VBuffer &vertex_buffer, const TBuffer &triangle_buffer,
-         AccelUsageHint hint = AccelUsageHint::FAST_TRACE,
-         bool allow_compact = true,
-         bool allow_update = false) noexcept
+         BuildHint build_hint = BuildHint::FAST_TRACE,
+         UsageHint usage_hint = UsageHint::ALWAYS_REBUILD) noexcept
         : Resource{device, Resource::Tag::MESH,
-                   _create_resource(device, hint, allow_compact, allow_update, vertex_buffer, triangle_buffer)},
+                   _create_resource(device, build_hint, usage_hint,
+                                    vertex_buffer, triangle_buffer)},
           _triangle_count{static_cast<uint>(triangle_buffer.size())},
           _v_buffer{BufferView{vertex_buffer}.handle()},
           _v_buffer_offset{BufferView{vertex_buffer}.offset_bytes()},
@@ -77,10 +77,12 @@ public:
 };
 
 template<typename VBuffer, typename TBuffer>
-Mesh Device::create_mesh(VBuffer &&vertices, TBuffer &&triangles, AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
-    return this->_create<Mesh>(std::forward<VBuffer>(vertices), std::forward<TBuffer>(triangles), hint, allow_compact, allow_update);
+Mesh Device::create_mesh(VBuffer &&vertices, TBuffer &&triangles,
+                         Mesh::BuildHint build_hint, Mesh::UsageHint usage_hint) noexcept {
+    return this->_create<Mesh>(std::forward<VBuffer>(vertices),
+                               std::forward<TBuffer>(triangles),
+                               build_hint, usage_hint);
 }
-
 
 }// namespace luisa::compute
 

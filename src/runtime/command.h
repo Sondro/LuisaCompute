@@ -494,9 +494,15 @@ public:
 };
 
 // TODO: allow compaction/update
+enum struct AccelBuildHint : uint32_t {
+    FAST_TRACE,              // build with best quality
+    FAST_TRACE_NO_COMPACTION,// build with good quality but without compaction
+    FAST_BUILD,              // optimize for frequent rebuild, usually without compaction
+};
+
 enum struct AccelUsageHint : uint32_t {
-    FAST_TRACE,// build with best quality
-    FAST_BUILD // optimize for frequent rebuild, maybe without compaction
+    ALLOW_UPDATE,
+    ALWAYS_REBUILD,
 };
 
 enum struct AccelBuildRequest : uint32_t {

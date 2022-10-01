@@ -100,7 +100,8 @@ int main(int argc, char *argv[]) {
 
     auto accel = device.create_accel();
     auto mesh = device.create_mesh(vertex_buffer, triangle_buffer,
-                                   AccelUsageHint::FAST_BUILD);
+                                   Mesh::BuildHint::FAST_BUILD,
+                                   Mesh::UsageHint::ALWAYS_REBUILD);
     accel.emplace_back(mesh, scaling(1.5f));
     accel.emplace_back(mesh, translation(float3(-0.25f, 0.0f, 0.1f)) *
                                  rotation(float3(0.0f, 0.0f, 1.0f), 0.5f));
