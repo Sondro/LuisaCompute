@@ -170,10 +170,10 @@ private:
            const std::filesystem::path &file_path) noexcept
         : Resource{[device, &file_path]() noexcept {
               std::array arg_types{Type::of<Args>()...};
-              if (auto handle = device->load_shader(file_path.string(), arg_types)) {
-                  return Resource{device, Tag::SHADER, handle};
-              }
-              return Resource{};
+              auto handle = device->load_shader(file_path.string(), arg_types);
+              return handle == Device::invalid_handle ?
+                         Resource{} :
+                         Resource{device, Tag::SHADER, handle};
           }()} {}
 
 public:
