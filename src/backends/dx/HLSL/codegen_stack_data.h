@@ -1,14 +1,9 @@
 #pragma once
-<<<<<<< HEAD
-#include "vstl/Common.h"
-#include "dx_codegen.h"
-#include "struct_generator.h"
-#include "compile/definition_analysis.h"
-=======
+
 #include <vstl/Common.h>
 #include "dx_codegen.h"
 #include "struct_generator.h"
->>>>>>> 9f05d05bf7c46e514b0ddb002f18f9e7dbf5a4cb
+
 namespace toolhub::directx {
 
 struct CodegenStackData : public vstd::IOperatorNewBase {
@@ -28,7 +23,7 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     uint64 tempCount = 0;
     uint64 bindlessBufferCount = 0;
     uint64 structCount = 0;
-    
+
     vstd::function<StructGenerator *(Type const *)> generateStruct;
     StructGenerator *rayDesc = nullptr;
     StructGenerator *hitDesc = nullptr;
@@ -45,7 +40,7 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     uint64 GetTypeCount(Type const *t);
     ~CodegenStackData();
     static vstd::unique_ptr<CodegenStackData> Allocate();
-    static void DeAllocate(vstd::unique_ptr<CodegenStackData>&& v);
-    static bool& ThreadLocalSpirv();
+    static void DeAllocate(vstd::unique_ptr<CodegenStackData> &&v);
+    static bool &ThreadLocalSpirv();
 };
 }// namespace toolhub::directx
