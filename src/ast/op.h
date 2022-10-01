@@ -189,14 +189,23 @@ enum struct CallOp : uint32_t {
 };
 
 static constexpr size_t call_op_count = to_underlying(CallOp::TRACE_ANY) + 1u;
+[[nodiscard]] constexpr auto is_atomic_operation(CallOp op) noexcept {
+    return op == CallOp::ATOMIC_EXCHANGE ||
+           op == CallOp::ATOMIC_COMPARE_EXCHANGE ||
+           op == CallOp::ATOMIC_FETCH_ADD ||
+           op == CallOp::ATOMIC_FETCH_SUB ||
+           op == CallOp::ATOMIC_FETCH_AND ||
+           op == CallOp::ATOMIC_FETCH_OR ||
+           op == CallOp::ATOMIC_FETCH_XOR ||
+           op == CallOp::ATOMIC_FETCH_MIN ||
+           op == CallOp::ATOMIC_FETCH_MAX;
+}
 
 /**
  * @brief Set of call operations.
  * 
  */
-class AstSerializer;
 class LC_AST_API CallOpSet {
-    friend class AstSerializer;
 
 public:
     using Bitset = std::bitset<call_op_count>;
@@ -232,6 +241,20 @@ public:
     void propagate(CallOpSet other) noexcept { _bits |= other._bits; }
     [[nodiscard]] auto begin() const noexcept { return Iterator{*this}; }
     [[nodiscard]] auto end() const noexcept { return luisa::default_sentinel; }
+    [[nodiscard]] auto uses_raytracing() const noexcept {
+        return test(CallOp::TRACE_CLOSEST) || test(CallOp::TRACE_ANY);
+    }
+    [[nodiscard]] auto uses_atomic() const noexcept {
+        return test(CallOp::ATOMIC_FETCH_ADD) ||
+               test(CallOp::ATOMIC_FETCH_SUB) ||
+               test(CallOp::ATOMIC_FETCH_MIN) ||
+               test(CallOp::ATOMIC_FETCH_AND) ||
+               test(CallOp::ATOMIC_FETCH_OR) ||
+               test(CallOp::ATOMIC_FETCH_XOR) ||
+               test(CallOp::ATOMIC_EXCHANGE) ||
+               test(CallOp::ATOMIC_EXCHANGE) ||
+               test(CallOp::ATOMIC_COMPARE_EXCHANGE);
+    }
 };
 
 }// namespace luisa::compute

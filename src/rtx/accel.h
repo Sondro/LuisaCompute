@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include <core/dll_export.h>
 #include <core/basic_types.h>
-#include <core/stl.h>
 #include <dsl/expr.h>
 #include <rtx/ray.h>
 #include <rtx/hit.h>
@@ -62,7 +62,7 @@ private:
 public:
     explicit Expr(const RefExpr *expr) noexcept
         : _expression{expr} {}
-    explicit Expr(const Accel &accel) noexcept
+    Expr(const Accel &accel) noexcept
         : _expression{detail::FunctionBuilder::current()->accel_binding(
               accel.handle())} {}
     [[nodiscard]] auto expression() const noexcept { return _expression; }

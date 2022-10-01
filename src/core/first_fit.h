@@ -5,8 +5,8 @@
 #pragma once
 
 #include <cstddef>
-#include <core/stl.h>
-
+#include <core/dll_export.h>
+#include <core/stl/string.h>
 namespace luisa {
 
 class LC_CORE_API FirstFit {

@@ -1,5 +1,5 @@
 
-#include <compile/hlsl/codegen_stack_data.h>
+#include "codegen_stack_data.h"
 namespace toolhub::directx {
 CodegenStackData::CodegenStackData()
     : generateStruct(

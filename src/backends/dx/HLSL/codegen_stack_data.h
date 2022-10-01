@@ -1,8 +1,7 @@
 #pragma once
 #include <vstl/Common.h>
-#include <compile/hlsl/dx_codegen.h>
-#include <compile/hlsl/struct_generator.h>
-#include <compile/definition_analysis.h>
+#include "dx_codegen.h"
+#include "struct_generator.h"
 namespace toolhub::directx {
 
 struct CodegenStackData : public vstd::IOperatorNewBase {
@@ -22,7 +21,6 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     uint64 tempCount = 0;
     uint64 bindlessBufferCount = 0;
     uint64 structCount = 0;
-    DefinitionAnalysis analyzer;
     
     vstd::function<StructGenerator *(Type const *)> generateStruct;
     StructGenerator *rayDesc = nullptr;

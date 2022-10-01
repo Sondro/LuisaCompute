@@ -12,7 +12,7 @@ inline namespace dsl {
 /// Assign rhs to lhs
 template<typename Lhs, typename Rhs>
 void assign(Lhs &&lhs, Rhs &&rhs) noexcept;// defined in dsl/stmt.h
-}
+}// namespace dsl
 
 namespace detail {
 

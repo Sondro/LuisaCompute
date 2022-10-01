@@ -1,7 +1,7 @@
 
 #include <Shader/BuiltinKernel.h>
-#include <compile/hlsl/dx_codegen.h>
-#include <compile/hlsl/shader_header.h>
+#include "HLSL/dx_codegen.h"
+#include "HLSL/shader_header.h"
 namespace toolhub::directx {
 ComputeShader* BuiltinKernel::LoadAccelSetKernel(Device* device, ShaderPaths const& ctx) {
 	auto func = [&] {

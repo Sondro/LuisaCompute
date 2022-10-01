@@ -3,6 +3,6 @@
 //
 
 #pragma once
-
+#include <core/stl/map.h>
 #include <nlohmann/json.hpp>
 #include <core/json_fwd.h>

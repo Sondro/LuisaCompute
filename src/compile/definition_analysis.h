@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "core/hash.h"
-#include <core/stl.h>
+#include <core/stl/hash.h>
 #include <ast/interface.h>
+#include <core/stl/unordered_map.h>
 
 namespace luisa::compute {
 

@@ -13,8 +13,7 @@
 #include <core/concepts.h>
 #include <core/basic_types.h>
 #include <core/logging.h>
-#include <core/hash.h>
-#include <core/stl.h>
+#include <core/stl/memory.h>
 #include <ast/variable.h>
 #include <ast/function.h>
 #include <ast/op.h>
@@ -32,9 +31,8 @@ class FunctionBuilder;
  * @brief Base expression class
  * 
  */
-class AstSerializer;
 class LC_AST_API Expression : public concepts::Noncopyable {
-    friend class AstSerializer;
+
 public:
     /// Expression type
     enum struct Tag : uint32_t {
@@ -104,7 +102,6 @@ struct ExprVisitor {
 
 /// Unary expression
 class UnaryExpr final : public Expression {
-friend class AstSerializer;
 
 private:
     const Expression *_operand;
@@ -135,7 +132,6 @@ public:
 
 /// Binary expression
 class BinaryExpr final : public Expression {
-friend class AstSerializer;
 
 private:
     const Expression *_lhs;
@@ -173,7 +169,6 @@ public:
 
 /// Access expression
 class AccessExpr final : public Expression {
-friend class AstSerializer;
 
 private:
     const Expression *_range;
@@ -206,7 +201,6 @@ public:
 
 /// Member expression
 class MemberExpr final : public Expression {
-friend class AstSerializer;
 
 public:
     static constexpr auto swizzle_mask = 0xff000000u;
@@ -309,7 +303,6 @@ using make_literal_value_t = typename make_literal_value<T>::type;
 
 /// TODO
 class LiteralExpr final : public Expression {
-friend class AstSerializer;
 
 public:
     using Value = detail::make_literal_value_t<basic_types>;
@@ -338,7 +331,6 @@ public:
 
 /// Reference expression
 class RefExpr final : public Expression {
-friend class AstSerializer;
 
 private:
     Variable _variable;
@@ -363,7 +355,6 @@ public:
 
 /// Constant expression
 class ConstantExpr final : public Expression {
-friend class AstSerializer;
 
 private:
     ConstantData _data;
@@ -389,7 +380,6 @@ public:
 
 /// Call expression
 class CallExpr final : public Expression {
-friend class AstSerializer;
 
 public:
     using ArgumentList = luisa::vector<const Expression *>;
@@ -448,7 +438,6 @@ enum struct CastOp {
 
 /// Cast expression
 class CastExpr final : public Expression {
-friend class AstSerializer;
 
 private:
     const Expression *_source;

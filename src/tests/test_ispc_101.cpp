@@ -57,9 +57,10 @@ int main(int argc, char *argv[]) {
 
     // cuStreamCreate
     auto stream = device.create_stream();
+    auto fill_image = device.compile(fill_image_kernel);
 
     // dispatch
-    stream << fill_image_kernel(device, buffer).dispatch(1024u, 1024u)
+    stream << fill_image(buffer).dispatch(1024u, 1024u)
            << buffer.copy_to(download_image.data())
            << synchronize();
     stbi_write_png("result.png", 1024u, 1024u, 4u, download_image.data(), 0u);

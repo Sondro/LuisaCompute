@@ -1,4 +1,3 @@
-#pragma vengine_package vengine_dll
 #include <vstl/PoolAllocator.h>
 namespace vstd {
 PoolAllocator::AllocateHandle PoolAllocator::Allocate() {

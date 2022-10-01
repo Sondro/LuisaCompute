@@ -2,7 +2,7 @@
 #include <vstl/Common.h>
 #include <Windows.h>
 #include <d3dx12.h>
-#include <compile/hlsl/shader_property.h>
+#include "HLSL/shader_property.h"
 namespace toolhub::directx {
 
 enum class HitGroupFunctionType : uint8_t {

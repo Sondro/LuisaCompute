@@ -1,10 +1,10 @@
-#include <compile/hlsl/dx_codegen.h>
-#include <vstl/StringUtility.h>
-#include <vstl/variant_util.h>
-#include <ast/constant_data.h>
-#include <compile/hlsl/struct_generator.h>
-#include <compile/hlsl/codegen_stack_data.h>
-#include <compile/hlsl/shader_header.h>
+#include "dx_codegen.h"
+#include "vstl/StringUtility.h"
+#include "vstl/variant_util.h"
+#include "ast/constant_data.h"
+#include "struct_generator.h"
+#include "codegen_stack_data.h"
+#include "shader_header.h"
 namespace toolhub::directx {
 namespace detail {
 static inline uint64 CalcAlign(uint64 value, uint64 align) {
@@ -212,7 +212,7 @@ void CodegenUtility::GetTypeName(Type const &type, vstd::string &str, Usage usag
                 if (ele->is_vector() && ele->dimension() == 3) {
                     typeName << "float4"sv;
                 } else {
-                    if (opt->kernel.is_atomic_float_used() && ele->tag() == Type::Tag::FLOAT) {
+                    if (opt->kernel.requires_atomic_float() && ele->tag() == Type::Tag::FLOAT) {
                         typeName << "int";
                     } else {
                         GetTypeName(*ele, typeName, usage);
@@ -717,7 +717,7 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             }
         } break;
         case CallOp::BUFFER_READ: {
-            if (opt->kernel.is_atomic_float_used() && expr->type()->tag() == Type::Tag::FLOAT) {
+            if (opt->kernel.requires_atomic_float() && expr->type()->tag() == Type::Tag::FLOAT) {
                 str << "bfread_float"sv;
             } else {
                 str << "bfread"sv;
@@ -730,7 +730,7 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             }
         } break;
         case CallOp::BUFFER_WRITE: {
-            if (opt->kernel.is_atomic_float_used()) {
+            if (opt->kernel.requires_atomic_float()) {
                 str << "bfwrite_float"sv;
             } else {
                 str << "bfwrite"sv;
@@ -749,7 +749,7 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             str << "TraceAny"sv;
             break;
         case CallOp::BINDLESS_BUFFER_READ: {
-            if (opt->kernel.is_atomic_float_used() && expr->type()->tag() == Type::Tag::FLOAT) {
+            if (opt->kernel.requires_atomic_float() && expr->type()->tag() == Type::Tag::FLOAT) {
                 str << "READ_BUFFER_FLOAT"sv;
             } else {
                 str << "READ_BUFFER"sv;
@@ -974,10 +974,9 @@ void CodegenUtility::CodegenFunction(Function func, vstd::string &result) {
 
     auto codegenOneFunc = [&](Function func) {
         auto constants = func.constants();
-        for (auto &&kv : constants) {
-            auto &&i = kv.second;
+        for (auto &&i : constants) {
             vstd::string constValueName;
-            if (!GetConstName(kv.first, i.data, constValueName)) continue;
+            if (!GetConstName(i.data.hash(), i.data, constValueName)) continue;
             result << "static const "sv;
             GetTypeName(*i.type->element(), result, Usage::READ);
             result << ' ' << constValueName << '[';
@@ -1141,7 +1140,7 @@ CodegenResult CodegenUtility::Codegen(
     finalResult.reserve(65500);
 
     finalResult << detail::HLSLHeader(internalDataPath);
-    if (kernel.raytracing()) {
+    if (kernel.requires_raytracing()) {
         finalResult << detail::RayTracingHeader(internalDataPath);
     }
     opt->isKernel = false;
@@ -1306,7 +1305,7 @@ vstd::optional<vstd::string> CodegenUtility::CodegenSpirv(Function kernel, vstd:
     vstd::string finalResult;
     finalResult.reserve(65500);
     finalResult << detail::HLSLHeaderSpirv(internalDataPath);
-    if (kernel.raytracing()) {
+    if (kernel.requires_raytracing()) {
         finalResult << detail::RayTracingHeader(internalDataPath);
     }
     size_t unChangedOffset = finalResult.size();

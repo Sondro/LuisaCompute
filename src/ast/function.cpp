@@ -12,7 +12,7 @@ luisa::span<const Variable> Function::builtin_variables() const noexcept {
     return _builder->builtin_variables();
 }
 
-luisa::unordered_map<uint64_t, Function::Constant> const &Function::constants() const noexcept {
+luisa::span<const Function::Constant> Function::constants() const noexcept {
     return _builder->constants();
 }
 
@@ -51,12 +51,17 @@ uint3 Function::block_size() const noexcept {
 uint64_t Function::hash() const noexcept {
     return _builder->hash();
 }
-bool Function::is_atomic_float_used() const {
-    return _builder->is_atomic_float_used();
+
+bool Function::requires_atomic() const noexcept {
+    return _builder->requires_atomic();
 }
 
-bool Function::raytracing() const noexcept {
-    return _builder->raytracing();
+bool Function::requires_atomic_float() const noexcept {
+    return _builder->requires_atomic_float();
+}
+
+bool Function::requires_raytracing() const noexcept {
+    return _builder->requires_raytracing();
 }
 
 luisa::shared_ptr<const detail::FunctionBuilder> Function::shared_builder() const noexcept {
@@ -67,7 +72,7 @@ luisa::span<const Variable> Function::local_variables() const noexcept {
     return _builder->local_variables();
 }
 
-luisa::unordered_map<uint64_t, Variable> const &Function::shared_variables() const noexcept {
+luisa::span<const Variable> Function::shared_variables() const noexcept {
     return _builder->shared_variables();
 }
 

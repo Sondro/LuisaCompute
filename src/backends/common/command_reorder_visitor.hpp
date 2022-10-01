@@ -1,17 +1,10 @@
+#pragma once
 #include <core/mathematics.h>
-#include <runtime/command_reorder_visitor.h>
 #include <runtime/command_list.h>
 
+#include <backends/common/command_reorder_visitor.h>
+
 namespace luisa::compute {
-template<typename Func>
-    requires(std::is_invocable_v<Func, CommandReorderVisitor::ResourceView const &>)
-void CommandReorderVisitor::IterateMap(Func &&func, RangeHandle &handle, Range const &range) {
-    for (auto &&r : handle.views) {
-        if (r.first.collide(range)) {
-            func(r.second);
-        }
-    }
-}
 bool CommandReorderVisitor::Range::operator==(Range const &r) const {
     return min == r.min && max == r.max;
 }
@@ -66,12 +59,15 @@ size_t CommandReorderVisitor::GetLastLayerWrite(NoRangeHandle *handle) {
         case ResourceType::Mesh: {
             auto maxAccelLevel = std::max(maxAccelReadLevel, maxAccelWriteLevel);
             layer = std::max<int64_t>(layer, maxAccelLevel + 1);
-        } break;
+            break;
+        }
         case ResourceType::Accel: {
             auto maxAccelLevel = std::max(maxAccelReadLevel, maxAccelWriteLevel);
             layer = std::max<int64_t>(layer, maxAccelLevel + 1);
             layer = std::max<int64_t>(layer, maxMeshLevel + 1);
-        } break;
+            break;
+        }
+        default: break;
     }
     return layer;
 }
@@ -297,7 +293,7 @@ size_t CommandReorderVisitor::SetRW(
     setReadLayer();
     return layer;
 }
-//TODO: Most backend can not support copy & kernel-write at same time, disable copy's range
+//TODO: Most backend can not support copy & kernel-write at the same time, disable copy's range
 static CommandReorderVisitor::Range CopyRange(int64_t min = std::numeric_limits<int64_t>::min(), int64_t max = std::numeric_limits<int64_t>::max()) {
     return CommandReorderVisitor::Range();
 }

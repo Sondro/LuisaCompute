@@ -8,8 +8,6 @@
 #include <ast/variable.h>
 #include <ast/op.h>
 #include <ast/constant_data.h>
-#include <core/stl/smart_ptr.h>
-#include <core/stl/unordered_map.h>
 
 namespace luisa::compute {
 
@@ -63,15 +61,17 @@ public:
     /// Return local variables
     [[nodiscard]] luisa::span<const Variable> local_variables() const noexcept;
     /// Return shared variables
-    [[nodiscard]] luisa::unordered_map<uint64_t, Variable> const &shared_variables() const noexcept;
+    [[nodiscard]] luisa::span<const Variable> shared_variables() const noexcept;
     /// Return constants
-    [[nodiscard]] luisa::unordered_map<uint64_t, Constant> const &constants() const noexcept;
+    [[nodiscard]] luisa::span<const Constant> constants() const noexcept;
     /// Return arguments
     [[nodiscard]] luisa::span<const Variable> arguments() const noexcept;
     /// Return custom callables
     [[nodiscard]] luisa::span<const luisa::shared_ptr<const detail::FunctionBuilder>> custom_callables() const noexcept;
-    /// Return builtin callables
+    /// Return builtin callables that are *directly* used by this function
     [[nodiscard]] CallOpSet builtin_callables() const noexcept;
+    /// Return builtin callables that are used by this function and the functions it calls
+    [[nodiscard]] CallOpSet propagated_builtin_callables() const noexcept;
     /// Return block size
     [[nodiscard]] uint3 block_size() const noexcept;
     /// Return function tag
@@ -85,7 +85,7 @@ public:
     /// Return hash
     [[nodiscard]] uint64_t hash() const noexcept;
     /// Return if is ray tracing function
-    [[nodiscard]] bool raytracing() const noexcept;
+    [[nodiscard]] bool requires_raytracing() const noexcept;
     /// Return function builder
     [[nodiscard]] auto builder() const noexcept { return _builder; }
     /// Return shared pointer to function builder
@@ -94,8 +94,10 @@ public:
     [[nodiscard]] auto operator==(Function rhs) const noexcept { return _builder == rhs._builder; }
     /// Cast to bool, true if builder is not nullptr
     [[nodiscard]] explicit operator bool() const noexcept { return _builder != nullptr; }
-    //TODO: need track command
-    [[nodiscard]] bool is_atomic_float_used() const;
+    /// Return whether the function requires atomic operations
+    [[nodiscard]] bool requires_atomic() const noexcept;
+    /// Return whether the function requires atomic float operations
+    [[nodiscard]] bool requires_atomic_float() const noexcept;
 };
 
 }// namespace luisa::compute

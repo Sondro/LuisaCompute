@@ -1,6 +1,4 @@
 #pragma once
-
-#include <core/stl.h>
 #include <runtime/device.h>
 #include <runtime/buffer.h>
 #include <dsl/syntax.h>

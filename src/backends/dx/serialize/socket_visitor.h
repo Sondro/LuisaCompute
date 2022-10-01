@@ -1,7 +1,10 @@
 #pragma once
+
 #include <core/stl/vector.h>
 #include <core/stl/functional.h>
+
 namespace luisa::compute {
+
 class SocketVisitor {
 protected:
 	~SocketVisitor() = default;
@@ -12,4 +15,5 @@ public:
 	virtual WaitReceive receive_async() = 0;
 	virtual void receive(luisa::vector<std::byte>& data) = 0;
 };
+
 }// namespace luisa::compute

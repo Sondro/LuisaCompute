@@ -4,18 +4,13 @@
 
 #pragma once
 
-//#include <nlohmann/json.hpp>
+#include <nlohmann/json.hpp>
 
-#include <core/stl.h>
 #include <runtime/command.h>
 
 namespace luisa::compute {
-class CmdSer;
-class CmdDeser;
 
 class LC_RUNTIME_API CommandList : concepts::Noncopyable {
-    friend class CmdSer;
-    friend class CmdDeser;
 
 private:
     luisa::vector<Command *> _commands;
@@ -38,7 +33,7 @@ public:
     [[nodiscard]] auto size() const noexcept { return _commands.size(); }
 
     // for debug
-    //  [[nodiscard]] nlohmann::json dump_json() const noexcept;
+    //    [[nodiscard]] nlohmann::json dump_json() const noexcept;
 };
 
 }// namespace luisa::compute

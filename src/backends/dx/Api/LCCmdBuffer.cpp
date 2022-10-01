@@ -3,13 +3,14 @@
 #include <Api/LCDevice.h>
 #include <runtime/command.h>
 #include <runtime/command_buffer.h>
-#include <compile/hlsl/dx_codegen.h>
+#include "HLSL/dx_codegen.h"
 #include <Shader/ComputeShader.h>
 #include <Resource/RenderTexture.h>
 #include <Resource/BottomAccel.h>
 #include <Resource/TopAccel.h>
 #include <Resource/BindlessArray.h>
 #include <Api/LCSwapChain.h>
+#include <backends/common/command_reorder_visitor.hpp>
 namespace toolhub::directx {
 class LCPreProcessVisitor : public CommandVisitor {
 public:

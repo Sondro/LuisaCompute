@@ -2,7 +2,7 @@
 #include <Shader/ComputeShader.h>
 #include <Shader/ShaderSerializer.h>
 #include <vstl/BinaryReader.h>
-#include <compile/hlsl/dx_codegen.h>
+#include "HLSL/dx_codegen.h"
 #include <Shader/ShaderCompiler.h>
 #include <vstl/MD5.h>
 namespace toolhub::directx {

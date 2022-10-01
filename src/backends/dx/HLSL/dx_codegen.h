@@ -1,13 +1,13 @@
 #pragma once
 //#define USE_SPIRV
-#include <vstl/Common.h>
-#include <vstl/functional.h>
-#include <ast/function.h>
-#include <ast/expression.h>
-#include <ast/statement.h>
-#include <vstl/MD5.h>
-#include <compile/definition_analysis.h>
-#include <compile/hlsl/shader_property.h>
+#include "vstl/Common.h"
+#include "vstl/functional.h"
+#include "ast/function.h"
+#include "ast/expression.h"
+#include "ast/statement.h"
+#include "vstl/MD5.h"
+#include "compile/definition_analysis.h"
+#include "shader_property.h"
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::directx {
@@ -30,7 +30,7 @@ struct CodegenResult {
     CodegenResult(CodegenResult const &) = delete;
     CodegenResult(CodegenResult&&) = default;
 };
-class LC_COMPILE_API CodegenUtility {
+class CodegenUtility {
 
 public:
     static constexpr vstd::string_view rayTypeDesc = "struct<16,array<float,3>,float,array<float,3>,float>"sv;
@@ -76,7 +76,7 @@ public:
 #endif
     static vstd::string GetNewTempVarName();
 };
-class LC_COMPILE_API StringStateVisitor final : public StmtVisitor, public ExprVisitor {
+class StringStateVisitor final : public StmtVisitor, public ExprVisitor {
     Function f;
 
 public:

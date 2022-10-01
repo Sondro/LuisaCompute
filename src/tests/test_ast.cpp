@@ -3,9 +3,7 @@
 //
 
 #include <iostream>
-
 #include <luisa-compute.h>
-
 
 using namespace luisa;
 using namespace luisa::compute;

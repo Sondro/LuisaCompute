@@ -395,7 +395,7 @@ inline void match(std::initializer_list<T> tags, Tag &&tag, IndexedCase &&indexe
     match(tags, std::forward<Tag>(tag), std::forward<IndexedCase>(indexed_case), [] {});
 }
 
-/// Add comment 
+/// Add comment
 template<typename S>
 inline void comment(S &&s) noexcept {
     detail::FunctionBuilder::current()->comment_(luisa::string{std::forward<S>(s)});

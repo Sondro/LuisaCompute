@@ -384,8 +384,8 @@ struct v_TupleIterator : public detail::RangeFlag {
     vstd::tuple<Ts...> ites;
     size_t index;
     using Sequencer = std::make_index_sequence<sizeof...(Ts)>;
-    template<typename... Ts>
-    v_TupleIterator(Ts &&...args)
+    template<typename... TTs>
+    v_TupleIterator(TTs &&...args)
         : ites(std::forward<Ts>(args)...) {}
     IteRef<v_TupleIterator> begin() {
         auto &ite = ites.template get<0>();

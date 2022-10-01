@@ -10,7 +10,7 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 #include <core/platform.h>
-#include <core/stl.h>
+#include <core/stl/format.h>
 
 namespace luisa {
 

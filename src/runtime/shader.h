@@ -153,53 +153,35 @@ class Shader final : public Resource {
     static_assert(dimension == 1u || dimension == 2u || dimension == 3u);
 
 private:
+    friend class Device;
     luisa::shared_ptr<const detail::FunctionBuilder> _kernel;
 
 private:
-    friend class Device;
+    // JIT shader
     Shader(Device::Interface *device,
-           luisa::shared_ptr<const detail::FunctionBuilder> kernel, luisa::string_view file_path) noexcept
-        : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), file_path)},
+           luisa::shared_ptr<const detail::FunctionBuilder> kernel,
+           const std::filesystem::path &file_path) noexcept
+        : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), file_path.string())},
           _kernel{std::move(kernel)} {}
+
+private:
+    // AOT shader
+    Shader(Device::Interface *device,
+           const std::filesystem::path &file_path) noexcept
+        : Resource{[device, &file_path]() noexcept {
+              std::array arg_types{Type::of<Args>()...};
+              auto handle = device->load_shader(file_path.string(), arg_types);
+              return handle == Device::invalid_handle ?
+                         Resource{} :
+                         Resource{device, Tag::SHADER, handle};
+          }()} {}
 
 public:
     Shader() noexcept = default;
     using Resource::operator bool;
     [[nodiscard]] auto operator()(detail::prototype_to_shader_invocation_t<Args>... args) const noexcept {
         using invoke_type = detail::ShaderInvoke<dimension>;
-        for (auto &&i : _kernel->argument_bindings()) {
-            assert(i.index() == 0);
-        }
         invoke_type invoke{handle(), _kernel->function()};
-        return static_cast<invoke_type &&>((invoke << ... << args));
-    }
-};
-
-template<size_t dimension, typename... Args>
-class AOTShader final : public Resource {
-
-    static_assert(dimension == 1u || dimension == 2u || dimension == 3u);
-
-private:
-    luisa::shared_ptr<const detail::FunctionBuilder> _kernel;
-
-private:
-    friend class Device;
-    AOTShader(Device::Interface *device,
-              luisa::string_view file_path,
-              luisa::span<Type const *const> types) noexcept
-        : Resource{device, Tag::SHADER, device->load_shader(file_path, types)} {
-        if (handle() == 0)[[unlikely]] {
-            LUISA_ERROR("Load AOT shader {} failed!", file_path);
-        }
-    }
-
-public:
-    AOTShader() noexcept = default;
-    using Resource::operator bool;
-    [[nodiscard]] auto operator()(detail::prototype_to_shader_invocation_t<Args>... args) const noexcept {
-        using invoke_type = detail::ShaderInvoke<dimension>;
-        invoke_type invoke{handle(), Function{}};
         return static_cast<invoke_type &&>((invoke << ... << args));
     }
 };
@@ -212,14 +194,5 @@ using Shader2D = Shader<2, Args...>;
 
 template<typename... Args>
 using Shader3D = Shader<3, Args...>;
-
-template<typename... Args>
-using AOTShader1D = AOTShader<1, Args...>;
-
-template<typename... Args>
-using AOTShader2D = AOTShader<2, Args...>;
-
-template<typename... Args>
-using AOTShader3D = AOTShader<3, Args...>;
 
 }// namespace luisa::compute

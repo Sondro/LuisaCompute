@@ -1,5 +1,27 @@
 #pragma once
 
+#ifdef __cplusplus
+#define LUISA_EXTERN_C extern "C"
+#define LUISA_NOEXCEPT noexcept
+#else
+#define LUISA_EXTERN_C
+#define LUISA_NOEXCEPT
+#endif
+
+#ifdef _MSC_VER
+#define LUISA_FORCE_INLINE inline
+#define LUISA_NEVER_INLINE __declspec(noinline)
+#define LUISA_DLL
+#define LUISA_EXPORT_API LUISA_EXTERN_C __declspec(dllexport)
+#define LUISA_IMPORT_API LUISA_EXTERN_C __declspec(dllimport)
+#else
+#define LUISA_FORCE_INLINE [[gnu::always_inline, gnu::hot]] inline
+#define LUISA_NEVER_INLINE [[gnu::noinline]]
+#define LUISA_DLL
+#define LUISA_EXPORT_API LUISA_EXTERN_C [[gnu::visibility("default")]]
+#define LUISA_IMPORT_API LUISA_EXTERN_C
+#endif
+
 #if defined(_MSC_VER)
 
 #ifdef LC_CORE_EXPORT_DLL

@@ -12,11 +12,10 @@
 #include <functional>
 #include <condition_variable>
 
-#include <core/stl.h>
 #include <core/basic_types.h>
 #include <core/stl/queue.h>
 #include <core/stl/functional.h>
-#include <core/stl/smart_ptr.h>
+
 namespace luisa {
 
 class Barrier;

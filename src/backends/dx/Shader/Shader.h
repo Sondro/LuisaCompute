@@ -33,6 +33,7 @@ protected:
 	uint bindlessCount;
 
 public:
+	virtual ~Shader() noexcept = default;
 	uint BindlessCount() const { return bindlessCount; }
 	vstd::span<Property const> Properties() const { return properties; }
 	vstd::span<SavedArgument const> Args() const { return kernelArguments; }

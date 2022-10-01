@@ -3,8 +3,8 @@ BuildProject({
     projectType = "shared",
     unityBuildBatch = 4
 })
-add_deps("luisa-compute-dsl", "luisa-compute-runtime", "luisa-compute-compile", "luisa-compute-vstl")
-add_files("Api/**.cpp", "DXRuntime/**.cpp", "Resource/**.cpp", "Shader/**.cpp") -- "serialize/**.cpp"
+add_deps("luisa-compute-runtime", "luisa-compute-vstl")
+add_files("Api/**.cpp", "DXRuntime/**.cpp", "Resource/**.cpp", "Shader/**.cpp", "HLSL/**.cpp") -- "serialize/**.cpp"
 add_includedirs("./")
 add_links("D3D12", "dxgi")
 after_build(function(target)
@@ -14,5 +14,5 @@ after_build(function(target)
     else
         binDir = "bin/debug/"
     end
-    os.cp("src/compile/hlsl/internal_text/*", binDir .. ".data/")
+    os.cp("src/backends/dx/dx_builtin", binDir .. ".data/")
 end)

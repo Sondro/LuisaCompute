@@ -2,14 +2,13 @@
 // Created by Mike on 2021/12/4.
 //
 
-#include "core/hash.h"
-#include "core/spin_mutex.h"
 #include <cuda.h>
 #include <mutex>
 #include <optix.h>
 #include <optix_stubs.h>
 #include <optix_stack_size.h>
 
+#include <core/stl.h>
 #include <ast/function.h>
 #include <runtime/command.h>
 #include <backends/cuda/cuda_error.h>

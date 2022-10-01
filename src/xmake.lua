@@ -6,6 +6,8 @@ add_subdirs("runtime")
 add_subdirs("compile")
 add_subdirs("dsl")
 add_subdirs("rtx")
--- add_subdirs("raster")
 add_subdirs("backends/dx")
 add_subdirs("tests")
+
+
+-- add_subdirs("raster")

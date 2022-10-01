@@ -612,7 +612,7 @@ vstd::unique_ptr<IJsonDict> AstSerializer::SerNewFunction(Function func) {
 	//////////////////// Body
 	SerScope(func.body(), dict.get(), "body"sv);
 	//////////////////// Use atomic
-	dict->Set("atomicfloat"sv, func.is_atomic_float_used());
+	dict->Set("atomicfloat"sv, func.requires_atomic_float());
 	return dict;
 }
 

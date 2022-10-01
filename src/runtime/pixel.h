@@ -92,6 +92,11 @@ enum struct PixelFormat : uint32_t {
 constexpr auto pixel_storage_count = to_underlying(PixelStorage::BC7) + 1u;
 constexpr auto pixel_format_count = to_underlying(PixelFormat::BC7UNorm) + 1u;
 
+[[nodiscard]] constexpr auto is_block_compressed(PixelStorage s) noexcept {
+    return s == PixelStorage::BC4 || s == PixelStorage::BC5 ||
+           s == PixelStorage::BC6 || s == PixelStorage::BC7;
+}
+
 [[nodiscard]] constexpr auto pixel_format_to_storage(PixelFormat format) noexcept {
     switch (format) {
         case PixelFormat::R8SInt:
@@ -170,28 +175,24 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::BC7UNorm) + 1u;
         case PixelStorage::FLOAT1: return sizeof(float) * 1u;
         case PixelStorage::FLOAT2: return sizeof(float) * 2u;
         case PixelStorage::FLOAT4: return sizeof(float) * 4u;
-        case PixelStorage::BC4:
-            return size_t(8u);
-        case PixelStorage::BC5:
-        case PixelStorage::BC6:
-        case PixelStorage::BC7:
-            return size_t(16u);
+        case PixelStorage::BC4: return static_cast<size_t>(8u);
+        case PixelStorage::BC5: [[fallthrough]];
+        case PixelStorage::BC6: [[fallthrough]];
+        case PixelStorage::BC7: return static_cast<size_t>(16u);
         default: break;
     }
     return static_cast<size_t>(0u);
 }
+
 [[nodiscard]] constexpr auto pixel_storage_size(PixelStorage storage, uint width, uint height, uint volume) noexcept {
-    auto pixel_size = pixel_storage_size(storage);
-    switch (storage) {
-        case PixelStorage::BC4:
-        case PixelStorage::BC5:
-        case PixelStorage::BC6:
-        case PixelStorage::BC7:
-            width = (width + 3) / 4;
-            height = (height + 3) / 4;
-            break;
+    if (is_block_compressed(storage)) {
+        auto block_width = (width + 3u) / 4u;
+        auto block_height = (height + 3u) / 4u;
+        return block_width * block_height *
+               pixel_storage_size(storage);
     }
-    return pixel_size * width * height * volume;
+    return pixel_storage_size(storage) *
+           width * height * volume;
 }
 
 [[nodiscard]] constexpr auto pixel_storage_channel_count(PixelStorage storage) noexcept {
@@ -211,14 +212,10 @@ constexpr auto pixel_format_count = to_underlying(PixelFormat::BC7UNorm) + 1u;
         case PixelStorage::FLOAT1: return 1u;
         case PixelStorage::FLOAT2: return 2u;
         case PixelStorage::FLOAT4: return 4u;
-        case PixelStorage::BC4:
-            return 1u;
-        case PixelStorage::BC5:
-            return 2u;
-        case PixelStorage::BC6:
-            return 3u;
-        case PixelStorage::BC7:
-            return 4u;
+        case PixelStorage::BC4: return 1u;
+        case PixelStorage::BC5: return 2u;
+        case PixelStorage::BC6: return 3u;
+        case PixelStorage::BC7: return 4u;
         default: break;
     }
     return 0u;

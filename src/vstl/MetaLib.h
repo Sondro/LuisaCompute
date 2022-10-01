@@ -14,7 +14,6 @@
 #include <vstl/AllocateType.h>
 #include <vstl/Compare.h>
 #include <vstl/Hash.h>
-#include <core/stl.h>
 inline void *vengine_malloc(size_t size) {
     return luisa::detail::allocator_allocate(size, 0);
 }
@@ -63,13 +62,13 @@ private:
 public:
     using SelfType = StackObject<T, false>;
     template<typename... Args>
-        requires(std::is_constructible_v<T, Args &&...>)
+        requires(std::is_constructible_v<T, Args && ...>)
     inline SelfType &New(Args &&...args) &noexcept {
         new (storage) T(std::forward<Args>(args)...);
         return *this;
     }
     template<typename... Args>
-        requires(std::is_constructible_v<T, Args &&...>)
+        requires(std::is_constructible_v<T, Args && ...>)
     inline SelfType &&New(Args &&...args) &&noexcept {
         return std::move(New(std::forward<Args>(args)...));
     }
@@ -167,7 +166,7 @@ private:
 public:
     using SelfType = StackObject<T, true>;
     template<typename... Args>
-        requires(std::is_constructible_v<T, Args &&...>)
+        requires(std::is_constructible_v<T, Args && ...>)
     inline SelfType &New(Args &&...args) &noexcept {
         if (initialized) return *this;
         initialized = true;
@@ -176,13 +175,13 @@ public:
     }
 
     template<typename... Args>
-        requires(std::is_constructible_v<T, Args &&...>)
+        requires(std::is_constructible_v<T, Args && ...>)
     inline SelfType &&New(Args &&...args) &&noexcept {
         return std::move(New(std::forward<Args>(args)...));
     }
 
     template<typename... Args>
-        requires(std::is_constructible_v<T, Args &&...>)
+        requires(std::is_constructible_v<T, Args && ...>)
     inline SelfType &ForceNew(Args &&...args) &noexcept {
         if (initialized) { Delete(); }
         initialized = true;
@@ -796,6 +795,7 @@ public:
     using EvalType = T;
     operator T() const {
         assert(false);
+        return T{};
     }
 };
 
@@ -874,13 +874,12 @@ public:
     }
     template<typename T, typename... Args>
         requires(
-            IndexOf<T> < argSize && std::is_constructible_v<T, Args &&...>)
+            IndexOf<T> < argSize && std::is_constructible_v<T, Args && ...>)
     void reset_as(Args &&...args) {
         this->~variant();
         switcher = IndexOf<T>;
         new (&placeHolder) T(std::forward<Args>(args)...);
     }
-
 
     void *GetPlaceHolder() { return &placeHolder; }
     void const *GetPlaceHolder() const { return &placeHolder; }
@@ -892,8 +891,8 @@ public:
     }
 
     template<size_t i>
-        requires(i < argSize)
-    decltype(auto) get() & {
+        requires(i < argSize) decltype(auto)
+    get() & {
 #ifdef DEBUG
         if (i != switcher) {
             VEngine_Log("Try get wrong variant type!\n");
@@ -903,8 +902,8 @@ public:
         return *reinterpret_cast<TypeOf<i> *>(&placeHolder);
     }
     template<size_t i>
-        requires(i < argSize)
-    decltype(auto) get() && {
+        requires(i < argSize) decltype(auto)
+    get() && {
 #ifdef DEBUG
         if (i != switcher) {
             VEngine_Log("Try get wrong variant type!\n");
@@ -914,8 +913,8 @@ public:
         return std::move(*reinterpret_cast<TypeOf<i> *>(&placeHolder));
     }
     template<size_t i>
-        requires(i < argSize)
-    decltype(auto) get() const & {
+        requires(i < argSize) decltype(auto)
+    get() const & {
 #ifdef DEBUG
         if (i != switcher) {
             VEngine_Log("Try get wrong variant type!\n");
@@ -956,7 +955,7 @@ public:
     template<typename T>
         requires(detail::AnyMap<std::is_same, false, T>::template Run<AA...>())
     T get_or(T &&value)
-    const & {
+        const & {
         static constexpr auto tarIdx = (IndexOf<T>);
         if (tarIdx != switcher) {
             return std::forward<T>(value);
@@ -999,7 +998,7 @@ public:
     }
     template<typename T>
         requires(detail::AnyMap<std::is_same, false, T>::template Run<AA...>())
-    T && force_get() && {
+    T &&force_get() && {
         static constexpr auto tarIdx = (IndexOf<T>);
 #ifdef DEBUG
         if (tarIdx != switcher) {
@@ -1053,8 +1052,8 @@ public:
             PackedFunctors<Funcs...>(std::forward<Funcs>(funcs)...));
     }
     template<typename Ret, typename... Funcs>
-        requires(sizeof...(Funcs) == argSize)
-    decltype(auto) multi_visit_or(Ret &&r, Funcs &&...funcs) & {
+        requires(sizeof...(Funcs) == argSize) decltype(auto)
+    multi_visit_or(Ret &&r, Funcs &&...funcs) & {
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
@@ -1072,8 +1071,8 @@ public:
         }
     }
     template<typename Ret, typename... Funcs>
-        requires(sizeof...(Funcs) == argSize)
-    decltype(auto) multi_visit_or(Ret &&r, Funcs &&...funcs) && {
+        requires(sizeof...(Funcs) == argSize) decltype(auto)
+    multi_visit_or(Ret &&r, Funcs &&...funcs) && {
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
@@ -1091,8 +1090,8 @@ public:
         }
     }
     template<typename Ret, typename... Funcs>
-        requires(sizeof...(Funcs) == argSize)
-    decltype(auto) multi_visit_or(Ret &&r, Funcs &&...funcs) const & {
+        requires(sizeof...(Funcs) == argSize) decltype(auto)
+    multi_visit_or(Ret &&r, Funcs &&...funcs) const & {
         using RetType = std::remove_cvref_t<Ret>;
         if constexpr (std::is_base_of_v<Evaluable, RetType>) {
             using EvalType = typename RetType::EvalType;
@@ -1158,7 +1157,7 @@ public:
         typename T,
         typename... Arg>
         requires(
-            detail::AnyMap<std::is_constructible, false, T &&, Arg &&...>::
+            detail::AnyMap<std::is_constructible, false, T &&, Arg && ...>::
                 template Run<AA...>())
     variant(T &&t, Arg &&...arg) {
         using PureT = std::remove_cvref_t<T>;
@@ -1190,7 +1189,7 @@ public:
         m_dispose();
     }
     template<typename... Args>
-        requires(detail::AnyMap<std::is_constructible, false, Args &&...>::
+        requires(detail::AnyMap<std::is_constructible, false, Args && ...>::
                      template Run<AA...>())
     void reset(Args &&...args) {
         this->~variant();
@@ -1273,7 +1272,7 @@ struct hash<variant<T...>> {
             });
     }
     template<typename V>
-        requires((variant<T...>::IndexOf<V>) < (variant<T...>::argSize))
+        requires((variant<T...>::template IndexOf<V>) < (variant<T...>::argSize))
     size_t operator()(V const &v) const {
         return hash<V>()(v);
     }
@@ -1294,9 +1293,9 @@ struct compare<variant<T...>> {
             return (a.GetType() > b.GetType()) ? 1 : -1;
     }
     template<typename V>
-        requires((variant<T...>::IndexOf<V>) < (variant<T...>::argSize))
+        requires((variant<T...>::template IndexOf<V>) < (variant<T...>::argSize))
     int32 operator()(variant<T...> const &a, V const &v) {
-        constexpr size_t idx = variant<T...>::IndexOf<V>;
+        constexpr size_t idx = variant<T...>::template IndexOf<V>;
         if (a.GetType() == idx) {
             return compare<V>()(a.template get<idx>(), v);
         } else
@@ -1343,7 +1342,7 @@ auto erase_last(Vec &&vec) {
         return memcmp(this, &a, sizeof(T)) < 0;  \
     }
 template<typename T, typename... Args>
-    requires(!std::is_const_v<T> && std::is_constructible_v<T, Args &&...>)
+    requires(!std::is_const_v<T> && std::is_constructible_v<T, Args && ...>)
 void reset(T &v, Args &&...args) {
     v.~T();
     new (&v) T(std::forward<Args>(args)...);
@@ -1381,6 +1380,14 @@ void reset(T &v, Args &&...args) {
     }                                                   \
     static void operator delete[](                      \
         void *pdead) noexcept {                         \
+        vengine_free(pdead);                            \
+    }                                                   \
+    static void operator delete(                        \
+        void *pdead, size_t) noexcept {                 \
+        vengine_free(pdead);                            \
+    }                                                   \
+    static void operator delete[](                      \
+        void *pdead, size_t) noexcept {                 \
         vengine_free(pdead);                            \
     }
 class IOperatorNewBase {

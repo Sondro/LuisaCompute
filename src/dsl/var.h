@@ -27,9 +27,8 @@ struct Var : public detail::Ref<T> {
     /// Assign from arg.
     template<typename Arg>
         requires concepts::different<std::remove_cvref_t<Arg>, Var<T>> &&
-            std::negation_v<std::is_pointer<std::remove_cvref_t<Arg>>>
-            Var(Arg &&arg)
-    noexcept : Var{} {
+                 std::negation_v<std::is_pointer<std::remove_cvref_t<Arg>>>
+    Var(Arg &&arg) noexcept : Var{} {
         dsl::assign(*this, std::forward<Arg>(arg));
     }
 

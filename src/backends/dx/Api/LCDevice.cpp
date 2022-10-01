@@ -14,15 +14,17 @@
 #include <vstl/BinaryReader.h>
 #include <Api/LCSwapChain.h>
 #include <Api/LCUtil.h>
-#include <compile/hlsl/dx_codegen.h>
+#include "HLSL/dx_codegen.h"
 #include <serialize/DatabaseInclude.h>
 #include <ast/function_builder.h>
 using namespace toolhub::directx;
 namespace toolhub::directx {
 LCDevice::LCDevice(const Context& ctx)
-	: LCDeviceInterface(ctx), nativeDevice(shaderPaths) {
-	shaderPaths.shaderCacheFolder = ctx.cache_directory().string().c_str();
-	shaderPaths.dataFolder = ctx.data_directory().string().c_str();
+	: LCDeviceInterface(ctx),
+	  shaderPaths{},
+	  nativeDevice(shaderPaths) {
+	shaderPaths.shaderCacheFolder = ctx.cache_directory().string();
+	shaderPaths.dataFolder = (ctx.data_directory() / "dx_builtin").string();
 	auto ProcessPath = [](vstd::string& str) {
 		for (auto&& i : str) {
 			if (i == '\\') i = '/';
@@ -170,7 +172,7 @@ uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noex
 			nativeDevice.fileIo,
 			&nativeDevice,	
 			kernel,
-			[&] -> decltype(auto) { return std::move(code); },
+			[&]() -> decltype(auto) { return std::move(code); },
 			kernel.block_size(),
 			65u,
 			file_name,

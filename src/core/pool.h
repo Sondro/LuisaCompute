@@ -10,7 +10,6 @@
 #include <core/logging.h>
 #include <core/spin_mutex.h>
 #include <core/thread_safety.h>
-#include <core/stl.h>
 
 namespace luisa {
 

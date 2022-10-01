@@ -6,8 +6,6 @@
 
 #include <vector>
 
-#include <core/stl.h>
-#include <core/hash.h>
 #include <core/spin_mutex.h>
 
 #include <ast/statement.h>
@@ -17,16 +15,11 @@
 #include <ast/constant_data.h>
 #include <ast/type_registry.h>
 #include <core/stl/optional.h>
-#include <core/stl/smart_ptr.h>
-#include <core/stl/unordered_map.h>
-#include <core/stl/variant.h>
-
 
 namespace luisa::compute {
 class Statement;
 class Expression;
 class FunctionSerializer;
-class AstSerializer;
 }// namespace luisa::compute
 
 namespace luisa::compute::detail {
@@ -37,7 +30,6 @@ namespace luisa::compute::detail {
  * Build kernel or callable function
  */
 class LC_AST_API FunctionBuilder : public luisa::enable_shared_from_this<FunctionBuilder> {
-    friend class AstSerializer;
 
 private:
     /**
@@ -55,6 +47,17 @@ private:
         explicit ScopeGuard(FunctionBuilder *builder, ScopeStmt *scope) noexcept
             : _builder{builder}, _scope{scope} { _builder->push_scope(_scope); }
         ~ScopeGuard() noexcept { _builder->pop_scope(_scope); }
+    };
+
+    class FunctionStackGuard {
+
+    private:
+        FunctionBuilder *_builder;
+
+    public:
+        explicit FunctionStackGuard(FunctionBuilder *builder) noexcept
+            : _builder{builder} { push(builder); }
+        ~FunctionStackGuard() noexcept { pop(_builder); }
     };
 
 public:
@@ -144,19 +147,20 @@ private:
     luisa::vector<luisa::unique_ptr<Statement>> _all_statements;
     luisa::vector<ScopeStmt *> _scope_stack;
     luisa::vector<Variable> _builtin_variables;
-    luisa::unordered_map<uint64_t, Constant> _captured_constants;
+    luisa::vector<Constant> _captured_constants;
     luisa::vector<Variable> _arguments;
     luisa::vector<Binding> _argument_bindings;
     luisa::vector<luisa::shared_ptr<const FunctionBuilder>> _used_custom_callables;
     luisa::vector<Variable> _local_variables;
-    luisa::unordered_map<uint64_t, Variable> _shared_variables;
+    luisa::vector<Variable> _shared_variables;
     luisa::vector<Usage> _variable_usages;
     luisa::vector<std::pair<std::byte *, size_t /* alignment */>> _temporary_data;
+    CallOpSet _propagated_builtin_callables;
     CallOpSet _used_builtin_callables;
-    uint64_t _hash;
+    uint64_t _hash{};
     uint3 _block_size;
     Tag _tag;
-    bool _use_atomic_float = false;
+    bool _requires_atomic_float{false};
 
 protected:
     [[nodiscard]] static luisa::vector<FunctionBuilder *> &_function_stack() noexcept;
@@ -197,17 +201,8 @@ private:
     template<typename Def>
     static auto _define(Function::Tag tag, Def &&def) {
         auto f = make_shared<FunctionBuilder>(tag);
-        push(f.get());
-        struct Dispose {
-            FunctionBuilder *builder;
-            ~Dispose() {
-                pop(builder);
-            }
-        };
-        {
-            Dispose disp{f.get()};
-            f->with(&f->_body, std::forward<Def>(def));
-        }
+        FunctionStackGuard guard{f.get()};
+        f->with(&f->_body, std::forward<Def>(def));
         return luisa::const_pointer_cast<const FunctionBuilder>(f);
     }
 
@@ -239,17 +234,19 @@ public:
     /// Return a span of local variables.
     [[nodiscard]] auto local_variables() const noexcept { return luisa::span{_local_variables}; }
     /// Return a span of shared variables.
-    [[nodiscard]] auto const &shared_variables() const noexcept { return _shared_variables; }
+    [[nodiscard]] auto shared_variables() const noexcept { return luisa::span{_shared_variables}; }
     /// Return a span of constants.
-    [[nodiscard]] auto const &constants() const noexcept { return _captured_constants; }
+    [[nodiscard]] auto constants() const noexcept { return luisa::span{_captured_constants}; }
     /// Return a span of arguments.
     [[nodiscard]] auto arguments() const noexcept { return luisa::span{_arguments}; }
     /// Return a span of argument bindings.
     [[nodiscard]] auto argument_bindings() const noexcept { return luisa::span{_argument_bindings}; }
     /// Return a span of custom callables.
     [[nodiscard]] auto custom_callables() const noexcept { return luisa::span{_used_custom_callables}; }
-    /// Return a CallOpSet of builtin callables.
+    /// Return a CallOpSet of builtin callables that are directly used in this functions.
     [[nodiscard]] auto builtin_callables() const noexcept { return _used_builtin_callables; }
+    /// Return a CallOpSet of builtin callables that are used in this functions and the functions that it calls.
+    [[nodiscard]] auto propagated_builtin_callables() const noexcept { return _propagated_builtin_callables; }
     /// Return tag(KERNEL, CALLABLE).
     [[nodiscard]] auto tag() const noexcept { return _tag; }
     /// Return pointer to body.
@@ -265,7 +262,11 @@ public:
     /// Return hash.
     [[nodiscard]] auto hash() const noexcept { return _hash; }
     /// Return if is raytracing.
-    [[nodiscard]] bool raytracing() const noexcept;
+    [[nodiscard]] bool requires_raytracing() const noexcept;
+    /// Return if uses atomic operations
+    [[nodiscard]] bool requires_atomic() const noexcept;
+    /// Return if uses atomic floats.
+    [[nodiscard]] bool requires_atomic_float() const noexcept;
 
     // build primitives
     /// Define a kernel function with given definition
@@ -415,7 +416,6 @@ public:
 
     /// Return a Function object constructed from this
     [[nodiscard]] auto function() const noexcept { return Function{this}; }
-    [[nodiscard]] bool is_atomic_float_used() const;
 };
 
 }// namespace luisa::compute::detail

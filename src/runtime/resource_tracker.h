@@ -3,11 +3,10 @@
 //
 
 #pragma once
-
-#include <core/stl.h>
-#include <core/hash.h>
+#include <core/stl/hash.h>
 #include <core/stl/unordered_map.h>
 #include <core/stl/vector.h>
+
 namespace luisa::compute {
 
 class LC_RUNTIME_API ResourceTracker {
@@ -30,4 +29,4 @@ public:
     }
 };
 
-}
+}// namespace luisa::compute

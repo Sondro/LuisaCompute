@@ -7,7 +7,7 @@
 #include <DXRuntime/CommandBuffer.h>
 #include <runtime/command_list.h>
 #include <DXRuntime/ResourceStateTracker.h>
-#include <runtime/command_reorder_visitor.h>
+#include <backends/common/command_reorder_visitor.h>
 using namespace luisa::compute;
 namespace toolhub::directx {
 class RenderTexture;

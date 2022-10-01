@@ -1,13 +1,14 @@
 #pragma once
 
 #include <runtime/device.h>
-#include <core/hash.h>
-#include <stdint.h>
+#include <core/stl/hash.h>
+#include <cstdint>
 #include <vstl/Common.h>
 #include <runtime/command.h>
+
 namespace luisa::compute {
 
-class LC_RUNTIME_API CommandReorderVisitor : public CommandVisitor {
+class CommandReorderVisitor : public CommandVisitor {
 public:
     enum class ResourceRW : uint8_t {
         Read,
@@ -64,8 +65,14 @@ public:
 
 private:
     template<typename Func>
-        requires(std::is_invocable_v<Func, ResourceView const &>)
-    void IterateMap(Func &&func, RangeHandle &handle, Range const &range);
+        requires(std::is_invocable_v<Func, CommandReorderVisitor::ResourceView const &>)
+    void IterateMap(Func &&func, RangeHandle &handle, Range const &range) {
+        for (auto &&r : handle.views) {
+            if (r.first.collide(range)) {
+                func(r.second);
+            }
+        }
+    }
     vstd::Pool<RangeHandle, true> rangePool;
     vstd::Pool<NoRangeHandle, true> noRangePool;
     vstd::Pool<BindlessHandle, true> bindlessHandlePool;

@@ -22,17 +22,18 @@ struct alignas(16) Hit {
 
 }// namespace luisa::compute
 
+// clang-format off
 LUISA_STRUCT(luisa::compute::Hit, inst, prim, bary){
     [[nodiscard]] auto miss() const noexcept {
         return luisa::compute::miss(*this);
-}
-template<typename A, typename B, typename C>
-[[nodiscard]] auto interpolate(A &&a, B &&b, C &&c) const noexcept {
-    return luisa::compute::interpolate(
-        *this,
-        std::forward<A>(a),
-        std::forward<B>(b),
-        std::forward<C>(c));
-}
-}
-;
+    }
+    template<typename A, typename B, typename C>
+    [[nodiscard]] auto interpolate(A &&a, B &&b, C &&c) const noexcept {
+        return luisa::compute::interpolate(
+            *this,
+            std::forward<A>(a),
+            std::forward<B>(b),
+            std::forward<C>(c));
+    }
+};
+// clang-format on

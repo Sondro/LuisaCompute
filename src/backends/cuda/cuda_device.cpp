@@ -233,12 +233,12 @@ void CUDADevice::dispatch(uint64_t stream_handle, luisa::span<const CommandList>
 uint64_t CUDADevice::create_shader(Function kernel, std::string_view meta_options) noexcept {
     Clock clock;
     auto ptx = CUDACompiler::instance().compile(context(), kernel, _handle.compute_capability());
-    auto entry = kernel.raytracing() ?
+    auto entry = kernel.requires_raytracing() ?
                      luisa::format("__raygen__rg_{:016X}", kernel.hash()) :
                      luisa::format("kernel_{:016X}", kernel.hash());
     LUISA_INFO("Generated PTX for {} in {} ms.", entry, clock.toc());
     return with_handle([&] {
-        auto shader = CUDAShader::create(this, ptx.c_str(), ptx.size(), entry.c_str(), kernel.raytracing());
+        auto shader = CUDAShader::create(this, ptx.c_str(), ptx.size(), entry.c_str(), kernel.requires_raytracing());
         return reinterpret_cast<uint64_t>(shader);
     });
 }
