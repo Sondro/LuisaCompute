@@ -5,7 +5,6 @@
 #pragma once
 
 #include <core/concepts.h>
-#include <core/stl.h>
 #include <ast/variable.h>
 #include <ast/expression.h>
 

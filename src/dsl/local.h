@@ -5,7 +5,6 @@
 #pragma once
 
 #include <dsl/expr.h>
-#include <core/stl.h>
 
 namespace luisa::compute {
 

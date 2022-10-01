@@ -6,9 +6,8 @@
 
 #include <vector>
 
-#include <core/stl.h>
 #include <core/spin_mutex.h>
-
+#include <core/stl/optional.h>
 #include <ast/statement.h>
 #include <ast/function.h>
 #include <ast/variable.h>

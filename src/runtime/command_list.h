@@ -4,9 +4,6 @@
 
 #pragma once
 
-#include <nlohmann/json.hpp>
-
-#include <core/stl.h>
 #include <runtime/command.h>
 
 namespace luisa::compute {

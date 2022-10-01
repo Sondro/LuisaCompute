@@ -5,7 +5,7 @@
 #pragma once
 
 #include <core/stl/hash.h>
-#include <core/stl.h>
+#include <core/stl/unordered_map.h>
 #include <ast/interface.h>
 
 namespace luisa::compute {

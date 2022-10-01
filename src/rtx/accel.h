@@ -6,7 +6,6 @@
 
 #include <core/dll_export.h>
 #include <core/basic_types.h>
-#include <core/stl.h>
 #include <dsl/expr.h>
 #include <rtx/ray.h>
 #include <rtx/hit.h>

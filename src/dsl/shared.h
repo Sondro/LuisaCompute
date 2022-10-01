@@ -5,8 +5,7 @@
 #pragma once
 
 #include <dsl/expr.h>
-#include <core/stl.h>
-
+#include <core/stl/format.h>
 namespace luisa::compute {
 
 namespace detail {

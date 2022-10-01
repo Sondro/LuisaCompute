@@ -10,6 +10,7 @@
 #include <Resource/TopAccel.h>
 #include <Resource/BindlessArray.h>
 #include <Api/LCSwapChain.h>
+#include <backends/common/command_reorder_visitor.hpp>
 namespace toolhub::directx {
 class LCPreProcessVisitor : public CommandVisitor {
 public:

@@ -1,0 +1,111 @@
+{
+    xcode_arch_arm64_plat_macosx = {
+        plat = "macosx",
+        xcode_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk",
+        xcode = "/Applications/Xcode.app",
+        arch = "arm64",
+        target_minver = "12.6",
+        __global = true,
+        xcode_sdkver = "12.3"
+    },
+    ["tool_target_luisa-compute-ast_macosx_arm64_cxx"] = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    },
+    tool_target_lc_test_macosx_arm64_cxx = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    },
+    ["tool_target_luisa-compute-runtime_macosx_arm64_cxx"] = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    },
+    ["tool_target_luisa-compute-core_macosx_arm64_cxx"] = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    },
+    ["tool_target_luisa-compute-vstl_macosx_arm64_cxx"] = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    },
+    ["tool_target_luisa-compute-core_macosx_arm64_sh"] = {
+        toolname = "clangxx",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang++"
+    },
+    ["tool_target_luisa-compute-dsl_macosx_arm64_cxx"] = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    },
+    ["tool_target_luisa-compute-compile_macosx_arm64_cxx"] = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    },
+    ["tool_target_luisa-compute-raster_macosx_arm64_cxx"] = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    },
+    ["tool_target_luisa-compute-rtx_macosx_arm64_cxx"] = {
+        toolname = "clang",
+        toolchain_info = {
+            plat = "macosx",
+            arch = "arm64",
+            name = "xcode",
+            cachekey = "xcode_arch_arm64_plat_macosx"
+        },
+        program = "/usr/bin/xcrun -sdk macosx clang"
+    }
+}

@@ -1,7 +1,6 @@
 BuildProject({
     projectName = "luisa-compute-ast",
-    projectType = "shared",
-    unityBuildBatch = 4
+    projectType = "shared"
 })
 add_deps("luisa-compute-core", "luisa-compute-vstl")
 add_files("**.cpp")

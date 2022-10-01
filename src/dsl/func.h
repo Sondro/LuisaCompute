@@ -5,8 +5,6 @@
 #pragma once
 
 #include <type_traits>
-
-#include <core/stl.h>
 #include <runtime/command.h>
 #include <runtime/device.h>
 #include <runtime/shader.h>

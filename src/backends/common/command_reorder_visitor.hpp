@@ -1,3 +1,4 @@
+#pragma once
 #include <core/mathematics.h>
 #include <runtime/command_list.h>
 
