@@ -38,25 +38,25 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Cl
             -Wno-pragmas)
 endif ()
 
-#add_subdirectory(core)
-#add_subdirectory(vstl)
-#add_subdirectory(ast)
-#add_subdirectory(runtime)
-#add_subdirectory(compile)
-#add_subdirectory(dsl)
-#add_subdirectory(rtx)
-#add_subdirectory(backends)
+add_subdirectory(core)
+add_subdirectory(vstl)
+add_subdirectory(ast)
+add_subdirectory(runtime)
+add_subdirectory(compile)
+add_subdirectory(dsl)
+add_subdirectory(rtx)
+add_subdirectory(backends)
 
 add_library(luisa-compute INTERFACE luisa-compute.h)
-#target_link_libraries(luisa-compute INTERFACE
-#        luisa-compute-core
-#        luisa-compute-vstl
-#        luisa-compute-ast
-#        luisa-compute-compile
-#        luisa-compute-runtime
-#        luisa-compute-dsl
-#        luisa-compute-rtx
-#        luisa-compute-backends)
+target_link_libraries(luisa-compute INTERFACE
+        luisa-compute-core
+        luisa-compute-vstl
+        luisa-compute-ast
+        luisa-compute-compile
+        luisa-compute-runtime
+        luisa-compute-dsl
+        luisa-compute-rtx
+        luisa-compute-backends)
 add_library(luisa::compute ALIAS luisa-compute)
 
 if (LUISA_COMPUTE_ENABLE_GUI)
