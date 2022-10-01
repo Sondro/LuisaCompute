@@ -50,6 +50,8 @@ int main(int argc, char *argv[]) {
     auto volume_buffer = device.create_buffer<float>(64u * 64u * 64u * 4u);
     auto volume = device.create_volume<float>(PixelStorage::FLOAT4, make_uint3(64u), 1u);
 
+    auto aot_shader = device.load_shader<1u, int, Buffer<float>>("hello.spv");
+
     std::vector<int> const_vector(128u);
     std::iota(const_vector.begin(), const_vector.end(), 0);
 

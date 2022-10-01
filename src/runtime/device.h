@@ -83,6 +83,9 @@ struct is_dsl_kernel<Kernel3D<Args...>> : std::true_type {};
 class LC_RUNTIME_API Device {
 
 public:
+    static constexpr auto invalid_handle = ~0ull;
+
+public:
     class Interface : public luisa::enable_shared_from_this<Interface> {
 
     private:
@@ -230,14 +233,7 @@ public:
     }
     template<size_t N, typename... Args>
     [[nodiscard]] auto load_shader(luisa::string_view shader_path) noexcept {
-        std::array<Type const *, sizeof...(Args)> typeArr;
-        size_t argIdx = 0;
-        auto func = [&]<typename Arg>() {
-            typeArr[argIdx] = Type::of<Arg>();
-            argIdx++;
-        };
-        auto execFunc = {(func.template operator()<Args>(), 0)...};
-        return _create<AOTShader<N, Args...>>(shader_path, typeArr);
+        return _create<Shader<N, Args...>>(shader_path);
     }
 
     template<size_t N, typename Func>
