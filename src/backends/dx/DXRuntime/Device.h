@@ -5,11 +5,11 @@
 #include <vstl/VGuid.h>
 #include <dxgi1_4.h>
 #include <DXRuntime/ShaderPaths.h>
-#include <core/binary_io_visitor.h>
+#include <core/binary_io.h>
 #include <Shader/CommandSignature.h>
 #include <vstl/BinaryReader.h>
 namespace luisa::compute {
-class BinaryIOVisitor;
+class BinaryIO;
 }
 class ElementAllocator;
 using Microsoft::WRL::ComPtr;
@@ -28,7 +28,7 @@ public:
 	void read(luisa::span<std::byte> dst) override;
 	~BinaryStream();
 };
-struct SerializeVisitor : public luisa::compute::BinaryIOVisitor {
+struct SerializeVisitor : public luisa::compute::BinaryIO {
 	ShaderPaths const& path;
 	SerializeVisitor(
 		ShaderPaths const& path);
@@ -42,7 +42,7 @@ struct SerializeVisitor : public luisa::compute::BinaryIOVisitor {
 class Device {
 public:
 	ShaderPaths const& path;
-	std::atomic<luisa::compute::BinaryIOVisitor*> fileIo = nullptr;
+	std::atomic<luisa::compute::BinaryIO*> fileIo = nullptr;
 	mutable SerializeVisitor serVisitor;
 	struct LazyLoadShader {
 	public:

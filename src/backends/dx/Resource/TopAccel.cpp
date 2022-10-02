@@ -19,16 +19,16 @@ void GetRayTransform(D3D12_RAYTRACING_INSTANCE_DESC &inst, float4x4 const &tr) {
         }
 }
 }// namespace detail
-TopAccel::TopAccel(Device *device, luisa::compute::AccelUsageHint hint,
+TopAccel::TopAccel(Device *device, luisa::compute::AccelUpdateHint hint,
                    bool allow_compact, bool allow_update)
     : device(device) {
     //TODO: allow_compact not supported
     allow_compact = false;
     auto GetPreset = [&] {
         switch (hint) {
-            case AccelUsageHint::FAST_TRACE:
+            case AccelUpdateHint::FAST_TRACE:
                 return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-            case AccelUsageHint::FAST_BUILD:
+            case AccelUpdateHint::FAST_BUILD:
                 return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
         }
     };

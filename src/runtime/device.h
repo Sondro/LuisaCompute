@@ -28,7 +28,7 @@ class Stream;
 class Mesh;
 class Accel;
 class SwapChain;
-class BinaryIOVisitor;
+class BinaryIO;
 class BindlessArray;
 class IUtil;
 
@@ -115,7 +115,7 @@ public:
 
         // bindless array
         [[nodiscard]] virtual uint64_t create_bindless_array(size_t size) noexcept = 0;
-        virtual void set_io_visitor(BinaryIOVisitor *visitor) noexcept = 0;
+        virtual void set_binary_io(BinaryIO *io) noexcept {/* do nothing */}
         virtual void destroy_bindless_array(uint64_t handle) noexcept = 0;
         virtual void emplace_buffer_in_bindless_array(uint64_t array, size_t index, uint64_t handle, size_t offset_bytes) noexcept = 0;
         virtual void emplace_tex2d_in_bindless_array(uint64_t array, size_t index, uint64_t handle, Sampler sampler) noexcept = 0;
@@ -142,7 +142,7 @@ public:
 
         // kernel
         [[nodiscard]] virtual uint64_t create_shader(Function kernel, luisa::string_view serialization_path) noexcept = 0;
-        [[nodiscard]] virtual uint64_t load_shader(luisa::string_view ser_path, luisa::span<Type const *const> types) noexcept = 0;
+        [[nodiscard]] virtual uint64_t load_shader(luisa::string_view ser_path, luisa::span<Type const *const> types) noexcept { return invalid_handle; }
         virtual void destroy_shader(uint64_t handle) noexcept = 0;
 
         // event
@@ -153,9 +153,9 @@ public:
         virtual void synchronize_event(uint64_t handle) noexcept = 0;
 
         // accel
-        [[nodiscard]] virtual uint64_t create_mesh(AccelBuildHint build_hint, AccelUsageHint usage_hint) noexcept = 0;
+        [[nodiscard]] virtual uint64_t create_mesh(AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept = 0;
         virtual void destroy_mesh(uint64_t handle) noexcept = 0;
-        [[nodiscard]] virtual uint64_t create_accel(AccelBuildHint build_hint, AccelUsageHint usage_hint) noexcept = 0;
+        [[nodiscard]] virtual uint64_t create_accel(AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept = 0;
         virtual void destroy_accel(uint64_t handle) noexcept = 0;
 
         // query
@@ -193,11 +193,11 @@ public:
     [[nodiscard]] Mesh create_mesh(
         VBuffer &&vertices, TBuffer &&triangles,
         AccelBuildHint build_hint = AccelBuildHint::FAST_TRACE,
-        AccelUsageHint usage_hint = AccelUsageHint::ALWAYS_REBUILD) noexcept;// see definition in rtx/mesh.h
+        AccelUpdateHint update_hint = AccelUpdateHint::ALWAYS_REBUILD) noexcept;// see definition in rtx/mesh.h
 
     [[nodiscard]] Accel create_accel(
         AccelBuildHint build_hint = AccelBuildHint::FAST_TRACE,
-        AccelUsageHint usage_hint = AccelUsageHint::ALWAYS_REBUILD) noexcept;         // see definition in rtx/accel.cpp
+        AccelUpdateHint update_hint = AccelUpdateHint::ALWAYS_REBUILD) noexcept;         // see definition in rtx/accel.cpp
     [[nodiscard]] BindlessArray create_bindless_array(size_t slots = 65536u) noexcept;// see definition in runtime/bindless_array.cpp
 
     template<typename T>
@@ -224,8 +224,8 @@ public:
     [[nodiscard]] auto create_buffer(size_t size) noexcept {
         return _create<Buffer<T>>(size);
     }
-    void set_io_visitor(BinaryIOVisitor *visitor) noexcept {
-        _impl->set_io_visitor(visitor);
+    void set_binary_io(BinaryIO *visitor) noexcept {
+        _impl->set_binary_io(visitor);
     }
     template<size_t N, typename... Args>
     [[nodiscard]] auto compile(const Kernel<N, Args...> &kernel, luisa::string_view shader_path = {}) noexcept {

@@ -494,7 +494,7 @@ var namespaceluisa_1_1compute =
       [ "PREFER_UPDATE", "d8/d37/namespaceluisa_1_1compute.html#a64463a2984ce24f41388a1cf382ead11a51c5ea1e50025d8780628e8894a6635f", null ],
       [ "FORCE_BUILD", "d8/d37/namespaceluisa_1_1compute.html#a64463a2984ce24f41388a1cf382ead11a76fabdc94c260a1ad41b2c180ecc1cba", null ]
     ] ],
-    [ "AccelUsageHint", "d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0", [
+    [ "AccelUpdateHint", "d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0", [
       [ "FAST_TRACE", "d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0a3f684dca71b75eb53a8a25920db6a67f", null ],
       [ "FAST_UPDATE", "d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0a3ee04c55cf26a4490634a531edf2ae5e", null ],
       [ "FAST_BUILD", "d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0a8f43d2d9234f74c301bb1cb64f947505", null ]

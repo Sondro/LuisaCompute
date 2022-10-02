@@ -68,9 +68,9 @@ PYBIND11_MODULE(lcapi, m) {
         .def("destroy_buffer", &Device::Interface::destroy_buffer)
         .def("create_texture", &Device::Interface::create_texture)
         .def("destroy_texture", &Device::Interface::destroy_texture)
-        // .def("create_accel", &Device::Interface::create_accel) // (AccelUsageHint hint = AccelUsageHint::FAST_TRACE)
+        // .def("create_accel", &Device::Interface::create_accel) // (AccelUpdateHint hint = AccelUpdateHint::FAST_TRACE)
         // .def("destroy_accel", &Device::Interface::destroy_accel)
-        .def("create_mesh", &Device::Interface::create_mesh)// (uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint)
+        .def("create_mesh", &Device::Interface::create_mesh)// (uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUpdateHint hint)
         .def("destroy_mesh", &Device::Interface::destroy_mesh)
         .def("create_bindless_array", &Device::Interface::create_bindless_array)// size
         .def("destroy_bindless_array", &Device::Interface::destroy_bindless_array)
@@ -296,10 +296,10 @@ PYBIND11_MODULE(lcapi, m) {
         .def("set_visibility_on_update", &Accel::set_visibility_on_update)
         .def("build_command", &Accel::build, pyref);
 
-    py::enum_<AccelUsageHint>(m, "AccelUsageHint")
-        .value("FAST_TRACE", AccelUsageHint::FAST_TRACE)
-        .value("FAST_UPDATE", AccelUsageHint::FAST_UPDATE)
-        .value("FAST_BUILD", AccelUsageHint::FAST_BUILD);
+    py::enum_<AccelUpdateHint>(m, "AccelUpdateHint")
+        .value("FAST_TRACE", AccelUpdateHint::FAST_TRACE)
+        .value("FAST_UPDATE", AccelUpdateHint::FAST_UPDATE)
+        .value("FAST_BUILD", AccelUpdateHint::FAST_BUILD);
 
     py::enum_<AccelBuildRequest>(m, "AccelBuildRequest")
         .value("PREFER_UPDATE", AccelBuildRequest::PREFER_UPDATE)

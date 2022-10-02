@@ -296,7 +296,7 @@ void MetalCommandEncoder::visit(const AccelBuildCommand *command) noexcept {
 
 void MetalCommandEncoder::visit(const MeshBuildCommand *command) noexcept {
     auto mesh = to_mesh(command->handle());
-    _command_buffer = mesh->build(_stream, _command_buffer, command->request());
+    _command_buffer = mesh->build(_stream, _command_buffer, *command);
 }
 
-}
+}// namespace luisa::compute::metal

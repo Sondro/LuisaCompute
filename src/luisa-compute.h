@@ -7,7 +7,7 @@
 #include <core/basic_traits.h>
 #include <core/basic_types.h>
 #include <core/binary_buffer.h>
-#include <core/binary_io_visitor.h>
+#include <core/binary_io.h>
 #include <core/clock.h>
 #include <core/concepts.h>
 #include <core/constants.h>

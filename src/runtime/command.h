@@ -500,8 +500,8 @@ enum struct AccelBuildHint : uint32_t {
     FAST_BUILD,              // optimize for frequent rebuild, usually without compaction
 };
 
-enum struct AccelUsageHint : uint32_t {
-    ALLOW_UPDATE,
+enum struct AccelUpdateHint : uint32_t {
+    ALLOW_REFIT,
     ALWAYS_REBUILD,
 };
 

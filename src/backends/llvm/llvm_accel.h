@@ -42,7 +42,7 @@ private:
     [[nodiscard]] static float4x4 _decompress(std::array<float, 12> m) noexcept;
 
 public:
-    LLVMAccel(RTCDevice device, AccelUsageHint hint) noexcept;
+    LLVMAccel(RTCDevice device, AccelUpdateHint hint) noexcept;
     ~LLVMAccel() noexcept;
     void build(ThreadPool &pool, size_t instance_count,
                luisa::span<const AccelBuildCommand::Modification> mods) noexcept;

@@ -149,7 +149,7 @@ void* LCDevice::stream_native_handle(uint64 handle) const noexcept {
 	return reinterpret_cast<LCCmdBuffer*>(handle)
 		->queue.Queue();
 }
-void LCDevice::set_io_visitor(BinaryIOVisitor* visitor) noexcept {
+void LCDevice::set_binary_io(BinaryIO* visitor) noexcept {
 	if (visitor) {
 		nativeDevice.fileIo = visitor;
 	} else {
@@ -214,7 +214,7 @@ void LCDevice::synchronize_event(uint64 handle) noexcept {
 }
 
 uint64 LCDevice::create_mesh(
-	AccelUsageHint hint,
+	AccelUpdateHint hint,
 	bool allow_compact, bool allow_update) noexcept {
 	return reinterpret_cast<uint64>(
 		(
@@ -227,7 +227,7 @@ uint64 LCDevice::create_mesh(
 void LCDevice::destroy_mesh(uint64 handle) noexcept {
 	delete reinterpret_cast<BottomAccel*>(handle);
 }
-uint64 LCDevice::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
+uint64 LCDevice::create_accel(AccelUpdateHint hint, bool allow_compact, bool allow_update) noexcept {
 	return reinterpret_cast<uint64>(new TopAccel(
 		&nativeDevice,
 		hint,

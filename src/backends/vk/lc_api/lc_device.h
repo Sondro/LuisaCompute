@@ -69,10 +69,10 @@ public:
 
 	// accel
 	uint64_t create_mesh(
-		AccelUsageHint hint,
+		AccelUpdateHint hint,
 		bool allow_compact, bool allow_update) noexcept override;
 	void destroy_mesh(uint64_t handle) noexcept override;
-	uint64_t create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept override;
+	uint64_t create_accel(AccelUpdateHint hint, bool allow_compact, bool allow_update) noexcept override;
 	void destroy_accel(uint64_t handle) noexcept override;
 
 	// query

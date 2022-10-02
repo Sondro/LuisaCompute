@@ -50,7 +50,7 @@ public:
     BottomAccel(
         Device *device,
 
-        luisa::compute::AccelUsageHint hint,
+        luisa::compute::AccelUpdateHint hint,
         bool allow_compact, bool allow_update);
     size_t PreProcessStates(
         CommandBufferBuilder &builder,

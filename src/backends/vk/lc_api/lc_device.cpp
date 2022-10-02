@@ -386,23 +386,23 @@ void LCDevice::synchronize_event(uint64_t handle) noexcept {
 
 // accel
 uint64_t LCDevice::create_mesh(
-	AccelUsageHint hint,
+	AccelUpdateHint hint,
 	bool allow_compact, bool allow_update) noexcept {
 	return reinterpret_cast<uint64>(new Mesh(
 		device,
 		allow_update,
 		allow_compact,
-		hint == AccelUsageHint::FAST_TRACE));
+		hint == AccelUpdateHint::FAST_TRACE));
 }
 void LCDevice::destroy_mesh(uint64_t handle) noexcept {
 	delete reinterpret_cast<Mesh*>(handle);
 }
-uint64_t LCDevice::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
+uint64_t LCDevice::create_accel(AccelUpdateHint hint, bool allow_compact, bool allow_update) noexcept {
 	return reinterpret_cast<uint64>(new Accel(
 		device,
 		allow_update,
 		allow_compact,
-		hint == AccelUsageHint::FAST_TRACE));
+		hint == AccelUpdateHint::FAST_TRACE));
 }
 void LCDevice::destroy_accel(uint64_t handle) noexcept {
 	delete reinterpret_cast<Accel*>(handle);

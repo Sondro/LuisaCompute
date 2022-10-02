@@ -12,27 +12,27 @@
 
 namespace luisa::compute::cuda {
 
-CUDAAccel::CUDAAccel(AccelUsageHint hint) noexcept : _build_hint{hint} {}
+CUDAAccel::CUDAAccel(AccelUpdateHint hint) noexcept : _build_hint{hint} {}
 
 CUDAAccel::~CUDAAccel() noexcept {
     if (_instance_buffer) { LUISA_CHECK_CUDA(cuMemFree(_instance_buffer)); }
     if (_bvh_buffer) { LUISA_CHECK_CUDA(cuMemFree(_bvh_buffer)); }
 }
 
-[[nodiscard]] inline auto cuda_accel_build_options(AccelUsageHint hint, OptixBuildOperation op) noexcept {
+[[nodiscard]] inline auto cuda_accel_build_options(AccelUpdateHint hint, OptixBuildOperation op) noexcept {
     OptixAccelBuildOptions build_options{};
     build_options.operation = op;
     switch (hint) {
-        case AccelUsageHint::FAST_TRACE:
+        case AccelUpdateHint::FAST_TRACE:
             build_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION |
                                        OPTIX_BUILD_FLAG_ALLOW_UPDATE |
                                        OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
             break;
-        case AccelUsageHint::FAST_UPDATE:
+        case AccelUpdateHint::FAST_UPDATE:
             build_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION |
                                        OPTIX_BUILD_FLAG_ALLOW_UPDATE;
             break;
-        case AccelUsageHint::FAST_BUILD:
+        case AccelUpdateHint::FAST_BUILD:
             build_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_UPDATE |
                                        OPTIX_BUILD_FLAG_PREFER_FAST_BUILD;
             break;
@@ -124,7 +124,7 @@ void CUDAAccel::_build(CUDADevice *device, CUDAStream *stream, CUstream cuda_str
                clock.toc(), sizes.tempSizeInBytes,
                sizes.tempUpdateSizeInBytes, sizes.outputSizeInBytes);
 
-    if (_build_hint == AccelUsageHint::FAST_BUILD) {// no compaction
+    if (_build_hint == AccelUpdateHint::FAST_BUILD) {// no compaction
         // re-allocate buffers if necessary
         if (_bvh_buffer_size < sizes.outputSizeInBytes) {
             _bvh_buffer_size = sizes.outputSizeInBytes;

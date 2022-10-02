@@ -21,7 +21,7 @@ public:
 	uint64_t create_buffer(size_t size_bytes) noexcept override;
 	void destroy_buffer(uint64_t handle) noexcept override;
 	void* buffer_native_handle(uint64_t handle) const noexcept override;
-	void set_io_visitor(BinaryIOVisitor* visitor) noexcept override;
+	void set_binary_io(BinaryIO* visitor) noexcept override;
 	// texture
 	uint64_t create_texture(
 		PixelFormat format, uint dimension,
@@ -62,11 +62,11 @@ public:
 	void synchronize_event(uint64_t handle) noexcept override;
 	// accel
 	uint64_t create_mesh(
-		AccelUsageHint hint,
+		AccelUpdateHint hint,
 		bool allow_compact, bool allow_update) noexcept override;
 	void destroy_mesh(uint64_t handle) noexcept override;
 
-	uint64_t create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept override;
+	uint64_t create_accel(AccelUpdateHint hint, bool allow_compact, bool allow_update) noexcept override;
 
 	void destroy_accel(uint64_t handle) noexcept override;
 	// swap chain

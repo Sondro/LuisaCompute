@@ -6,7 +6,7 @@
 #include <core/platform.h>
 #include <runtime/context.h>
 #include <runtime/device.h>
-#include <core/binary_io_visitor.h>
+#include <core/binary_io.h>
 
 #ifdef LUISA_PLATFORM_WINDOWS
 #include <windows.h>
@@ -23,7 +23,7 @@ struct Context::Impl {
     luisa::vector<Device::Creator *> device_creators;
     luisa::vector<Device::Deleter *> device_deleters;
     luisa::vector<luisa::string> installed_backends;
-    BinaryIOVisitor *file_io{nullptr};
+    BinaryIO *file_io{nullptr};
 };
 
 namespace detail {
@@ -138,11 +138,11 @@ Device Context::create_default_device() noexcept {
     return create_device(installed_backends().front());
 }
 
-BinaryIOVisitor *Context::get_fileio_visitor() const noexcept {
+BinaryIO *Context::get_fileio_visitor() const noexcept {
     return _impl->file_io;
 }
 
-void Context::set_fileio_visitor(BinaryIOVisitor *file_io) noexcept {
+void Context::set_fileio_visitor(BinaryIO *file_io) noexcept {
     _impl->file_io = file_io;
 }
 }// namespace luisa::compute

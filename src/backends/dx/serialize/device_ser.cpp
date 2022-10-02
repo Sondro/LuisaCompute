@@ -15,7 +15,7 @@ void DeviceSer::destroy_buffer(uint64_t handle) noexcept {
 	arr << SerTag::DestroyBuffer << handle;
 	visitor->send_async(arr.steal());
 }
-void DeviceSer::set_io_visitor(BinaryIOVisitor* visitor) noexcept {
+void DeviceSer::set_binary_io(BinaryIO* visitor) noexcept {
 	LUISA_ERROR("Remote device no support customized io-visitor");
 }
 // texture
@@ -222,7 +222,7 @@ void DeviceSer::synchronize_event(uint64_t handle) noexcept {
 
 // accel
 uint64_t DeviceSer::create_mesh(
-	AccelUsageHint hint,
+	AccelUpdateHint hint,
 	bool allow_compact, bool allow_update) noexcept {
 	std::lock_guard lck(mtx);
 	auto handle = handleCounter++;
@@ -244,7 +244,7 @@ void DeviceSer::destroy_mesh(uint64_t handle) noexcept {
 	visitor->send_async(arr.steal());
 }
 
-uint64_t DeviceSer::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
+uint64_t DeviceSer::create_accel(AccelUpdateHint hint, bool allow_compact, bool allow_update) noexcept {
 	std::lock_guard lck(mtx);
 	auto handle = handleCounter++;
 	vbyte mask = 0;
