@@ -53,7 +53,7 @@ ShaderSerializer::Serialize(
 ComputeShader* ShaderSerializer::DeSerialize(
 	vstd::string_view name,
 	Device* device,
-	BinaryIOVisitor& streamFunc,
+	BinaryIO& streamFunc,
 	vstd::optional<vstd::MD5> const& checkMD5,
 	bool& clearCache) {
 	using namespace shader_ser;
@@ -62,7 +62,7 @@ ComputeShader* ShaderSerializer::DeSerialize(
 	auto disp = vstd::create_disposer([&] {
 		for (auto&& i : releaseVec) { vengine_free(i); }
 	});
-	BinaryIOVisitor::AllocateFunc func = [&](size_t byteSize) {
+	BinaryIO::AllocateFunc func = [&](size_t byteSize) {
 		auto ptr = vengine_malloc(byteSize);
 		releaseVec.emplace_back(ptr);
 		return ptr;

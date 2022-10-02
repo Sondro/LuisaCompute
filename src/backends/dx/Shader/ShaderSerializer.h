@@ -1,7 +1,7 @@
 #pragma once
 #include <d3dx12.h>
 #include <Shader/Shader.h>
-#include <core/binary_io_visitor.h>
+#include <core/binary_io.h>
 namespace toolhub::directx {
 class ComputeShader;
 class RTShader;
@@ -32,7 +32,7 @@ public:
 	static ComputeShader* DeSerialize(
 		luisa::string_view fileName,
 		Device* device,
-		BinaryIOVisitor& streamFunc,
+		BinaryIO& streamFunc,
 		vstd::optional<vstd::MD5> const& checkMD5,
 		bool& clearCache);
 	static vstd::vector<SavedArgument> SerializeKernel(Function kernel);

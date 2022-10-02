@@ -8,7 +8,7 @@
 namespace luisa::compute::ispc {
 
 ISPCMesh::ISPCMesh(
-    RTCDevice device, AccelUsageHint hint,
+    RTCDevice device, AccelUpdateHint hint,
     uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count,
     uint64_t t_buffer, size_t t_offset, size_t t_count) noexcept
     : _handle{rtcNewScene(device)},
@@ -32,11 +32,11 @@ void ISPCMesh::commit() noexcept {
             reinterpret_cast<const void *>(_t_buffer),
             _t_offset, sizeof(Triangle), _t_count);
         switch (_hint) {
-            case AccelUsageHint::FAST_TRACE:
+            case AccelUpdateHint::FAST_TRACE:
                 rtcSetGeometryBuildQuality(_geometry, RTC_BUILD_QUALITY_HIGH);
                 break;
-            case AccelUsageHint::FAST_UPDATE:
-            case AccelUsageHint::FAST_BUILD:
+            case AccelUpdateHint::FAST_UPDATE:
+            case AccelUpdateHint::FAST_BUILD:
                 rtcSetGeometryBuildQuality(_geometry, RTC_BUILD_QUALITY_REFIT);
                 break;
         }

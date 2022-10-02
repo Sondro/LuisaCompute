@@ -13,9 +13,10 @@ public:
 	virtual ~IBinaryStream() = default;
 };
 
-class BinaryIOVisitor {
+class BinaryIO {
+
 protected:
-    ~BinaryIOVisitor() = default;
+    ~BinaryIO() = default;
 
 public:
     virtual luisa::unique_ptr<IBinaryStream> read_bytecode(luisa::string_view name) = 0;

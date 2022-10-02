@@ -15,7 +15,7 @@
 namespace luisa::compute {
 
 class Device;
-class BinaryIOVisitor;
+class BinaryIO;
 
 class LC_RUNTIME_API Context {
 
@@ -36,8 +36,8 @@ public:
     [[nodiscard]] Device create_device(luisa::string_view backend_name, luisa::string_view property_json = "{}") noexcept;
     [[nodiscard]] luisa::span<const luisa::string> installed_backends() const noexcept;
     [[nodiscard]] Device create_default_device() noexcept;
-    [[nodiscard]] BinaryIOVisitor *get_fileio_visitor() const noexcept;
-    void set_fileio_visitor(BinaryIOVisitor *file_io) noexcept;
+    [[nodiscard]] BinaryIO *get_fileio_visitor() const noexcept;
+    void set_fileio_visitor(BinaryIO *file_io) noexcept;
 };
 
 }// namespace luisa::compute

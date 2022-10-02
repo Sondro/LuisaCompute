@@ -18,13 +18,14 @@ private:
     id<MTLBuffer> _update_buffer{nullptr};
     MTLPrimitiveAccelerationStructureDescriptor *_descriptor{nullptr};
     size_t _update_buffer_size{0u};
+    AccelBuildHint _build_hint;
+    AccelUpdateHint _update_hint;
 
 public:
-    MetalMesh(id<MTLBuffer> v_buffer, size_t v_offset, size_t v_stride,
-              id<MTLBuffer> t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept;
+    MetalMesh(AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept;
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] id<MTLCommandBuffer> build(
-        MetalStream *stream, id<MTLCommandBuffer> command_buffer, AccelBuildRequest request) noexcept;
+        MetalStream *stream, id<MTLCommandBuffer> command_buffer, const MeshBuildCommand &cmd) noexcept;
     [[nodiscard]] auto descriptor() const noexcept { return _descriptor; }
     [[nodiscard]] id<MTLBuffer> vertex_buffer() const noexcept;
     [[nodiscard]] id<MTLBuffer> triangle_buffer() const noexcept;

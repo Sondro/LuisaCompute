@@ -37,7 +37,7 @@ var command_8h =
       [ "PREFER_UPDATE", "d0/d09/command_8h.html#a64463a2984ce24f41388a1cf382ead11a51c5ea1e50025d8780628e8894a6635f", null ],
       [ "FORCE_BUILD", "d0/d09/command_8h.html#a64463a2984ce24f41388a1cf382ead11a76fabdc94c260a1ad41b2c180ecc1cba", null ]
     ] ],
-    [ "AccelUsageHint", "d0/d09/command_8h.html#ab6205269570440af8831ce5496c902f0", [
+    [ "AccelUpdateHint", "d0/d09/command_8h.html#ab6205269570440af8831ce5496c902f0", [
       [ "FAST_TRACE", "d0/d09/command_8h.html#ab6205269570440af8831ce5496c902f0a3f684dca71b75eb53a8a25920db6a67f", null ],
       [ "FAST_UPDATE", "d0/d09/command_8h.html#ab6205269570440af8831ce5496c902f0a3ee04c55cf26a4490634a531edf2ae5e", null ],
       [ "FAST_BUILD", "d0/d09/command_8h.html#ab6205269570440af8831ce5496c902f0a8f43d2d9234f74c301bb1cb64f947505", null ]

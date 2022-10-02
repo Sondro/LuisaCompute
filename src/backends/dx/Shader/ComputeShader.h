@@ -1,7 +1,7 @@
 #pragma once
 #include <Shader/Shader.h>
 #include <vstl/VGuid.h>
-#include <core/binary_io_visitor.h>
+#include <core/binary_io.h>
 namespace toolhub::directx {
 struct CodegenResult;
 class ShaderSerializer;
@@ -24,7 +24,7 @@ public:
 	Tag GetTag() const { return Tag::ComputeShader; }
 	uint3 BlockSize() const { return blockSize; }
 	static ComputeShader* CompileCompute(
-		BinaryIOVisitor* fileIo,
+		BinaryIO* fileIo,
 		Device* device,
 		Function kernel,
 		vstd::function<CodegenResult()> const& codegen,
@@ -33,7 +33,7 @@ public:
 		vstd::string_view fileName,
 		vstd::optional<vstd::MD5> const& checkMD5);
 	static ComputeShader* LoadPresetCompute(
-		BinaryIOVisitor* fileIo,
+		BinaryIO* fileIo,
 		Device* device,
 		vstd::span<Type const* const> types,
 		vstd::string_view fileName);

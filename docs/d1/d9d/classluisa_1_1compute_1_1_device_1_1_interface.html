@@ -181,11 +181,11 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a5ec5378183bd417745acfd59b0b9f7b5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae00f9ed99aff6484d358043bb35226e2"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="../../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#ae00f9ed99aff6484d358043bb35226e2">synchronize_event</a> (uint64_t handle) noexcept=0</td></tr>
 <tr class="separator:ae00f9ed99aff6484d358043bb35226e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa3b7d7eca6a1fd4dfb498255eeda56da"><td class="memItemLeft" align="right" valign="top">virtual uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="../../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#aa3b7d7eca6a1fd4dfb498255eeda56da">create_mesh</a> (uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, <a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUsageHint</a> hint) noexcept=0</td></tr>
+<tr class="memitem:aa3b7d7eca6a1fd4dfb498255eeda56da"><td class="memItemLeft" align="right" valign="top">virtual uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="../../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#aa3b7d7eca6a1fd4dfb498255eeda56da">create_mesh</a> (uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, <a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUpdateHint</a> hint) noexcept=0</td></tr>
 <tr class="separator:aa3b7d7eca6a1fd4dfb498255eeda56da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab5f9ebff34f96dfcbad7b9ff01e04d30"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="../../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#ab5f9ebff34f96dfcbad7b9ff01e04d30">destroy_mesh</a> (uint64_t handle) noexcept=0</td></tr>
 <tr class="separator:ab5f9ebff34f96dfcbad7b9ff01e04d30"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5705b7136d4279efc7048670b7e34b01"><td class="memItemLeft" align="right" valign="top">virtual uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="../../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#a5705b7136d4279efc7048670b7e34b01">create_accel</a> (<a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUsageHint</a> hint) noexcept=0</td></tr>
+<tr class="memitem:a5705b7136d4279efc7048670b7e34b01"><td class="memItemLeft" align="right" valign="top">virtual uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="../../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#a5705b7136d4279efc7048670b7e34b01">create_accel</a> (<a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUpdateHint</a> hint) noexcept=0</td></tr>
 <tr class="separator:a5705b7136d4279efc7048670b7e34b01"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a39f521a2de54f1718b708192692b6421"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="../../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#a39f521a2de54f1718b708192692b6421">destroy_accel</a> (uint64_t handle) noexcept=0</td></tr>
 <tr class="separator:a39f521a2de54f1718b708192692b6421"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -319,7 +319,7 @@ Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_accel </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUsageHint</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUpdateHint</a>&#160;</td>
           <td class="paramname"><em>hint</em></td><td>)</td>
           <td></td>
         </tr>
@@ -472,7 +472,7 @@ Public Member Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUsageHint</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUpdateHint</a>&#160;</td>
           <td class="paramname"><em>hint</em>&#160;</td>
         </tr>
         <tr>

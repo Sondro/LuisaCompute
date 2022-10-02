@@ -17,7 +17,7 @@ class LC_RTX_API Mesh final : public Resource {
 
 public:
     using BuildHint = AccelBuildHint;
-    using UsageHint = AccelUsageHint;
+    using UpdateHint = AccelUpdateHint;
     using BuildRequest = AccelBuildRequest;
 
 private:
@@ -38,7 +38,7 @@ private:
                  is_buffer_or_view_v<TBuffer> &&
                  std::same_as<buffer_element_t<TBuffer>, Triangle>
     [[nodiscard]] static uint64_t _create_resource(
-        Device::Interface *device, BuildHint build_hint, UsageHint usage_hint,
+        Device::Interface *device, BuildHint build_hint, UpdateHint update_hint,
         const VBuffer &vertex_buffer, const TBuffer &triangle_buffer) noexcept {
         BufferView vertices{vertex_buffer};
         BufferView triangles{triangle_buffer};
@@ -49,16 +49,16 @@ private:
         auto triangle_buffer_handle = triangles.handle();
         auto triangle_buffer_offset = triangles.offset_bytes();
         auto triangle_count = triangles.size();
-        return device->create_mesh(build_hint, usage_hint);
+        return device->create_mesh(build_hint, update_hint);
     }
 
 private:
     template<typename VBuffer, typename TBuffer>
     Mesh(Device::Interface *device, const VBuffer &vertex_buffer, const TBuffer &triangle_buffer,
          BuildHint build_hint = BuildHint::FAST_TRACE,
-         UsageHint usage_hint = UsageHint::ALWAYS_REBUILD) noexcept
+         UpdateHint update_hint = UpdateHint::ALWAYS_REBUILD) noexcept
         : Resource{device, Resource::Tag::MESH,
-                   _create_resource(device, build_hint, usage_hint,
+                   _create_resource(device, build_hint, update_hint,
                                     vertex_buffer, triangle_buffer)},
           _triangle_count{static_cast<uint>(triangle_buffer.size())},
           _v_buffer{BufferView{vertex_buffer}.handle()},
@@ -78,10 +78,10 @@ public:
 
 template<typename VBuffer, typename TBuffer>
 Mesh Device::create_mesh(VBuffer &&vertices, TBuffer &&triangles,
-                         Mesh::BuildHint build_hint, Mesh::UsageHint usage_hint) noexcept {
+                         Mesh::BuildHint build_hint, Mesh::UpdateHint update_hint) noexcept {
     return this->_create<Mesh>(std::forward<VBuffer>(vertices),
                                std::forward<TBuffer>(triangles),
-                               build_hint, usage_hint);
+                               build_hint, update_hint);
 }
 
 }// namespace luisa::compute

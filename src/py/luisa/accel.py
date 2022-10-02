@@ -109,7 +109,7 @@ Hit.add_method(interpolate)
 
 class Accel:
     def __init__(self):
-        self._accel = get_global_device().create_accel(lcapi.AccelUsageHint.FAST_TRACE)
+        self._accel = get_global_device().create_accel(lcapi.AccelUpdateHint.FAST_TRACE)
         self.handle = self._accel.handle()
 
     @staticmethod
@@ -191,7 +191,7 @@ class Mesh:
         self.handle = get_global_device().impl().create_mesh(
             self.vertices.handle, 0, to_lctype(vertices.dtype).size(), self.vertices.size,
             self.triangles.handle, 0, self.triangles.size//3,
-            lcapi.AccelUsageHint.FAST_TRACE)
+            lcapi.AccelUpdateHint.FAST_TRACE)
         self.update()
 
     def update(self, sync = False, stream = None):

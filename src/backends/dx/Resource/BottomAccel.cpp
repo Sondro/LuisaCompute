@@ -37,14 +37,14 @@ bool BottomAccel::RequireCompact() const {
 }
 BottomAccel::BottomAccel(
     Device *device,
-    luisa::compute::AccelUsageHint hint,
+    luisa::compute::AccelUpdateHint hint,
     bool allow_compact, bool allow_update)
     : device(device) {
     auto GetPreset = [&] {
         switch (hint) {
-            case AccelUsageHint::FAST_TRACE:
+            case AccelUpdateHint::FAST_TRACE:
                 return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-            case AccelUsageHint::FAST_BUILD:
+            case AccelUpdateHint::FAST_BUILD:
                 return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
         }
     };

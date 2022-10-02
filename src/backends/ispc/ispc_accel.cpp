@@ -9,18 +9,18 @@
 
 namespace luisa::compute::ispc {
 
-ISPCAccel::ISPCAccel(RTCDevice device, AccelUsageHint hint) noexcept
+ISPCAccel::ISPCAccel(RTCDevice device, AccelUpdateHint hint) noexcept
     : _handle{rtcNewScene(device)} {
     switch (hint) {
-        case AccelUsageHint::FAST_TRACE:
+        case AccelUpdateHint::FAST_TRACE:
             rtcSetSceneBuildQuality(_handle, RTC_BUILD_QUALITY_HIGH);
             rtcSetSceneFlags(_handle, RTC_SCENE_FLAG_COMPACT);
             break;
-        case AccelUsageHint::FAST_UPDATE:
+        case AccelUpdateHint::FAST_UPDATE:
             rtcSetSceneBuildQuality(_handle, RTC_BUILD_QUALITY_MEDIUM);
             rtcSetSceneFlags(_handle, RTC_SCENE_FLAG_COMPACT | RTC_SCENE_FLAG_DYNAMIC);
             break;
-        case AccelUsageHint::FAST_BUILD:
+        case AccelUpdateHint::FAST_BUILD:
             rtcSetSceneBuildQuality(_handle, RTC_BUILD_QUALITY_LOW);
             rtcSetSceneFlags(_handle, RTC_SCENE_FLAG_DYNAMIC);
             break;
