@@ -14,6 +14,7 @@ struct SavedArgument {
 	uint structSize;
 	SavedArgument() {}
 	SavedArgument(Function kernel, Variable const& var);
+	SavedArgument(Usage usage, Variable const& var);
 	SavedArgument(Type const* type);
 };
 class TopAccel;
@@ -22,7 +23,8 @@ class Shader : public vstd::IOperatorNewBase {
 public:
 	enum class Tag : vbyte {
 		ComputeShader,
-		RayTracingShader
+		RayTracingShader,
+		RasterShader
 	};
 	virtual Tag GetTag() const = 0;
 
@@ -40,7 +42,8 @@ public:
 	Shader(
 		vstd::vector<Property>&& properties,
 		vstd::vector<SavedArgument>&& args,
-		ID3D12Device* device);
+		ID3D12Device* device,
+		bool isRaster);
 	Shader(
 		vstd::vector<Property>&& properties,
 		vstd::vector<SavedArgument>&& args,

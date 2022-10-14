@@ -31,10 +31,8 @@ end
 UseMimalloc = true
 if is_mode("debug") then
 	set_targetdir("bin/debug")
-	add_linkdirs("lib/debug")
 else
 	set_targetdir("bin/release")
-	add_linkdirs("lib/release")
 end
 function BuildProject(config)
 	local projectName = GetValue(config.projectName)

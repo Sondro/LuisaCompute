@@ -77,9 +77,11 @@ CompileResult ShaderCompiler::CompileCompute(
     vstd::string_view code,
     bool optimize,
     uint shaderModel) {
+#ifndef NDEBUG
     if (shaderModel < 10) {
-        return "Illegal shader model!"_sv;
+        LUISA_ERROR("Illegal shader model!");
     }
+#endif
     vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
     vstd::wstring smStr;
     smStr << L"cs_" << GetSM(shaderModel);
@@ -101,6 +103,45 @@ CompileResult ShaderCompiler::CompileCompute(
         args.push_back(L"/O3");
     }
     return Compile(code, args);
+}
+RasterBin ShaderCompiler::CompileRaster(
+    vstd::string_view code,
+    bool optimize,
+    uint shaderModel) {
+#ifndef NDEBUG
+    if (shaderModel < 10) {
+        LUISA_ERROR("Illegal shader model!");
+    }
+#endif
+    vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
+
+    args.push_back_all(
+        {L"/Qstrip_debug",
+         L"/Qstrip_reflect",
+         L"/Qstrip_priv",
+         L"/enable_unbounded_descriptor_tables",
+         L"/Qstrip_rootsignature",
+         L"/Gfa",
+         L"/all-resources-bound",
+         L"/quiet",
+         L"/q",
+         L"/debug_level=none",
+         L"-HV 2021"});
+    if (optimize) {
+        args.push_back(L"/O3");
+    }
+    args.push_back(L"/T");
+
+    vstd::wstring smStr;
+    smStr << L"vs_" << GetSM(shaderModel);
+    args.push_back(smStr.c_str());
+    RasterBin bin;
+    bin.vertex = Compile(code, args);
+    args.erase_last();
+    smStr << L"ps_" << GetSM(shaderModel);
+    args.push_back(smStr.c_str());
+    bin.pixel = Compile(code, args);
+    return bin;
 }
 #ifdef SHADER_COMPILER_TEST
 

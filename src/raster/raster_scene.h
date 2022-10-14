@@ -1,0 +1,51 @@
+#pragma once
+#include <runtime/buffer.h>
+namespace luisa::compute {
+class VertexBufferView {
+    uint64_t _handle;
+    uint64_t _offset;
+    uint64_t _size;
+    uint64_t _stride;
+
+public:
+    uint64_t handle() const noexcept { return _handle; }
+    uint64_t offset() const noexcept { return _offset; }
+    uint64_t size() const noexcept { return _size; }
+    uint64_t stride() const noexcept { return _stride; }
+    template<typename T>
+    VertexBufferView(BufferView<T> const &buffer_view) {
+        _handle = buffer_view.handle();
+        _offset = buffer_view.offset_bytes();
+        _size = buffer_view.size_bytes();
+        _stride = sizeof(T);
+    }
+};
+class RasterMesh {
+    luisa::span<VertexBufferView const> _vertex_buffers;
+    luisa::optional<BufferView<uint>> _index_buffer;
+    uint _instance_count;
+
+public:
+    luisa::span<VertexBufferView const> vertex_buffers() const noexcept { return _vertex_buffers; }
+    luisa::optional<BufferView<uint>> const &index() const noexcept { return _index_buffer; };
+    uint instance_count() const noexcept { return _instance_count; }
+    RasterMesh(
+        luisa::span<VertexBufferView const> vertex_buffers,
+        BufferView<uint> index_buffer,
+        uint instance_count)
+        : _vertex_buffers(vertex_buffers),
+          _index_buffer(index_buffer),
+          _instance_count(instance_count) {
+    }
+    RasterMesh(
+        luisa::span<VertexBufferView const> vertex_buffers,
+        uint instance_count)
+        : _vertex_buffers(vertex_buffers),
+          _instance_count(instance_count) {
+    }
+};
+class RasterScene {
+public:
+    luisa::span<const RasterMesh> meshes;
+};
+}// namespace luisa::compute

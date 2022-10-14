@@ -7,11 +7,11 @@
 
 #include <core/stl/hash.h>
 
-[[nodiscard]] inline uint64_t vstd_xxhash_gethash(const void *data, size_t size, uint64_t seed = 19980810u) noexcept {
+[[nodiscard]] inline uint64_t vstd_xxhash_gethash(const void *data, size_t size, uint64_t seed = 14695981039346656037ULL) noexcept {
     return luisa::detail::murmur2_hash64(data, size, seed);
 }
 
-[[nodiscard]] inline uint64_t vstd_xxhash_gethash_small(const void *data, size_t size, uint64_t seed = 19980810u) noexcept {
+[[nodiscard]] inline uint64_t vstd_xxhash_gethash_small(const void *data, size_t size, uint64_t seed = 14695981039346656037ULL) noexcept {
     return vstd_xxhash_gethash(data, size, seed);
 }
 
@@ -62,7 +62,7 @@ struct hash {
 		if constexpr (sizeof(K) < (sizeof(size_t) / 2)) {
 			return vstd_xxhash_gethash_small(&value, sizeof(K));
 		} else {
-			return Hash::CharArrayHash(&value, sizeof(K));
+			return vstd_xxhash_gethash(&value, sizeof(K));
 		}
 	}
 };

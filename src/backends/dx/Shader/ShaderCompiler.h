@@ -6,40 +6,49 @@ namespace toolhub::directx {
 
 class DXByteBlob final : public vstd::IOperatorNewBase {
 private:
-	ComPtr<IDxcBlob> blob;
-	ComPtr<IDxcResult> comRes;
+    ComPtr<IDxcBlob> blob;
+    ComPtr<IDxcResult> comRes;
 
 public:
-	DXByteBlob(
-		ComPtr<IDxcBlob>&& b,
-		ComPtr<IDxcResult>&& rr);
-	std::byte* GetBufferPtr() const;
-	size_t GetBufferSize() const;
+    DXByteBlob(
+        ComPtr<IDxcBlob> &&b,
+        ComPtr<IDxcResult> &&rr);
+    std::byte *GetBufferPtr() const;
+    size_t GetBufferSize() const;
 };
+
 using CompileResult = vstd::variant<
-	vstd::unique_ptr<DXByteBlob>,
-	vstd::string>;
+    vstd::unique_ptr<DXByteBlob>,
+    vstd::string>;
+struct RasterBin {
+    CompileResult vertex;
+    CompileResult pixel;
+};
 class ShaderCompiler final : public vstd::IOperatorNewBase {
 private:
-	ComPtr<IDxcCompiler3> comp;
-	luisa::optional<luisa::DynamicModule> dxcCompiler;
-	CompileResult Compile(
-		vstd::string_view code,
-		vstd::span<LPCWSTR> args);
+    ComPtr<IDxcCompiler3> comp;
+    luisa::optional<luisa::DynamicModule> dxcCompiler;
+    CompileResult Compile(
+        vstd::string_view code,
+        vstd::span<LPCWSTR> args);
 
 public:
-	ShaderCompiler();
-	~ShaderCompiler();
-	CompileResult CompileCompute(
-		vstd::string_view code,
-		bool optimize,
-		uint shaderModel = 63);
+    ShaderCompiler();
+    ~ShaderCompiler();
+    CompileResult CompileCompute(
+        vstd::string_view code,
+        bool optimize,
+        uint shaderModel);
+    RasterBin CompileRaster(
+        vstd::string_view code,
+        bool optimize,
+        uint shaderModel);
 #ifdef SHADER_COMPILER_TEST
-	CompileResult CustomCompile(
-		vstd::string_view code,
-		vstd::span<vstd::string const> args);
+    CompileResult CustomCompile(
+        vstd::string_view code,
+        vstd::span<vstd::string const> args);
 #endif
-	/*CompileResult CompileRayTracing(
+    /*CompileResult CompileRayTracing(
         vstd::string_view code,
         bool optimize,
         uint shaderModel = 63);*/

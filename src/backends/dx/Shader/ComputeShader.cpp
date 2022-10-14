@@ -1,7 +1,7 @@
 #include <Shader/ComputeShader.h>
 #include <Shader/ShaderSerializer.h>
 #include <vstl/BinaryReader.h>
-#include "HLSL/dx_codegen.h"
+#include <HLSL/dx_codegen.h>
 #include <Shader/ShaderCompiler.h>
 #include <vstl/MD5.h>
 namespace toolhub::directx {
@@ -73,7 +73,11 @@ ComputeShader *ComputeShader::CompileCompute(
         auto str = codegen();
         vstd::MD5 md5;
         if constexpr (WriteCache) {
-            md5 = vstd::MD5({reinterpret_cast<vbyte const *>(str.result.data() + str.immutableHeaderSize), str.result.size() - str.immutableHeaderSize});
+            if (checkMD5) {
+                md5 = *checkMD5;
+            } else {
+                md5 = vstd::MD5({reinterpret_cast<vbyte const *>(str.result.data() + str.immutableHeaderSize), str.result.size() - str.immutableHeaderSize});
+            }
         }
         if constexpr (PRINT_CODE) {
             std::cout
@@ -191,7 +195,7 @@ ComputeShader::ComputeShader(
     vstd::vector<SavedArgument> &&args,
     vstd::span<std::byte const> binData,
     Device *device)
-    : Shader(std::move(prop), std::move(args), device->device.Get()),
+    : Shader(std::move(prop), std::move(args), device->device.Get(), false),
       blockSize(blockSize),
       device(device) {
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
