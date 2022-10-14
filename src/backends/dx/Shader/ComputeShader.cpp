@@ -69,10 +69,10 @@ ComputeShader *ComputeShader::CompileCompute(
     using namespace ComputeShaderDetail;
     static constexpr bool PRINT_CODE = false;
 
-    auto CompileNewCompute = [&]<bool WriteCache>() {
+    auto CompileNewCompute = [&](bool WriteCache) {
         auto str = codegen();
         vstd::MD5 md5;
-        if constexpr (WriteCache) {
+        if (WriteCache) {
             if (checkMD5) {
                 md5 = *checkMD5;
             } else {
@@ -100,7 +100,7 @@ ComputeShader *ComputeShader::CompileCompute(
                         return ShaderSerializer::SerializeKernel(kernel);
                     }
                 }();
-                if constexpr (WriteCache) {
+                if (WriteCache) {
                     auto serData = ShaderSerializer::Serialize(
                         str.properties,
                         kernelArgs,
@@ -122,7 +122,7 @@ ComputeShader *ComputeShader::CompileCompute(
                      buffer->GetBufferSize()},
                     device);
                 cs->bindlessCount = str.bdlsBufferCount;
-                if constexpr (WriteCache) {
+                if (WriteCache) {
                     SavePSO(md5.ToString(), fileIo, cs);
                 }
                 return cs;
@@ -153,9 +153,9 @@ ComputeShader *ComputeShader::CompileCompute(
             return result;
         }
 
-        return CompileNewCompute.operator()<true>();
+        return CompileNewCompute(true);
     } else {
-        return CompileNewCompute.operator()<false>();
+        return CompileNewCompute(false);
     }
 }
 void ComputeShader::SaveCompute(

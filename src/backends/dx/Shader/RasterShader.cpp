@@ -6,6 +6,13 @@
 #include <Shader/ShaderCompiler.h>
 #include <vstl/MD5.h>
 namespace toolhub::directx {
+namespace RasterShaderDetail {
+static void SavePSO(vstd::string_view fileName, BinaryIOVisitor *fileStream, RasterShader const *s) {
+    ComPtr<ID3DBlob> psoCache;
+    s->Pso()->GetCachedBlob(&psoCache);
+    fileStream->write_cache(fileName, {reinterpret_cast<std::byte const *>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
+};
+}// namespace RasterShaderDetail
 RasterShader::RasterShader(
     Device *device,
     vstd::vector<Property> &&prop,
@@ -13,6 +20,80 @@ RasterShader::RasterShader(
     ComPtr<ID3D12RootSignature> &&rootSig,
     ComPtr<ID3D12PipelineState> &&pso)
     : Shader(std::move(prop), std::move(args), std::move(rootSig)), pso(std::move(pso)) {}
+void RasterShader::GetMeshFormatState(
+    vstd::vector<D3D12_INPUT_ELEMENT_DESC> &inputLayout,
+    MeshFormat const &meshFormat) {
+    inputLayout.clear();
+    inputLayout.reserve(meshFormat.vertex_attribute_count());
+    static auto SemanticName = {
+        "POSITION",
+        "NORMAL",
+        "TANGENT",
+        "COLOR",
+        "UV",
+        "UV",
+        "UV",
+        "UV"};
+    static auto SemanticIndex = {0u, 0u, 0u, 0u, 0u, 1u, 2u, 3u};
+    vstd::vector<uint, VEngine_AllocType::VEngine, 4> offsets(meshFormat.vertex_stream_count());
+    memset(offsets.data(), 0, offsets.byte_size());
+    for (auto i : vstd::range(meshFormat.vertex_stream_count())) {
+        auto vec = meshFormat.attributes(i);
+        for (auto &&attr : vec) {
+            size_t size;
+            DXGI_FORMAT format;
+            switch (attr.format) {
+                case VertexElementFormat::XYZW8UNorm:
+                    size = 4;
+                    format = DXGI_FORMAT_R8G8B8A8_UNORM;
+                    break;
+                case VertexElementFormat::XY16UNorm:
+                    size = 4;
+                    format = DXGI_FORMAT_R16G16_UNORM;
+                    break;
+                case VertexElementFormat::XYZW16UNorm:
+                    size = 8;
+                    format = DXGI_FORMAT_R16G16B16A16_UNORM;
+                    break;
+
+                case VertexElementFormat::XY16Float:
+                    size = 4;
+                    format = DXGI_FORMAT_R16G16_FLOAT;
+                    break;
+                case VertexElementFormat::XYZW16Float:
+                    size = 8;
+                    format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+                    break;
+                case VertexElementFormat::X32Float:
+                    size = 4;
+                    format = DXGI_FORMAT_R32_FLOAT;
+                    break;
+                case VertexElementFormat::XY32Float:
+                    size = 8;
+                    format = DXGI_FORMAT_R32G32_FLOAT;
+                    break;
+                case VertexElementFormat::XYZ32Float:
+                    size = 12;
+                    format = DXGI_FORMAT_R32G32B32_FLOAT;
+                    break;
+                case VertexElementFormat::XYZW32Float:
+                    size = 16;
+                    format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+                    break;
+            }
+            auto &offset = offsets[i];
+            inputLayout.emplace_back(D3D12_INPUT_ELEMENT_DESC{
+                .SemanticName = SemanticName.begin()[static_cast<uint>(attr.type)],
+                .SemanticIndex = SemanticIndex.begin()[static_cast<uint>(attr.type)],
+                .AlignedByteOffset = offset,
+                .Format = format,
+                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                .InputSlot = static_cast<uint>(i)});
+            offset += size;
+        }
+        // TODO
+    }
+}
 RasterShader::RasterShader(
     Device *device,
     vstd::vector<Property> &&prop,
@@ -31,9 +112,10 @@ RasterShader::RasterShader(
         state,
         rtv,
         dsv);
+    psoState.pRootSignature = this->rootSig.Get();
     psoState.VS = {.pShaderBytecode = vertBinData.data(), .BytecodeLength = vertBinData.size()};
     psoState.PS = {.pShaderBytecode = pixelBinData.data(), .BytecodeLength = pixelBinData.size()};
-    device->device->CreateGraphicsPipelineState(&psoState, IID_PPV_ARGS(pso.GetAddressOf()));
+    ThrowIfFailed(device->device->CreateGraphicsPipelineState(&psoState, IID_PPV_ARGS(pso.GetAddressOf())));
 }
 RasterShader::~RasterShader() {}
 D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
@@ -118,8 +200,8 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
     };
 
     D3D12_RENDER_TARGET_BLEND_DESC blend{};
-    if (state.blend_state.has_value()) {
-        auto &v = *state.blend_state;
+    if (state.blend_state.enableBlend) {
+        auto &v = state.blend_state;
         blend.BlendEnable = true;
         blend.BlendOp = D3D12_BLEND_OP_ADD;
         blend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
@@ -130,22 +212,22 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
         blend.RenderTargetWriteMask = std::numeric_limits<vbyte>::max();
     }
     D3D12_GRAPHICS_PIPELINE_STATE_DESC result = {
-        .pRootSignature = rootSig.Get(),
         .BlendState = {
             .AlphaToCoverageEnable = false,
             .IndependentBlendEnable = false,
             .RenderTarget = {blend}},
         .PrimitiveTopologyType = GetTopology(state.topology),
+        .SampleDesc = {.Count = 1, .Quality = 0},
         .NumRenderTargets = static_cast<uint>(rtv.size())};
     D3D12_DEPTH_STENCIL_DESC &depth = result.DepthStencilState;
-    if (state.depth_state.has_value()) {
-        auto &v = *state.depth_state;
+    if (state.depth_state.enableDepth) {
+        auto &v = state.depth_state;
         depth.DepthEnable = true;
         depth.DepthFunc = ComparisonState(v.comparison);
         depth.DepthWriteMask = v.write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
     }
-    if (state.stencil_state.has_value()) {
-        auto &v = *state.stencil_state;
+    if (state.stencil_state.enableStencil) {
+        auto &v = state.stencil_state;
         depth.StencilEnable = true;
         depth.StencilReadMask = v.read_mask;
         depth.StencilWriteMask = v.write_mask;
@@ -168,76 +250,7 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
         result.RTVFormats[i] = static_cast<DXGI_FORMAT>(TextureBase::ToGFXFormat(rtv[i]));
     }
     result.DSVFormat = static_cast<DXGI_FORMAT>(DepthBuffer::GetDepthFormat(dsv));
-    inputLayout.clear();
-    inputLayout.reserve(meshFormat.vertex_attribute_count());
-    static auto SemanticName = {
-        "POSITION",
-        "NORMAL",
-        "TANGENT",
-        "COLOR",
-        "UV",
-        "UV",
-        "UV",
-        "UV"};
-    static auto SemanticIndex = {0u, 0u, 0u, 0u, 0u, 1u, 2u, 3u};
-    vstd::vector<uint, VEngine_AllocType::VEngine, 4> offsets(meshFormat.vertex_stream_count());
-    memset(offsets.data(), 0, offsets.byte_size());
-    for (auto i : vstd::range(meshFormat.vertex_stream_count())) {
-        auto vec = meshFormat.attributes(i);
-        for (auto &&attr : vec) {
-            size_t size;
-            DXGI_FORMAT format;
-            switch (attr.format) {
-                case VertexElementFormat::XYZW8UNorm:
-                    size = 4;
-                    format = DXGI_FORMAT_R8G8B8A8_UNORM;
-                    break;
-                case VertexElementFormat::XY16UNorm:
-                    size = 4;
-                    format = DXGI_FORMAT_R16G16_UNORM;
-                    break;
-                case VertexElementFormat::XYZW16UNorm:
-                    size = 8;
-                    format = DXGI_FORMAT_R16G16B16A16_UNORM;
-                    break;
-
-                case VertexElementFormat::XY16Float:
-                    size = 4;
-                    format = DXGI_FORMAT_R16G16_FLOAT;
-                    break;
-                case VertexElementFormat::XYZW16Float:
-                    size = 8;
-                    format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-                    break;
-                case VertexElementFormat::X32Float:
-                    size = 4;
-                    format = DXGI_FORMAT_R32_FLOAT;
-                    break;
-                case VertexElementFormat::XY32Float:
-                    size = 8;
-                    format = DXGI_FORMAT_R32G32_FLOAT;
-                    break;
-                case VertexElementFormat::XYZ32Float:
-                    size = 12;
-                    format = DXGI_FORMAT_R32G32B32_FLOAT;
-                    break;
-                case VertexElementFormat::XYZW32Float:
-                    size = 16;
-                    format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-                    break;
-            }
-            auto &offset = offsets[i];
-            inputLayout.emplace_back(D3D12_INPUT_ELEMENT_DESC{
-                .SemanticName = SemanticName.begin()[static_cast<uint>(attr.type)],
-                .SemanticIndex = SemanticIndex.begin()[static_cast<uint>(attr.type)],
-                .AlignedByteOffset = offset,
-                .Format = format,
-                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-                .InputSlot = static_cast<uint>(i)});
-            offset += size;
-        }
-        // TODO
-    }
+    GetMeshFormatState(inputLayout, meshFormat);
     result.InputLayout = {.pInputElementDescs = inputLayout.data(), .NumElements = static_cast<uint>(inputLayout.size())};
     return result;
 }
@@ -278,7 +291,7 @@ RasterShader *RasterShader::CompileRaster(
     Function vertexKernel,
     Function pixelKernel,
     vstd::function<CodegenResult()> const &codegen,
-    vstd::MD5 const &codeMd5,
+    vstd::MD5 const &md5,
     uint shaderModel,
     MeshFormat const &meshFormat,
     RasterState const &state,
@@ -286,10 +299,9 @@ RasterShader *RasterShader::CompileRaster(
     DepthFormat dsv,
     vstd::string_view fileName,
     bool byteCodeIsCache) {
-    auto md5 = GenMD5(codeMd5, meshFormat, state, rtv, dsv);
     static constexpr bool PRINT_CODE = false;
 
-    auto CompileNewCompute = [&]<bool WriteCache>() {
+    auto CompileNewCompute = [&](bool writeCache) -> RasterShader * {
         auto str = codegen();
         if constexpr (PRINT_CODE) {
             std::cout
@@ -304,16 +316,16 @@ RasterShader *RasterShader::CompileRaster(
         if (compResult.vertex.IsTypeOf<vstd::string>()) {
             std::cout << compResult.vertex.get<1>() << '\n';
             VSTL_ABORT();
-            return;
+            return nullptr;
         }
         if (compResult.pixel.IsTypeOf<vstd::string>()) {
             std::cout << compResult.pixel.get<1>() << '\n';
             VSTL_ABORT();
-            return;
+            return nullptr;
         }
-        auto kernelArgs = [&] {
+        auto kernelArgs = [&] -> vstd::vector<SavedArgument> {
             if (vertexKernel.builder() == nullptr || pixelKernel.builder() == nullptr) {
-                return vstd::vector<SavedArgument>();
+                return {};
             } else {
                 auto vertArgs =
                     vstd::CacheEndRange(vertexKernel.arguments()) |
@@ -332,11 +344,82 @@ RasterShader *RasterShader::CompileRaster(
                 return ShaderSerializer::SerializeKernel(args);
             }
         }();
-        
+        auto GetSpan = [&](DXByteBlob const &blob) {
+            return vstd::span<std::byte const>{blob.GetBufferPtr(), blob.GetBufferSize()};
+        };
+        auto vertBin = GetSpan(*compResult.vertex.get<0>());
+        auto pixelBin = GetSpan(*compResult.pixel.get<0>());
+        if (writeCache) {
+            /*
+            vstd::vector<D3D12_INPUT_ELEMENT_DESC> elements;
+            vstd::vector<InputElement> inputElement;
+            auto psoState = GetState(elements, meshFormat, state, rtv, dsv);
+            inputElement.push_back_func(
+                elements.size(),
+                [&](size_t i){
+                    auto& src = elements[i];
+                    return InputElement{
+                        .inputSlot = src.InputSlot,
+                        .alignedByteOffset = src.AlignedByteOffset,
+                        .format = src.Format,
+                        .semanticIndex = src.SemanticIndex,
+                        .type
+                    }
+                }
+            )
+            RasterHeaderData headerData = {
+                psoState.BlendState,
+                psoState.RasterizerState,
+                psoState.DepthStencilState,
+                psoState.PrimitiveTopologyType,
+                psoState.NumRenderTargets,
+                static_cast<uint>(elements.size())};
+            memcpy(&headerData.RTVFormats, psoState.RTVFormats, 8 * sizeof(DXGI_FORMAT));
+            headerData.DSVFormat = psoState.DSVFormat;
+            auto serData = ShaderSerializer::RasterSerialize(
+                str.properties,
+                kernelArgs,
+                vertBin,
+                pixelBin,
+                md5,
+                str.bdlsBufferCount,
+                headerData,
+                elements.data());
+            if (byteCodeIsCache) {
+                fileIo->write_cache(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+            } else {
+                fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+            }*/
+        }
+
+        auto s = new RasterShader(
+            device,
+            std::move(str.properties),
+            std::move(kernelArgs),
+            meshFormat,
+            state,
+            rtv,
+            dsv,
+            vertBin,
+            pixelBin);
+        s->bindlessCount = str.bdlsBufferCount;
+
+        if (writeCache) {
+            RasterShaderDetail::SavePSO(md5.ToString(), fileIo, s);
+        }
+        return s;
     };
     if (!fileName.empty()) {
-
+        bool oldDeleted = false;
+        auto result = ShaderSerializer::RasterDeSerialize(fileName, byteCodeIsCache, device, *fileIo, {md5}, oldDeleted);
+        if (result) {
+            if (oldDeleted) {
+                RasterShaderDetail::SavePSO(md5.ToString(), fileIo, result);
+            }
+        }
+        return CompileNewCompute(true);
     } else {
+        return CompileNewCompute(false);
     }
 }
 }// namespace toolhub::directx

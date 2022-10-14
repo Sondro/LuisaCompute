@@ -71,10 +71,12 @@ enum class StencilOp : uint8_t {
 };
 
 struct BlendState {
+    bool enableBlend{};
     BlendOp src_op{BlendOp::Zero};
     BlendOp dst_op{BlendOp::One};
 };
 struct DepthState {
+    bool enableDepth{};
     Comparison comparison{};
     bool write{};
 };
@@ -85,6 +87,7 @@ struct StencilFaceOp {
     Comparison comparison{};
 };
 struct StencilState {
+    bool enableStencil{};
     StencilFaceOp front_face_op{};
     StencilFaceOp back_face_op{};
     uint8_t read_mask{};
@@ -93,9 +96,9 @@ struct StencilState {
 struct RasterState {
     FillMode fill_mode{FillMode::Solid};
     CullMode cull_mode{CullMode::Back};
-    luisa::optional<BlendState> blend_state{};
-    luisa::optional<DepthState> depth_state{};
-    luisa::optional<StencilState> stencil_state{};
+    BlendState blend_state{};
+    DepthState depth_state{};
+    StencilState stencil_state{};
     TopologyType topology{TopologyType::Triangle};
     bool front_counter_clockwise{false};
     bool depth_clip{true};

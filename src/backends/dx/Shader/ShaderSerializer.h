@@ -2,6 +2,7 @@
 #include <d3dx12.h>
 #include <Shader/Shader.h>
 #include <core/binary_io_visitor.h>
+#include <raster/raster_state.h>
 namespace toolhub::directx {
 class ComputeShader;
 class RasterShader;
@@ -19,6 +20,13 @@ struct RasterHeaderData {
     uint inputLayoutCount;
     DXGI_FORMAT RTVFormats[8];
     DXGI_FORMAT DSVFormat;
+};
+struct InputElement {
+    VertexAttributeType type;
+    UINT semanticIndex;
+    DXGI_FORMAT format;
+    UINT inputSlot;
+    UINT alignedByteOffset;
 };
 class ShaderSerializer {
     static size_t SerializeRootSig(
@@ -46,7 +54,7 @@ public:
         vstd::MD5 const &checkMD5,
         uint bindlessCount,
         RasterHeaderData const &headerData,
-        D3D12_INPUT_ELEMENT_DESC const *inputLayouts);
+        InputElement const* inputElement);
     static ComputeShader *DeSerialize(
         luisa::string_view fileName,
         bool byteCodeIsCache,

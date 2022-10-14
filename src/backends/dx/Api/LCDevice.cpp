@@ -6,6 +6,7 @@
 #include <Resource/DepthBuffer.h>
 #include <Resource/BindlessArray.h>
 #include <Shader/ComputeShader.h>
+#include <Shader/RasterShader.h>
 #include <Api/LCCmdBuffer.h>
 #include <Api/LCEvent.h>
 #include <vstl/MD5.h>
@@ -326,13 +327,29 @@ uint64_t LCDevice::create_raster_shader(
     Function vert,
     Function pixel,
     bool use_cache) noexcept {
-    auto result = CodegenUtility::RasterCodegen(mesh_format, vert, pixel, shaderPaths.dataFolder);
-    auto f = fopen("shader.hlsl", "wb");
-    if (f) {
-        auto ext = vstd::scope_exit([&] { fclose(f); });
-        fwrite(result.result.data(), result.result.size(), 1, f);
+    auto code = CodegenUtility::RasterCodegen(mesh_format, vert, pixel, shaderPaths.dataFolder);
+    vstd::string file_name;
+    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.
+    immutableHeaderSize});
+    checkMD5 = RasterShader::GenMD5(checkMD5, mesh_format, raster_state, rtv_format, dsv_format);
+    if (use_cache) {
+        file_name << checkMD5.ToString() << ".dxil";
     }
-    return ~0ull;
+    auto shader = RasterShader::CompileRaster(
+        nativeDevice.fileIo,
+        &nativeDevice,
+        vert,
+        pixel,
+        [&] { return std::move(code); },
+        checkMD5,
+        65,
+        mesh_format,
+        raster_state,
+        rtv_format,
+        dsv_format,
+        file_name,
+        true);
+    return reinterpret_cast<uint64>(shader);
 }
 uint64_t LCDevice::create_depth_buffer(DepthFormat format, uint width, uint height) noexcept {
 }

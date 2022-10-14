@@ -31,19 +31,18 @@ int main(int argc, char *argv[]) {
     auto vertAttribs = {
         VertexAttribute{
             .type = VertexAttributeType::Position,
-            .scalar_type = ScalarType::Float32,
-            .dimension = 3},
+            .format = VertexElementFormat::XYZ32Float},
         VertexAttribute{
             .type = VertexAttributeType::Normal,
-            .scalar_type = ScalarType::Float32,
-            .dimension = 3}};
+            .format = VertexElementFormat::XYZ32Float}};
     MeshFormat meshFormat;
     meshFormat.emplace_vertex_stream(vertAttribs);
     RasterState rasterState;
     auto dstFormat = PixelFormat::RGBA8UNorm;
     auto shader = device.compile(kernel, meshFormat, rasterState, {&dstFormat, size_t(1)}, DepthFormat::D32);
-    auto &&ctx = device.context();
-    auto &&module = ctx.loaded_modules()[ctx.index()];
-    auto consoleTest = module.function<void()>("ConsoleTest");
-    consoleTest();
+    
+    // auto &&ctx = device.context();
+    // auto &&module = ctx.loaded_modules()[ctx.index()];
+    // auto consoleTest = module.function<void()>("ConsoleTest");
+    // consoleTest();
 }

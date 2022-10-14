@@ -64,10 +64,10 @@ vstd::vector<std::byte> ShaderSerializer::RasterSerialize(
     vstd::MD5 const &checkMD5,
     uint bindlessCount,
     RasterHeaderData const &data,
-    D3D12_INPUT_ELEMENT_DESC const *inputLayouts) {
+    InputElement const *inputElement) {
     using namespace shader_ser;
     vstd::vector<std::byte> result;
-    size_t inputLayoutSize = data.inputLayoutCount * sizeof(D3D12_INPUT_ELEMENT_DESC);
+    size_t inputLayoutSize = data.inputLayoutCount * sizeof(InputElement);
     result.reserve(sizeof(RasterHeader) + sizeof(RasterHeaderData) + inputLayoutSize + vertBin.size_bytes() + pixelBin.size_bytes() + properties.size_bytes() + kernelArgs.size_bytes() + kRootSigReserveSize);
     result.resize(sizeof(RasterHeader) + sizeof(RasterHeaderData) + inputLayoutSize);
     RasterHeader header = {
@@ -80,7 +80,7 @@ vstd::vector<std::byte> ShaderSerializer::RasterSerialize(
         static_cast<uint>(kernelArgs.size())};
     *reinterpret_cast<RasterHeader *>(result.data()) = std::move(header);
     memcpy(result.data() + sizeof(RasterHeader), &data, sizeof(RasterHeaderData));
-    memcpy(result.data() + sizeof(RasterHeader) + sizeof(RasterHeaderData), inputLayouts, inputLayoutSize);
+    memcpy(result.data() + sizeof(RasterHeader) + sizeof(RasterHeaderData), inputElement, inputLayoutSize);
     result.push_back_all(vertBin);
     result.push_back_all(pixelBin);
     result.push_back_all(
@@ -230,7 +230,7 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
          sizeof(RasterHeaderData)});
 
     size_t targetSize =
-        h.second.inputLayoutCount * sizeof(D3D12_INPUT_ELEMENT_DESC) +
+        h.second.inputLayoutCount * sizeof(InputElement) +
         h.first.rootSigBytes +
         h.first.vertCodeBytes +
         h.first.pixelCodeBytes +
@@ -244,18 +244,42 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
     binCode.resize(targetSize);
     binStream->read({binCode.data(), binCode.size()});
     auto binPtr = binCode.data();
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{
-        .BlendState = h.second.blendState,
-        .RasterizerState = h.second.rasterizerState,
-        .DepthStencilState = h.second.depthStencilState,
-        .PrimitiveTopologyType = h.second.primitiveTopologyType,
-        .NumRenderTargets = h.second.numRtv,
-        .DSVFormat = h.second.DSVFormat,
-        .InputLayout = {
-            .pInputElementDescs = reinterpret_cast<D3D12_INPUT_ELEMENT_DESC const *>(binPtr),
-            .NumElements = h.second.inputLayoutCount},
-    };
-    binPtr += h.second.inputLayoutCount * sizeof(D3D12_INPUT_ELEMENT_DESC);
+    auto vertAttr = reinterpret_cast<InputElement const *>(binPtr);
+    vstd::vector<D3D12_INPUT_ELEMENT_DESC> elements;
+    static auto SemanticName = {
+        "POSITION",
+        "NORMAL",
+        "TANGENT",
+        "COLOR",
+        "UV",
+        "UV",
+        "UV",
+        "UV"};
+    elements.push_back_func(
+        h.second.inputLayoutCount,
+        [&](size_t i) {
+            auto &src = vertAttr[i];
+            return D3D12_INPUT_ELEMENT_DESC{
+                .InputSlot = src.inputSlot,
+                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                .AlignedByteOffset = src.alignedByteOffset,
+                .Format = src.format,
+                .SemanticIndex = src.semanticIndex,
+                .SemanticName = SemanticName.begin()[src.semanticIndex]};
+        });
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{
+            .BlendState = h.second.blendState,
+            .RasterizerState = h.second.rasterizerState,
+            .DepthStencilState = h.second.depthStencilState,
+            .PrimitiveTopologyType = h.second.primitiveTopologyType,
+            .NumRenderTargets = h.second.numRtv,
+            .DSVFormat = h.second.DSVFormat,
+            .InputLayout = {
+                .pInputElementDescs = elements.data(),
+                .NumElements = h.second.inputLayoutCount},
+        };
+    binPtr += h.second.inputLayoutCount * sizeof(InputElement);
     auto psoStream = streamFunc.read_cache(h.first.md5.ToString());
     if (psoStream != nullptr && psoStream->length() > 0) {
         psoCode.resize(psoStream->length());
@@ -423,5 +447,6 @@ vstd::vector<SavedArgument> ShaderSerializer::SerializeKernel(
     for (auto &&i : arguments) {
         result.emplace_back(i.second, i.first);
     }
+    return result;
 }
 }// namespace toolhub::directx

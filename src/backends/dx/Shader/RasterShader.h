@@ -20,6 +20,7 @@ private:
         ComPtr<ID3D12PipelineState> &&pso);
 
 public:
+    ID3D12PipelineState *Pso() const { return pso.Get(); }
     Tag GetTag() const noexcept override { return Tag::RasterShader; }
     static vstd::MD5 GenMD5(
         vstd::MD5 const &codeMD5,
@@ -27,7 +28,10 @@ public:
         RasterState const &state,
         vstd::span<PixelFormat const> rtv,
         DepthFormat dsv);
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC GetState(
+    static void GetMeshFormatState(
+        vstd::vector<D3D12_INPUT_ELEMENT_DESC> &inputLayout,
+        MeshFormat const &meshFormat);
+    static D3D12_GRAPHICS_PIPELINE_STATE_DESC GetState(
         vstd::vector<D3D12_INPUT_ELEMENT_DESC> &inputLayout,
         MeshFormat const &meshFormat,
         RasterState const &state,

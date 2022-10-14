@@ -3,5 +3,5 @@ BuildProject({
 	projectType = "binary"
 })
 add_includedirs("../ext/stb/")
-add_files("test_rtx.cpp", "../ext/stb/stb.c")
+add_files("test_compile.cpp", "../ext/stb/stb.c")
 add_deps("luisa-compute-dsl", "luisa-compute-rtx", "luisa-compute-vstl")

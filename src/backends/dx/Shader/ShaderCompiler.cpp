@@ -131,15 +131,18 @@ RasterBin ShaderCompiler::CompileRaster(
         args.push_back(L"/O3");
     }
     args.push_back(L"/T");
-
+    auto size = args.size();
     vstd::wstring smStr;
     smStr << L"vs_" << GetSM(shaderModel);
     args.push_back(smStr.c_str());
+    args.push_back(L"/DVS");
     RasterBin bin;
     bin.vertex = Compile(code, args);
-    args.erase_last();
+    args.resize(size);
+    smStr.clear();
     smStr << L"ps_" << GetSM(shaderModel);
     args.push_back(smStr.c_str());
+    args.push_back(L"/DPS");
     bin.pixel = Compile(code, args);
     return bin;
 }
