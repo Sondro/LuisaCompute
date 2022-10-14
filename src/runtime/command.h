@@ -20,9 +20,12 @@
 #include <ast/function.h>
 #include <runtime/pixel.h>
 #include <ast/function_builder.h>
+#include <runtime/stream_tag.h>
 
 namespace luisa::compute {
-
+class CmdDeser;
+class RasterScene;
+class CmdSer;
 #define LUISA_COMPUTE_RUNTIME_COMMANDS \
     BufferUploadCommand,               \
         BufferDownloadCommand,         \
@@ -35,7 +38,9 @@ namespace luisa::compute {
         TextureToBufferCopyCommand,    \
         AccelBuildCommand,             \
         MeshBuildCommand,              \
-        BindlessArrayUpdateCommand
+        BindlessArrayUpdateCommand,    \
+        CustomCommand,                 \
+        DrawRasterSceneCommand
 
 #define LUISA_MAKE_COMMAND_FWD_DECL(CMD) class CMD;
 LUISA_MAP(LUISA_MAKE_COMMAND_FWD_DECL, LUISA_COMPUTE_RUNTIME_COMMANDS)
@@ -67,27 +72,22 @@ LUISA_MAP(LUISA_MAKE_COMMAND_POOL_DECL, LUISA_COMPUTE_RUNTIME_COMMANDS)
 
 }// namespace detail
 
-#define LUISA_MAKE_COMMAND_COMMON_CREATE(Cmd)                                    \
-    template<typename... Args>                                                   \
-    [[nodiscard]] static auto create(Args &&...args) noexcept {                  \
-        Clock clock;                                                             \
-        auto command = detail::pool_##Cmd().create(std::forward<Args>(args)...); \
-        LUISA_VERBOSE_WITH_LOCATION(                                             \
-            "Created {} in {} ms.", #Cmd, clock.toc());                          \
-        return command;                                                          \
+#define LUISA_MAKE_COMMAND_COMMON_CREATE(Cmd)                        \
+    template<typename... Args>                                       \
+    [[nodiscard]] static auto create(Args &&...args) noexcept {      \
+        return luisa::make_unique<Cmd>(std::forward<Args>(args)...); \
     }
 
 #define LUISA_MAKE_COMMAND_COMMON_ACCEPT(Cmd)                                             \
     void accept(CommandVisitor &visitor) const noexcept override { visitor.visit(this); } \
     void accept(MutableCommandVisitor &visitor) noexcept override { visitor.visit(this); }
 
-#define LUISA_MAKE_COMMAND_COMMON_RECYCLE(Cmd) \
-    void _recycle() noexcept override { detail::pool_##Cmd().recycle(this); }
-
-#define LUISA_MAKE_COMMAND_COMMON(Cmd)    \
-    LUISA_MAKE_COMMAND_COMMON_CREATE(Cmd) \
-    LUISA_MAKE_COMMAND_COMMON_ACCEPT(Cmd) \
-    LUISA_MAKE_COMMAND_COMMON_RECYCLE(Cmd)
+#define LUISA_MAKE_COMMAND_COMMON(Cmd, Type) \
+    friend class CmdDeser;                   \
+    friend class CmdSer;                     \
+    LUISA_MAKE_COMMAND_COMMON_CREATE(Cmd)    \
+    LUISA_MAKE_COMMAND_COMMON_ACCEPT(Cmd)    \
+    StreamTag stream_tag() const noexcept override { return Type; }
 
 class LC_RUNTIME_API Command {
 
@@ -101,16 +101,13 @@ public:
 private:
     Tag _tag;
 
-protected:
-    virtual void _recycle() noexcept = 0;
-
 public:
     explicit Command(Tag tag) noexcept : _tag(tag) {}
     virtual ~Command() noexcept = default;
     virtual void accept(CommandVisitor &visitor) const noexcept = 0;
     virtual void accept(MutableCommandVisitor &visitor) noexcept = 0;
-    void recycle();
     [[nodiscard]] auto tag() const noexcept { return _tag; }
+    [[nodiscard]] virtual StreamTag stream_tag() const noexcept = 0;
 };
 
 class LC_RUNTIME_API BufferUploadCommand final : public Command {
@@ -133,7 +130,7 @@ public:
     [[nodiscard]] auto offset() const noexcept { return _offset; }
     [[nodiscard]] auto size() const noexcept { return _size; }
     [[nodiscard]] auto data() const noexcept { return _data; }
-    LUISA_MAKE_COMMAND_COMMON(BufferUploadCommand)
+    LUISA_MAKE_COMMAND_COMMON(BufferUploadCommand, StreamTag::COPY)
 };
 
 class LC_RUNTIME_API BufferDownloadCommand final : public Command {
@@ -156,7 +153,7 @@ public:
     [[nodiscard]] auto offset() const noexcept { return _offset; }
     [[nodiscard]] auto size() const noexcept { return _size; }
     [[nodiscard]] auto data() const noexcept { return _data; }
-    LUISA_MAKE_COMMAND_COMMON(BufferDownloadCommand)
+    LUISA_MAKE_COMMAND_COMMON(BufferDownloadCommand, StreamTag::COPY)
 };
 
 class LC_RUNTIME_API BufferCopyCommand final : public Command {
@@ -182,7 +179,7 @@ public:
     [[nodiscard]] auto src_offset() const noexcept { return _src_offset; }
     [[nodiscard]] auto dst_offset() const noexcept { return _dst_offset; }
     [[nodiscard]] auto size() const noexcept { return _size; }
-    LUISA_MAKE_COMMAND_COMMON(BufferCopyCommand)
+    LUISA_MAKE_COMMAND_COMMON(BufferCopyCommand, StreamTag::COPY)
 };
 
 class LC_RUNTIME_API BufferToTextureCopyCommand final : public Command {
@@ -213,7 +210,7 @@ public:
     [[nodiscard]] auto storage() const noexcept { return _pixel_storage; }
     [[nodiscard]] auto level() const noexcept { return _texture_level; }
     [[nodiscard]] auto size() const noexcept { return uint3(_texture_size[0], _texture_size[1], _texture_size[2]); }
-    LUISA_MAKE_COMMAND_COMMON(BufferToTextureCopyCommand)
+    LUISA_MAKE_COMMAND_COMMON(BufferToTextureCopyCommand, StreamTag::COPY)
 };
 
 class LC_RUNTIME_API TextureToBufferCopyCommand final : public Command {
@@ -244,7 +241,7 @@ public:
     [[nodiscard]] auto storage() const noexcept { return _pixel_storage; }
     [[nodiscard]] auto level() const noexcept { return _texture_level; }
     [[nodiscard]] auto size() const noexcept { return uint3(_texture_size[0], _texture_size[1], _texture_size[2]); }
-    LUISA_MAKE_COMMAND_COMMON(TextureToBufferCopyCommand)
+    LUISA_MAKE_COMMAND_COMMON(TextureToBufferCopyCommand, StreamTag::COPY)
 };
 
 class LC_RUNTIME_API TextureCopyCommand final : public Command {
@@ -273,7 +270,7 @@ public:
     [[nodiscard]] auto size() const noexcept { return uint3(_size[0], _size[1], _size[2]); }
     [[nodiscard]] auto src_level() const noexcept { return _src_level; }
     [[nodiscard]] auto dst_level() const noexcept { return _dst_level; }
-    LUISA_MAKE_COMMAND_COMMON(TextureCopyCommand)
+    LUISA_MAKE_COMMAND_COMMON(TextureCopyCommand, StreamTag::COPY)
 };
 
 class LC_RUNTIME_API TextureUploadCommand final : public Command {
@@ -300,7 +297,7 @@ public:
     [[nodiscard]] auto level() const noexcept { return _level; }
     [[nodiscard]] auto size() const noexcept { return uint3(_size[0], _size[1], _size[2]); }
     [[nodiscard]] auto data() const noexcept { return _data; }
-    LUISA_MAKE_COMMAND_COMMON(TextureUploadCommand)
+    LUISA_MAKE_COMMAND_COMMON(TextureUploadCommand, StreamTag::COPY)
 };
 
 class LC_RUNTIME_API TextureDownloadCommand final : public Command {
@@ -327,10 +324,9 @@ public:
     [[nodiscard]] auto level() const noexcept { return _level; }
     [[nodiscard]] auto size() const noexcept { return uint3(_size[0], _size[1], _size[2]); }
     [[nodiscard]] auto data() const noexcept { return _data; }
-    LUISA_MAKE_COMMAND_COMMON(TextureDownloadCommand)
+    LUISA_MAKE_COMMAND_COMMON(TextureDownloadCommand, StreamTag::COPY)
 };
-
-class LC_RUNTIME_API ShaderDispatchCommand final : public Command {
+class LC_RUNTIME_API ShaderDispatchCommandBase : public Command {
 
 public:
     struct alignas(8) Argument {
@@ -394,50 +390,26 @@ public:
             : Argument{Tag::ACCEL}, handle{handle} {}
     };
 
-private:
-    uint64_t _handle{};
-    Function _kernel{};
-    uint _dispatch_size[3]{};
+protected:
     uint32_t _argument_count{0u};
     luisa::vector<std::byte> _argument_buffer;
-
-private:
-    ShaderDispatchCommand() noexcept
-        : Command{Command::Tag::EShaderDispatchCommand} {}
-
-private:
-    void _encode_pending_bindings() noexcept;
-    void _encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept;
-    void _encode_texture(uint64_t handle, uint32_t level) noexcept;
-    void _encode_uniform(const void *data, size_t size) noexcept;
-    void _encode_bindless_array(uint64_t handle) noexcept;
-    void _encode_accel(uint64_t handle) noexcept;
+    ShaderDispatchCommandBase(Command::Tag tag) noexcept
+        : Command(tag) {}
+    void _encode_pending_bindings(Function kernel) noexcept;
+    void _encode_buffer(Function kernel, uint64_t handle, size_t offset, size_t size) noexcept;
+    void _encode_texture(Function kernel, uint64_t handle, uint32_t level) noexcept;
+    void _encode_uniform(Function kernel, const void *data, size_t size) noexcept;
+    void _encode_bindless_array(Function kernel, uint64_t handle) noexcept;
+    void _encode_accel(Function kernel, uint64_t handle) noexcept;
     [[nodiscard]] std::byte *_make_space(size_t size) noexcept;
 
     template<typename T>
         requires std::is_base_of_v<Argument, T> &&
-                 std::negation_v<std::is_same<T, Argument>>
-    void _encode_argument(T argument) noexcept {
-        auto p = _make_space(sizeof(T));
-        std::memcpy(p, &argument, sizeof(T));
-        _argument_count++;
-    }
+            std::negation_v<std::is_same<T, Argument>>
+    void _encode_argument(T argument) noexcept;
 
 public:
-    explicit ShaderDispatchCommand(uint64_t handle, Function kernel) noexcept;
-    ShaderDispatchCommand(ShaderDispatchCommand &&) noexcept = default;
-    ShaderDispatchCommand &operator=(ShaderDispatchCommand &&) noexcept = default;
-    void set_dispatch_size(uint3 launch_size) noexcept;
-    [[nodiscard]] auto handle() const noexcept { return _handle; }
-    [[nodiscard]] auto kernel() const noexcept { return _kernel; }
     [[nodiscard]] auto argument_count() const noexcept { return static_cast<size_t>(_argument_count); }
-    [[nodiscard]] auto dispatch_size() const noexcept { return uint3(_dispatch_size[0], _dispatch_size[1], _dispatch_size[2]); }
-
-    void encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept;
-    void encode_texture(uint64_t handle, uint32_t level) noexcept;
-    void encode_uniform(const void *data, size_t size) noexcept;
-    void encode_bindless_array(uint64_t handle) noexcept;
-    void encode_accel(uint64_t handle) noexcept;
 
     template<typename Visit>
     void decode(Visit &&visit) const noexcept {
@@ -490,19 +462,86 @@ public:
             }
         }
     }
-    LUISA_MAKE_COMMAND_COMMON(ShaderDispatchCommand)
+};
+
+class LC_RUNTIME_API ShaderDispatchCommand final : public ShaderDispatchCommandBase {
+
+private:
+    uint64_t _handle{};
+    Function _kernel{};
+    uint _dispatch_size[3]{};
+
+private:
+    ShaderDispatchCommand() noexcept
+        : ShaderDispatchCommandBase{Command::Tag::EShaderDispatchCommand} {}
+
+public:
+    explicit ShaderDispatchCommand(uint64_t handle, Function kernel) noexcept;
+    ShaderDispatchCommand(ShaderDispatchCommand &&) noexcept = default;
+    ShaderDispatchCommand &operator=(ShaderDispatchCommand &&) noexcept = default;
+    void set_dispatch_size(uint3 launch_size) noexcept;
+    [[nodiscard]] auto handle() const noexcept { return _handle; }
+    [[nodiscard]] auto kernel() const noexcept { return _kernel; }
+    [[nodiscard]] auto dispatch_size() const noexcept { return uint3(_dispatch_size[0], _dispatch_size[1], _dispatch_size[2]); }
+    void encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept;
+    void encode_texture(uint64_t handle, uint32_t level) noexcept;
+    void encode_uniform(const void *data, size_t size) noexcept;
+    void encode_bindless_array(uint64_t handle) noexcept;
+    void encode_accel(uint64_t handle) noexcept;
+
+    LUISA_MAKE_COMMAND_COMMON(ShaderDispatchCommand, StreamTag::COMPUTE)
+};
+class LC_RUNTIME_API DrawRasterSceneCommand final : public ShaderDispatchCommandBase {
+private:
+    uint64_t _handle{};
+    Function _vertex_func{};
+    Function _pixel_func{};
+    RasterScene *_scene{nullptr};
+    TextureArgument _rtv_texs[8];
+    size_t _rtv_count;
+    TextureArgument _dsv_tex;
+    size_t _arg_count{0};
+    Function arg_kernel() const;
+
+public:
+    explicit DrawRasterSceneCommand(
+        uint64_t handle,
+        Function vertex_func,
+        Function pixel_func)
+        : ShaderDispatchCommandBase(Command::Tag::EDrawRasterSceneCommand),
+          _handle(handle),
+          _vertex_func(vertex_func),
+          _pixel_func(pixel_func) {}
+    DrawRasterSceneCommand(DrawRasterSceneCommand &&) noexcept = default;
+    DrawRasterSceneCommand &operator=(DrawRasterSceneCommand &&) noexcept = default;
+    [[nodiscard]] auto handle() const noexcept { return _handle; }
+    [[nodiscard]] auto vertex_func() const noexcept { return _vertex_func; }
+    [[nodiscard]] auto pixel_func() const noexcept { return _pixel_func; }
+    [[nodiscard]] auto scene() const noexcept { return _scene; }
+    void set_scene(RasterScene *scene) noexcept { _scene = scene; }
+    [[nodiscard]] auto rtv_texs() const noexcept { return luisa::span<const TextureArgument>{_rtv_texs, _rtv_count}; }
+    [[nodiscard]] auto const &dsv_tex() const noexcept { return _dsv_tex; }
+    void set_rtv_texs(luisa::span<const TextureArgument> tex) {
+        assert(tex.size() <= 8);
+        memcpy(_rtv_texs, tex.data(), tex.size_bytes());
+    }
+    void set_dsv_tex(TextureArgument tex) {
+        _dsv_tex = tex;
+    }
+    // TODO
+    void encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept;
+    void encode_texture(uint64_t handle, uint32_t level) noexcept;
+    void encode_uniform(const void *data, size_t size) noexcept;
+    void encode_bindless_array(uint64_t handle) noexcept;
+    void encode_accel(uint64_t handle) noexcept;
+
+    LUISA_MAKE_COMMAND_COMMON(DrawRasterSceneCommand, StreamTag::GRAPHICS)
 };
 
 // TODO: allow compaction/update
-enum struct AccelBuildHint : uint32_t {
-    FAST_TRACE,              // build with best quality
-    FAST_TRACE_NO_COMPACTION,// build with good quality but without compaction
-    FAST_BUILD,              // optimize for frequent rebuild, usually without compaction
-};
-
-enum struct AccelUpdateHint : uint32_t {
-    ALLOW_REFIT,
-    ALWAYS_REBUILD,
+enum struct AccelUsageHint : uint32_t {
+    FAST_TRACE,// build with best quality
+    FAST_BUILD // optimize for frequent rebuild, maybe without compaction
 };
 
 enum struct AccelBuildRequest : uint32_t {
@@ -545,7 +584,7 @@ public:
     [[nodiscard]] auto vertex_buffer_size() const noexcept { return _vertex_buffer_size; }
     [[nodiscard]] auto triangle_buffer_offset() const noexcept { return _triangle_buffer_offset; }
     [[nodiscard]] auto triangle_buffer_size() const noexcept { return _triangle_buffer_size; }
-    LUISA_MAKE_COMMAND_COMMON(MeshBuildCommand)
+    LUISA_MAKE_COMMAND_COMMON(MeshBuildCommand, StreamTag::COMPUTE)
 };
 
 class LC_RUNTIME_API AccelBuildCommand final : public Command {
@@ -553,7 +592,7 @@ class LC_RUNTIME_API AccelBuildCommand final : public Command {
     friend class CmdDeser;
 
 public:
-    struct alignas(16) Modification {
+    struct LC_RUNTIME_API alignas(16) Modification {
 
         // flags
         static constexpr auto flag_mesh = 1u << 0u;
@@ -594,7 +633,7 @@ public:
     [[nodiscard]] auto request() const noexcept { return _request; }
     [[nodiscard]] auto instance_count() const noexcept { return _instance_count; }
     [[nodiscard]] auto modifications() const noexcept { return luisa::span{_modifications}; }
-    LUISA_MAKE_COMMAND_COMMON(AccelBuildCommand)
+    LUISA_MAKE_COMMAND_COMMON(AccelBuildCommand, StreamTag::COMPUTE)
 };
 
 class LC_RUNTIME_API BindlessArrayUpdateCommand final : public Command {
@@ -606,7 +645,54 @@ public:
     explicit BindlessArrayUpdateCommand(uint64_t handle) noexcept
         : Command{Command::Tag::EBindlessArrayUpdateCommand}, _handle{handle} {}
     [[nodiscard]] auto handle() const noexcept { return _handle; }
-    LUISA_MAKE_COMMAND_COMMON(BindlessArrayUpdateCommand)
+    LUISA_MAKE_COMMAND_COMMON(BindlessArrayUpdateCommand, StreamTag::COPY)
+};
+class CustomCommand final : public Command {
+public:
+    struct BufferView {
+        uint64_t handle;
+        uint64_t start_byte;
+        uint64_t size_byte;
+    };
+    struct TextureView {
+        uint64_t handle;
+        uint64_t start_mip;
+        uint64_t size_mip;
+    };
+    struct MeshView {
+        uint64_t handle;
+    };
+    struct AccelView {
+        uint64_t handle;
+    };
+    struct BindlessView {
+        uint64_t handle;
+    };
+    struct ResourceBinding {
+        luisa::variant<
+            BufferView,
+            TextureView,
+            MeshView,
+            AccelView,
+            BindlessView>
+            resource_view;
+        luisa::string name;
+        Usage usage;
+    };
+
+private:
+    luisa::vector<ResourceBinding> _resources;
+    luisa::string _name;
+    StreamTag _stream_tag;
+
+public:
+    explicit CustomCommand(luisa::vector<ResourceBinding> &&resources, luisa::string &&name, StreamTag stream_tag) noexcept
+        : Command(Command::Tag::ECustomCommand), _resources(std::move(resources)), _name(std::move(name)), _stream_tag(stream_tag) {}
+    luisa::span<ResourceBinding const> resources() const noexcept {
+        return _resources;
+    }
+    luisa::string const &name() const noexcept { return _name; }
+    LUISA_MAKE_COMMAND_COMMON(CustomCommand, _stream_tag)
 };
 
 #undef LUISA_MAKE_COMMAND_COMMON_CREATE

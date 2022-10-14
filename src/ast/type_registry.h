@@ -3,7 +3,6 @@
 //
 
 #pragma once
-
 #include <core/stl/vector.h>
 #include <core/stl/format.h>
 #include <core/stl/unordered_map.h>

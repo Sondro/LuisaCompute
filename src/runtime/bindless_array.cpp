@@ -68,7 +68,7 @@ BindlessArray &BindlessArray::remove_tex3d(size_t index) noexcept {
     return *this;
 }
 
-Command *BindlessArray::update() noexcept {
+luisa::unique_ptr<Command> BindlessArray::update() noexcept {
     return BindlessArrayUpdateCommand::create(handle());
 }
 

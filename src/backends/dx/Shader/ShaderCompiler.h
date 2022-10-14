@@ -13,7 +13,7 @@ public:
 	DXByteBlob(
 		ComPtr<IDxcBlob>&& b,
 		ComPtr<IDxcResult>&& rr);
-	vbyte* GetBufferPtr() const;
+	std::byte* GetBufferPtr() const;
 	size_t GetBufferSize() const;
 };
 using CompileResult = vstd::variant<
@@ -34,11 +34,11 @@ public:
 		vstd::string_view code,
 		bool optimize,
 		uint shaderModel = 63);
-
+#ifdef SHADER_COMPILER_TEST
 	CompileResult CustomCompile(
 		vstd::string_view code,
 		vstd::span<vstd::string const> args);
-
+#endif
 	/*CompileResult CompileRayTracing(
         vstd::string_view code,
         bool optimize,

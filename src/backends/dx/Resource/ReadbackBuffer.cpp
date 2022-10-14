@@ -42,7 +42,7 @@ void ReadbackBuffer::CopyData(
 	range.Begin = offset;
     range.End = offset + data.size();
 	ThrowIfFailed(allocHandle.resource->Map(0, &range, (void**)(&mapPtr)));
-	auto d = vstd::create_disposer([&] { allocHandle.resource->Unmap(0, nullptr); });
+	auto d = vstd::scope_exit([&] { allocHandle.resource->Unmap(0, nullptr); });
     memcpy(data.data(), reinterpret_cast<vbyte const *>(mapPtr) + offset, data.size());
 }
 

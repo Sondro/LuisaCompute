@@ -31,7 +31,7 @@ void RTShader::Update(CommandBufferBuilder &builder) const {
     transBarrier.Transition.StateBefore = identityBuffer.GetInitState();
     transBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
     cmd->ResourceBarrier(1, &transBarrier);
-    auto d = vstd::create_disposer([&] {
+    auto d = vstd::scope_exit([&] {
         std::swap(transBarrier.Transition.StateBefore, transBarrier.Transition.StateAfter);
         cmd->ResourceBarrier(1, &transBarrier);
     });

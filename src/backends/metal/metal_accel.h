@@ -29,8 +29,6 @@ public:
 
 private:
     id<MTLComputePipelineState> _update_shader;
-    AccelBuildHint _build_hint;
-    AccelUpdateHint _update_hint;
     id<MTLAccelerationStructure> _handle{nullptr};
     id<MTLBuffer> _instance_buffer{nullptr};
     id<MTLBuffer> _update_buffer{nullptr};
@@ -41,8 +39,7 @@ private:
     luisa::unordered_set<Resource, ResourceHash, std::equal_to<>> _resources;
 
 public:
-    MetalAccel(id<MTLComputePipelineState> update_shader,
-               AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept;
+    MetalAccel(id<MTLComputePipelineState> update_shader, AccelUsageHint hint) noexcept;
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] id<MTLCommandBuffer> build(
         MetalStream *stream, id<MTLCommandBuffer> command_buffer, uint instance_count,

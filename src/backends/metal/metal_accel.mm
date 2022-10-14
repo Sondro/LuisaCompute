@@ -7,25 +7,13 @@
 
 namespace luisa::compute::metal {
 
-MetalAccel::MetalAccel(id<MTLComputePipelineState> update_shader,
-                       AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept
-    : _update_shader{update_shader}, _build_hint{build_hint}, _update_hint{update_hint} {
+MetalAccel::MetalAccel(id<MTLComputePipelineState> update_shader, AccelUsageHint hint) noexcept
+    : _update_shader{update_shader} {
     _descriptor = [MTLInstanceAccelerationStructureDescriptor descriptor];
-    if (_update_hint == AccelUpdateHint::ALLOW_REFIT) {
-        if (_build_hint == AccelBuildHint::FAST_TRACE ||
-            _build_hint == AccelBuildHint::FAST_TRACE_NO_COMPACTION) {
-            _descriptor.usage = MTLAccelerationStructureUsageRefit;
-        } else {
-            _descriptor.usage = MTLAccelerationStructureUsageRefit |
-                                MTLAccelerationStructureUsagePreferFastBuild;
-        }
-    } else {
-        if (_build_hint == AccelBuildHint::FAST_TRACE ||
-            _build_hint == AccelBuildHint::FAST_TRACE_NO_COMPACTION) {
-            _descriptor.usage = MTLAccelerationStructureUsageNone;
-        } else {
-            _descriptor.usage = MTLAccelerationStructureUsagePreferFastBuild;
-        }
+    switch (hint) {
+        case AccelUsageHint::FAST_TRACE: _descriptor.usage = MTLAccelerationStructureUsageNone; break;
+        case AccelUsageHint::FAST_UPDATE: _descriptor.usage = MTLAccelerationStructureUsageRefit; break;
+        case AccelUsageHint::FAST_BUILD: _descriptor.usage = MTLAccelerationStructureUsagePreferFastBuild; break;
     }
 }
 
@@ -75,8 +63,7 @@ id<MTLCommandBuffer> MetalAccel::build(MetalStream *stream, id<MTLCommandBuffer>
     }
 
     // check if requires build
-    auto requires_build = _update_hint == AccelUpdateHint::ALWAYS_REBUILD ||
-                          request == AccelBuildRequest::FORCE_BUILD ||
+    auto requires_build = request == AccelBuildRequest::FORCE_BUILD ||
                           _meshes.size() != instance_count ||
                           _handle == nullptr;
 
@@ -127,38 +114,7 @@ id<MTLCommandBuffer> MetalAccel::build(MetalStream *stream, id<MTLCommandBuffer>
                                    usage:MTLResourceUsageRead];
         }
         [command_encoder endEncoding];
-        if (_build_hint == AccelBuildHint::FAST_TRACE) {
-            auto pool = &stream->download_host_buffer_pool();
-            auto compacted_size_buffer = pool->allocate(sizeof(uint));
-            command_encoder = [command_buffer accelerationStructureCommandEncoder];
-            [command_encoder writeCompactedAccelerationStructureSize:_handle
-                                                            toBuffer:compacted_size_buffer.handle()
-                                                              offset:compacted_size_buffer.offset()];
-            for (auto resource : _resources) {
-                [command_encoder useResource:resource.handle
-                                       usage:MTLResourceUsageRead];
-            }
-            [command_encoder endEncoding];
-            stream->dispatch(command_buffer);
-            [command_buffer waitUntilCompleted];
-            auto compacted_size = *static_cast<uint *>([compacted_size_buffer.handle() contents]);
-            pool->recycle(compacted_size_buffer);
-            command_buffer = stream->command_buffer();
-            if (compacted_size < sizes.accelerationStructureSize) {
-                LUISA_INFO("Compacting acceleration structure from {} bytes to {} bytes.",
-                           sizes.accelerationStructureSize, compacted_size);
-                auto accel_before_compaction = _handle;
-                _handle = [device newAccelerationStructureWithSize:compacted_size];
-                command_encoder = [command_buffer accelerationStructureCommandEncoder];
-                [command_encoder copyAndCompactAccelerationStructure:accel_before_compaction
-                                             toAccelerationStructure:_handle];
-                for (auto resource : _resources) {
-                    [command_encoder useResource:resource.handle
-                                           usage:MTLResourceUsageRead];
-                }
-                [command_encoder endEncoding];
-            }
-        }
+        // TODO: compaction?
         return command_buffer;
     }
 
@@ -173,12 +129,8 @@ id<MTLCommandBuffer> MetalAccel::build(MetalStream *stream, id<MTLCommandBuffer>
                                     destination:_handle
                                   scratchBuffer:_update_buffer
                             scratchBufferOffset:0u];
-    for (auto resource : _resources) {
-        [command_encoder useResource:resource.handle
-                               usage:MTLResourceUsageRead];
-    }
     [command_encoder endEncoding];
     return command_buffer;
 }
 
-}// namespace luisa::compute::metal
+}

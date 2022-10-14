@@ -18,6 +18,7 @@
 #include <core/stl/functional.h>
 
 namespace luisa::compute {
+class AstSerializer;
 
 template<typename T>
 struct array_dimension {
@@ -257,6 +258,7 @@ struct TypeVisitor {
 
 /// Type class
 class LC_AST_API Type {
+    friend class AstSerializer;
 
 public:
     friend class detail::TypeRegistry;

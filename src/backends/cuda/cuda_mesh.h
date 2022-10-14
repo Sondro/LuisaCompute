@@ -31,7 +31,7 @@ private:
     size_t _vertex_count;
     CUdeviceptr _triangle_buffer;
     size_t _triangle_count;
-    AccelUpdateHint _build_hint;
+    AccelUsageHint _build_hint;
     CUDAHeap *_heap{nullptr};
 
 private:
@@ -51,7 +51,7 @@ public:
      * @param hint build hint
      */
     CUDAMesh(CUdeviceptr v_buffer, size_t v_offset, size_t v_stride, size_t v_count,
-             CUdeviceptr t_buffer, size_t t_offset, size_t t_count, AccelUpdateHint hint) noexcept;
+             CUdeviceptr t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept;
     /**
      * @brief Destruct the CUDAMesh object
      */

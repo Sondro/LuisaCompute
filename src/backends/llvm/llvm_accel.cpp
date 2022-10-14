@@ -9,18 +9,18 @@
 
 namespace luisa::compute::llvm {
 
-LLVMAccel::LLVMAccel(RTCDevice device, AccelUpdateHint hint) noexcept
+LLVMAccel::LLVMAccel(RTCDevice device, AccelUsageHint hint) noexcept
     : _handle{rtcNewScene(device)} {
     switch (hint) {
-        case AccelUpdateHint::FAST_TRACE:
+        case AccelUsageHint::FAST_TRACE:
             rtcSetSceneBuildQuality(_handle, RTC_BUILD_QUALITY_HIGH);
             rtcSetSceneFlags(_handle, RTC_SCENE_FLAG_COMPACT);
             break;
-        case AccelUpdateHint::FAST_UPDATE:
+        case AccelUsageHint::FAST_UPDATE:
             rtcSetSceneBuildQuality(_handle, RTC_BUILD_QUALITY_MEDIUM);
             rtcSetSceneFlags(_handle, RTC_SCENE_FLAG_COMPACT | RTC_SCENE_FLAG_DYNAMIC);
             break;
-        case AccelUpdateHint::FAST_BUILD:
+        case AccelUsageHint::FAST_BUILD:
             rtcSetSceneBuildQuality(_handle, RTC_BUILD_QUALITY_LOW);
             rtcSetSceneFlags(_handle, RTC_SCENE_FLAG_DYNAMIC);
             break;

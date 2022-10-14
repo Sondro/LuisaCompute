@@ -15,13 +15,20 @@
 namespace luisa::compute {
 
 class Device;
-class BinaryIO;
-
+class BinaryIOVisitor;
+struct DeviceSettings {
+    size_t device_index;
+    bool inqueue_buffer_limit;
+};
 class LC_RUNTIME_API Context {
 
 private:
     struct Impl;
     luisa::shared_ptr<Impl> _impl;
+    size_t _index = ~0ull;
+    Context(
+        luisa::shared_ptr<Impl> const &impl,
+        size_t index);
 
 public:
     explicit Context(const std::filesystem::path &program) noexcept;
@@ -30,14 +37,16 @@ public:
     Context &operator=(Context &&) noexcept = default;
     Context &operator=(const Context &) noexcept = default;
     ~Context() noexcept;
+    [[nodiscard]] auto index() const noexcept { return _index; }
     [[nodiscard]] const std::filesystem::path &runtime_directory() const noexcept;
     [[nodiscard]] const std::filesystem::path &cache_directory() const noexcept;
     [[nodiscard]] const std::filesystem::path &data_directory() const noexcept;
-    [[nodiscard]] Device create_device(luisa::string_view backend_name, luisa::string_view property_json = "{}") noexcept;
+    [[nodiscard]] Device create_device(luisa::string_view backend_name, DeviceSettings const* settings = nullptr) noexcept;
     [[nodiscard]] luisa::span<const luisa::string> installed_backends() const noexcept;
+    [[nodiscard]] luisa::span<const DynamicModule> loaded_modules() const noexcept;
     [[nodiscard]] Device create_default_device() noexcept;
-    [[nodiscard]] BinaryIO *get_fileio_visitor() const noexcept;
-    void set_fileio_visitor(BinaryIO *file_io) noexcept;
+    [[nodiscard]] BinaryIOVisitor *get_fileio_visitor() const noexcept;
+    void set_fileio_visitor(BinaryIOVisitor *file_io) noexcept;
 };
 
 }// namespace luisa::compute

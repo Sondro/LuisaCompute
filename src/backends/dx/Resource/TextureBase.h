@@ -6,37 +6,39 @@ using namespace luisa::compute;
 namespace toolhub::directx {
 class TextureBase : public Resource {
 protected:
-	uint width;
-	uint height;
-	GFXFormat format;
-	TextureDimension dimension;
-	uint depth;
-	uint mip;
-//	vstd::unique_ptr<std::atomic<D3D12_BARRIER_LAYOUT>> layouts;
+    uint width;
+    uint height;
+    GFXFormat format;
+    TextureDimension dimension;
+    uint depth;
+    uint mip;
+    //	vstd::unique_ptr<std::atomic<D3D12_BARRIER_LAYOUT>> layouts;
 
 public:
-//	vstd::span<std::atomic<D3D12_BARRIER_LAYOUT>> Layouts() const;
-	static GFXFormat ToGFXFormat(PixelFormat format);
-	uint Width() const { return width; }
-	uint Height() const { return height; }
-	GFXFormat Format() const { return format; }
-	TextureDimension Dimension() const { return dimension; }
-	uint Depth() const { return depth; }
-	uint Mip() const { return mip; }
-	virtual uint GetGlobalSRVIndex(uint mipOffset = 0) const = 0;
-	virtual uint GetGlobalUAVIndex(uint mipLevel) const = 0;
-	virtual D3D12_SHADER_RESOURCE_VIEW_DESC GetColorSrvDesc(uint mipOffset = 0) const = 0;
-	virtual D3D12_UNORDERED_ACCESS_VIEW_DESC GetColorUavDesc(uint targetMipLevel) const VENGINE_PURE_VIRTUAL_RET;
-	TextureBase(
-		Device* device,
-		uint width,
-		uint height,
-		GFXFormat format,
-		TextureDimension dimension,
-		uint depth,
-		uint mip);
-	virtual ~TextureBase();
-	TextureBase(TextureBase&&) = default;
-	KILL_COPY_CONSTRUCT(TextureBase)
+    //	vstd::span<std::atomic<D3D12_BARRIER_LAYOUT>> Layouts() const;
+    static GFXFormat ToGFXFormat(PixelFormat format);
+    uint Width() const { return width; }
+    uint Height() const { return height; }
+    GFXFormat Format() const { return format; }
+    TextureDimension Dimension() const { return dimension; }
+    uint Depth() const { return depth; }
+    uint Mip() const { return mip; }
+    virtual uint GetGlobalSRVIndex(uint mipOffset = 0) const = 0;
+    virtual uint GetGlobalUAVIndex(uint mipLevel) const = 0;
+    virtual D3D12_SHADER_RESOURCE_VIEW_DESC GetColorSrvDesc(uint mipOffset = 0) const = 0;
+    virtual D3D12_UNORDERED_ACCESS_VIEW_DESC GetColorUavDesc(uint targetMipLevel) const VENGINE_PURE_VIRTUAL_RET;
+    virtual D3D12_DEPTH_STENCIL_VIEW_DESC GetDepthDesc() const VENGINE_PURE_VIRTUAL_RET;
+    virtual D3D12_RENDER_TARGET_VIEW_DESC GetRenderTargetDesc(uint mipOffset = 0) const VENGINE_PURE_VIRTUAL_RET;
+    TextureBase(
+        Device *device,
+        uint width,
+        uint height,
+        GFXFormat format,
+        TextureDimension dimension,
+        uint depth,
+        uint mip);
+    virtual ~TextureBase();
+    TextureBase(TextureBase &&) = default;
+    KILL_COPY_CONSTRUCT(TextureBase)
 };
 }// namespace toolhub::directx

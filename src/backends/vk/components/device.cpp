@@ -199,7 +199,7 @@ void Device::Init() {
 	VkDescriptorImageInfo imageInfos[DescriptorPool::MAX_SAMP];
 	for (auto x : vstd::range(4))
 		for (auto y : vstd::range(4)) {
-			auto d = vstd::create_disposer([&] { ++idx; });
+			auto d = vstd::scope_exit([&] { ++idx; });
 			auto&& samp = samplers[idx];
 			VkSamplerCreateInfo createInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
 			createInfo.magFilter = filters[y];

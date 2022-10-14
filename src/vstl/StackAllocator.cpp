@@ -17,7 +17,6 @@ StackAllocator::Chunk StackAllocator::Allocate(uint64 targetSize) {
                 ofst};
         }
     }
-
     while (capacity < targetSize) {
         capacity = std::max<uint64>(capacity + 1, capacity * 1.5);
     }
@@ -29,7 +28,6 @@ StackAllocator::Chunk StackAllocator::Allocate(uint64 targetSize) {
     return {
         newHandle,
         0};
-    //TODO: return
 }
 StackAllocator::Chunk StackAllocator::Allocate(
     uint64 targetSize,

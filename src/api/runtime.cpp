@@ -44,7 +44,7 @@ void luisa_compute_context_destroy(void *ctx) LUISA_NOEXCEPT {
 }
 
 inline char *path_to_c_str(const std::filesystem::path &path) LUISA_NOEXCEPT {
-    auto s = path.string();
+    auto s = path.string<char, std::char_traits<char>, luisa::allocator<char>>();
     auto cs = static_cast<char *>(malloc(s.size() + 1u));
     memcpy(cs, s.c_str(), s.size() + 1u);
     return cs;

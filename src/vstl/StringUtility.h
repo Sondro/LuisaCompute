@@ -1,9 +1,6 @@
 #pragma once
-#include <vstl/vector.h>
+#include <vstl/Common.h>
 #include <fstream>
-#include <vstl/vstring.h>
-#include <vstl/Memory.h>
-#include <vstl/string_hash.h>
 #include <span>
 namespace vstd {
 
@@ -45,10 +42,10 @@ private:
     KILL_COPY_CONSTRUCT(StringUtil)
 public:
     static StrvIEnumerator<char, CharSplitIterator> Split(std::string_view str, char sign) {
-        return StrvIEnumerator<char, CharSplitIterator>{str.data(), str.data() + str.size(), sign};
+        return {str.data(), str.data() + str.size(), sign};
     }
-    static StrvIEnumerator<std::string_view, StrVSplitIterator> Split(std::string_view str, std::string_view sign) {
-        return StrvIEnumerator<std::string_view, StrVSplitIterator>{str.data(), str.data() + str.size(), sign};
+    static StrvIEnumerator<vstd::string_view, StrVSplitIterator> Split(std::string_view str, vstd::string_view signs) {
+        return {str.data(), str.data() + str.size(), signs};
     }
     static int64 GetFirstIndexOf(std::string_view str, char sign);
 

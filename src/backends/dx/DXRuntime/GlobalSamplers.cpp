@@ -28,7 +28,7 @@ struct GlobalSampleData {
         size_t idx = 0;
         for (auto x : vstd::range(4))
             for (auto y : vstd::range(4)) {
-                auto d = vstd::create_disposer([&] { ++idx; });
+                auto d = vstd::scope_exit([&] { ++idx; });
                 auto &&v = arr[idx];
                 switch ((Sampler::Filter)y) {
                     case Sampler::Filter::POINT:

@@ -21,7 +21,9 @@ public:
         STREAM,
         EVENT,
         SHADER,
-        SWAP_CHAIN
+        RASTER_SHADER,
+        SWAP_CHAIN,
+        DEPTH_BUFFER
     };
 
 private:

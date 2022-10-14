@@ -8,9 +8,10 @@
 #include <iterator>
 
 #include <core/basic_types.h>
+#include <core/stl/memory.h>
 
 namespace luisa::compute {
-
+class AstSerializer;
 /**
  * @brief Enum of unary operations.
  * 
@@ -180,12 +181,14 @@ enum struct CallOp : uint32_t {
     // optimization hints
     ASSUME,
     UNREACHABLE,
+    // raster
+    GET_VERTEX_DATA,
 
     INSTANCE_TO_WORLD_MATRIX,
     SET_INSTANCE_TRANSFORM,
     SET_INSTANCE_VISIBILITY,
     TRACE_CLOSEST,
-    TRACE_ANY
+    TRACE_ANY,
 };
 
 static constexpr size_t call_op_count = to_underlying(CallOp::TRACE_ANY) + 1u;
@@ -206,6 +209,7 @@ static constexpr size_t call_op_count = to_underlying(CallOp::TRACE_ANY) + 1u;
  * 
  */
 class LC_AST_API CallOpSet {
+    friend class AstSerializer;
 
 public:
     using Bitset = std::bitset<call_op_count>;

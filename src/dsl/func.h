@@ -126,7 +126,7 @@ template<typename VarTuple, typename TagTuple, typename T>
 /// Append an element in a tuple
 template<typename... T, typename A>
 [[nodiscard]] inline auto tuple_append(std::tuple<T...> tuple, A &&arg) noexcept {
-    auto append = []<typename TT, typename AA, size_t... i>(TT tuple, AA &&arg, std::index_sequence<i...>) noexcept {
+    auto append = []<typename TT, typename AA, size_t... i>(TT tuple, AA && arg, std::index_sequence<i...>) noexcept {
         return std::make_tuple(std::move(std::get<i>(tuple))..., std::forward<AA>(arg));
     };
     return append(std::move(tuple), std::forward<A>(arg), std::index_sequence_for<T...>{});
@@ -215,8 +215,9 @@ public:
      */
     template<typename Def>
         requires std::negation_v<is_callable<std::remove_cvref_t<Def>>> &&
-                 std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
-    Kernel(Def &&def) noexcept {
+            std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
+            Kernel(Def &&def)
+    noexcept {
         static_assert(std::is_invocable_r_v<void, Def, detail::prototype_to_creation_t<Args>...>);
         _builder = detail::FunctionBuilder::define_kernel([&def] {
             detail::FunctionBuilder::current()->set_block_size(detail::kernel_default_block_size<N>());
@@ -342,8 +343,9 @@ public:
      */
     template<typename Def>
         requires std::negation_v<is_callable<std::remove_cvref_t<Def>>> &&
-                 std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
-    Callable(Def &&f) noexcept
+            std::negation_v<is_kernel<std::remove_cvref_t<Def>>>
+            Callable(Def &&f)
+    noexcept
         : _builder{detail::FunctionBuilder::define_callable([&f] {
               static_assert(std::is_invocable_v<Def, detail::prototype_to_creation_t<Args>...>);
               auto create = []<size_t... i>(auto &&def, std::index_sequence<i...>) noexcept {
@@ -367,6 +369,8 @@ public:
 
     /// Get the underlying AST
     [[nodiscard]] auto function() const noexcept { return Function{_builder.get()}; }
+    [[nodiscard]] auto const &function_builder() const &noexcept { return _builder; }
+    [[nodiscard]] auto &&function_builder() &&noexcept { return std::move(_builder); }
 
     /// Call the callable.
     auto operator()(detail::prototype_to_callable_invocation_t<Args>... args) const noexcept {

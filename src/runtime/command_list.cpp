@@ -8,18 +8,14 @@
 namespace luisa::compute {
 
 void CommandList::_recycle() noexcept {
-    if (!_commands.empty()) {
-        for (auto cmd : _commands) {
-            cmd->recycle();
-        }
-    }
+    _commands.clear();
 }
 
-void CommandList::append(Command *cmd) noexcept {
-    _commands.emplace_back(cmd);
+void CommandList::append(luisa::unique_ptr<Command>&& cmd) noexcept {
+    _commands.emplace_back(std::move(cmd));
 }
 
-luisa::vector<Command *> CommandList::steal_commands() noexcept {
+luisa::vector<luisa::unique_ptr<Command>> CommandList::steal_commands() noexcept {
     return std::move(_commands);
 }
 

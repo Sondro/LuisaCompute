@@ -44,7 +44,7 @@ private:
     size_t _update_buffer_size{};
     luisa::vector<const CUDAMesh *> _meshes;
     luisa::vector<uint64_t> _mesh_handles;
-    AccelUpdateHint _build_hint;
+    AccelUsageHint _build_hint;
 
 private:
     void _build(CUDADevice *device, CUDAStream *stream, CUstream cuda_stream) noexcept;
@@ -56,7 +56,7 @@ public:
      * 
      * @param hint build hint
      */
-    explicit CUDAAccel(AccelUpdateHint hint) noexcept;
+    explicit CUDAAccel(AccelUsageHint hint) noexcept;
     ~CUDAAccel() noexcept;
 
     /**

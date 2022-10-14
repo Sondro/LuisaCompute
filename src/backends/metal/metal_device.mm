@@ -12,7 +12,7 @@
 #import <nlohmann/json.hpp>
 
 #import <core/platform.h>
-#import <core/stl/hash.h>
+#import <core/hash.h>
 #import <core/clock.h>
 #import <runtime/context.h>
 #import <runtime/bindless_array.h>
@@ -290,10 +290,6 @@ uint64_t MetalDevice::create_texture(
         case PixelFormat::R32F: desc.pixelFormat = MTLPixelFormatR32Float; break;
         case PixelFormat::RG32F: desc.pixelFormat = MTLPixelFormatRG32Float; break;
         case PixelFormat::RGBA32F: desc.pixelFormat = MTLPixelFormatRGBA32Float; break;
-        default:
-            LUISA_ERROR_WITH_LOCATION("Invalid pixel format code 0x{:02x}.",
-                                      to_underlying(format));
-            break;// TODO: support block compressed formats
     }
     desc.allowGPUOptimizedContents = YES;
     desc.cpuCacheMode = MTLCPUCacheModeWriteCombined;
@@ -343,11 +339,11 @@ void MetalDevice::synchronize_event(uint64_t handle) noexcept {
     reinterpret_cast<MetalEvent *>(handle)->synchronize();
 }
 
-void MetalDevice::dispatch(uint64_t stream_handle, CommandList &&list) noexcept {
+void MetalDevice::dispatch(uint64_t stream_handle, const CommandList &list) noexcept {
     @autoreleasepool {
         auto s = reinterpret_cast<MetalStream *>(stream_handle);
         MetalCommandEncoder encoder{this, s};
-        for (auto &&command : list) { command->accept(encoder); }
+        for (auto command : list) { command->accept(encoder); }
         s->dispatch(encoder.command_buffer());
     }
 }
@@ -363,6 +359,10 @@ void MetalDevice::dispatch(uint64_t stream_handle, move_only_function<void()> &&
         }];
         s->dispatch(command_buffer);
     }
+}
+
+void MetalDevice::dispatch(uint64_t stream_handle, luisa::span<const CommandList> lists) noexcept {
+    LUISA_ERROR_WITH_LOCATION("Should not be called.");
 }
 
 void MetalDevice::signal_event(uint64_t handle, uint64_t stream_handle) noexcept {
@@ -385,9 +385,17 @@ void MetalDevice::wait_event(uint64_t handle, uint64_t stream_handle) noexcept {
     }
 }
 
-uint64_t MetalDevice::create_mesh(AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept {
+uint64_t MetalDevice::create_mesh(
+    uint64_t v_buffer_handle, size_t v_offset, size_t v_stride, size_t,
+    uint64_t t_buffer_handle, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept {
     check_raytracing_supported();
-    auto mesh = new_with_allocator<MetalMesh>(build_hint, update_hint);
+    Clock clock;
+    auto v_buffer = (__bridge id<MTLBuffer>)(reinterpret_cast<void *>(v_buffer_handle));
+    auto t_buffer = (__bridge id<MTLBuffer>)(reinterpret_cast<void *>(t_buffer_handle));
+    auto mesh = new_with_allocator<MetalMesh>(
+        v_buffer, v_offset, v_stride,
+        t_buffer, v_offset, t_count, hint);
+    LUISA_VERBOSE_WITH_LOCATION("Created mesh in {} ms.", clock.toc());
     return reinterpret_cast<uint64_t>(mesh);
 }
 
@@ -397,10 +405,10 @@ void MetalDevice::destroy_mesh(uint64_t handle) noexcept {
     LUISA_VERBOSE_WITH_LOCATION("Destroyed mesh #{}.", handle);
 }
 
-uint64_t MetalDevice::create_accel(AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept {
+uint64_t MetalDevice::create_accel(AccelUsageHint hint) noexcept {
     check_raytracing_supported();
     Clock clock;
-    auto accel = new_with_allocator<MetalAccel>(_update_instances_shader, build_hint, update_hint);
+    auto accel = new_with_allocator<MetalAccel>(_update_instances_shader, hint);
     LUISA_VERBOSE_WITH_LOCATION("Created accel in {} ms.", clock.toc());
     return reinterpret_cast<uint64_t>(accel);
 }
@@ -487,6 +495,14 @@ void MetalDevice::remove_tex3d_in_bindless_array(uint64_t array, size_t index) n
     reinterpret_cast<MetalBindlessArray *>(array)->remove_tex3d(index);
 }
 
+bool MetalDevice::is_resource_in_bindless_array(uint64_t array, uint64_t handle) const noexcept {
+    return reinterpret_cast<MetalBindlessArray *>(array)->has_resource(handle);
+}
+
+bool MetalDevice::requires_command_reordering() const noexcept {
+    return false;
+}
+
 class MetalSwapChain {
 
 private:
@@ -557,7 +573,7 @@ void MetalDevice::present_display_in_stream(uint64_t stream_handle, uint64_t swa
     stream->dispatch(cb);
 }
 
-}// namespace luisa::compute::metal
+}
 
 LUISA_EXPORT_API luisa::compute::Device::Interface *create(const luisa::compute::Context &ctx, std::string_view properties) noexcept {
     auto p = nlohmann::json::parse(properties);

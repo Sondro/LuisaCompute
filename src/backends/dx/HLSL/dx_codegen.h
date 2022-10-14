@@ -8,6 +8,7 @@
 #include "vstl/MD5.h"
 #include "compile/definition_analysis.h"
 #include "shader_property.h"
+#include <raster/raster_state.h>
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::directx {
@@ -19,16 +20,16 @@ struct CodegenResult {
     using Properties = vstd::vector<Property>;
     vstd::string result;
     Properties properties;
-    uint64 bdlsBufferCount;
-    uint64 immutableHeaderSize;
-    CodegenResult(){}
+    uint64 bdlsBufferCount = 0;
+    uint64 immutableHeaderSize = 0;
+    CodegenResult() {}
     CodegenResult(
         vstd::string &&result,
         Properties &&properties,
         uint64 bdlsBufferCount,
         uint64 immutableHeaderSize) : result(std::move(result)), properties(std::move(properties)), bdlsBufferCount(bdlsBufferCount), immutableHeaderSize(immutableHeaderSize) {}
     CodegenResult(CodegenResult const &) = delete;
-    CodegenResult(CodegenResult&&) = default;
+    CodegenResult(CodegenResult &&) = default;
 };
 class CodegenUtility {
 
@@ -52,28 +53,40 @@ public:
         return s;
     }
     static void GetFunctionDecl(Function func, vstd::string &str);
+    static void GetFunctionName(Function callable, vstd::string &result);
     static void GetFunctionName(CallExpr const *expr, vstd::string &result, StringStateVisitor &visitor);
     static void RegistStructType(Type const *type);
 
     static void CodegenFunction(
         Function func,
         vstd::string &result);
+    static void CodegenVertex(Function vert, vstd::string &result);
+    static void CodegenPixel(Function pixel, vstd::string &result);
     static StructGenerator const *GetStruct(
         Type const *type);
     static void GenerateCBuffer(
-        Function f,
-        std::span<const Variable> vars,
-        vstd::string &result);
+        std::initializer_list<vstd::IRange<Variable>*> f,
+        vstd::string &result,
+        vstd::string_view extraArgs);
     static void GenerateBindless(
         CodegenResult::Properties &properties,
         vstd::string &str);
+    static void PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount);
+    static void PostprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult);
+    static void CodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult, vstd::string &varData, Function kernel, vstd::array<uint, 3> &registerCount);
     static CodegenResult Codegen(Function kernel, vstd::string_view internalDataPath);
+    static CodegenResult RasterCodegen(
+        MeshFormat const &meshFormat,
+        Function vertFunc,
+        Function pixelFunc,
+        vstd::string_view internalDataPath);
+    /*
 #ifdef USE_SPIRV
     static void GenerateBindlessSpirv(
         vstd::string &str);
     static CodegenStackData *StackData();
     static vstd::optional<vstd::string> CodegenSpirv(Function kernel, std::filesystem::path const &internalDataPath);
-#endif
+#endif*/
     static vstd::string GetNewTempVarName();
 };
 class StringStateVisitor final : public StmtVisitor, public ExprVisitor {

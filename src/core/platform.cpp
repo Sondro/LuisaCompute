@@ -55,7 +55,7 @@ size_t pagesize() noexcept {
 }
 
 void *dynamic_module_load(const std::filesystem::path &path) noexcept {
-    auto path_string = path.string();
+    auto path_string = path.string<char, std::char_traits<char>, luisa::allocator<char>>();
     auto module = LoadLibraryA(path_string.c_str());
     if (module == nullptr) [[unlikely]] {
         LUISA_WARNING_WITH_LOCATION(
@@ -170,7 +170,7 @@ void *dynamic_module_load(const std::filesystem::path &path) noexcept {
             return module;
         }
         LUISA_WARNING_WITH_LOCATION(
-            "Failed to load dynamic module '{}', reason: {}.", p.string(),
+            "Failed to load dynamic module '{}', reason: {}.", p.string<char, std::char_traits<char>, luisa::allocator<char>>(),
             dlerror());
     }
     return nullptr;

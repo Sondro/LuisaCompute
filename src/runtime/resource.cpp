@@ -17,7 +17,9 @@ void Resource::_destroy() noexcept {
             case Tag::STREAM: _device->destroy_stream(_handle); break;
             case Tag::EVENT: _device->destroy_event(_handle); break;
             case Tag::SHADER: _device->destroy_shader(_handle); break;
+            case Tag::RASTER_SHADER: _device->destroy_raster_shader(_handle); break;
             case Tag::SWAP_CHAIN: _device->destroy_swap_chain(_handle); break;
+            case Tag::DEPTH_BUFFER: _device->destroy_depth_buffer(_handle) ;break;
         }
     }
 }
@@ -45,7 +47,9 @@ void *Resource::native_handle() const noexcept {
         case Tag::STREAM: return _device->stream_native_handle(_handle);
         case Tag::EVENT: LUISA_ERROR_WITH_LOCATION("Native handles of events are not obtainable yet.");
         case Tag::SHADER: LUISA_ERROR_WITH_LOCATION("Native handles of shaders are not obtainable yet.");
+        case Tag::RASTER_SHADER: LUISA_ERROR_WITH_LOCATION("Native handles of raster shaders are not obtainable yet.");
         case Tag::SWAP_CHAIN: LUISA_ERROR_WITH_LOCATION("Native handles of swap chains are not obtainable yet.");
+        case Tag::DEPTH_BUFFER: LUISA_ERROR_WITH_LOCATION("Native handles of depth buffer are not obtainable yet.");
     }
     LUISA_ERROR_WITH_LOCATION("Unknown resource tag.");
 }

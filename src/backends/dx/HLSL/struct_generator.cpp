@@ -144,13 +144,13 @@ void StructGenerator::InitAsStruct(
             case Type::Tag::VECTOR: {
                 Align(i->alignment());
                 //TODO: vulkan float3
-                if (CodegenStackData::ThreadLocalSpirv()) {
+                /*if (CodegenStackData::ThreadLocalSpirv()) {
                     auto alignDim = i->dimension();
                     alignDim = (alignDim == 3) ? 4 : alignDim;
                     structSize += 4 * alignDim;
-                } else {
-                    structSize += 4 * i->dimension();
-                }
+                } else*/
+                structSize += 4 * i->dimension();
+
                 ele = StructureType::GetVector(i->dimension());
             } break;
             case Type::Tag::MATRIX: {

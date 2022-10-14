@@ -5,6 +5,7 @@
 #include "struct_generator.h"
 #include "codegen_stack_data.h"
 #include "shader_header.h"
+#include <vstl/pdqsort.h>
 namespace toolhub::directx {
 namespace detail {
 static inline uint64 CalcAlign(uint64 value, uint64 align) {
@@ -70,12 +71,45 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
         case Variable::Tag::DISPATCH_SIZE:
             str << "a.dsp_c"sv;
             break;
+        case Variable::Tag::MESH_VERTEX:
+            str << "a.v_c"sv;
+            break;
+        case Variable::Tag::MESH_INSTANCE:
+            str << "a.i_c"sv;
+            break;
+        case Variable::Tag::TEXEL_SIZE:
+            str << "a.tex_c"sv;
+            break;
         case Variable::Tag::LOCAL:
-            if (opt->isKernel && opt->arguments.Find(id)) {
-                str << "a."sv;
+            switch (opt->funcType) {
+                case CodegenStackData::FuncType::Kernel:
+                case CodegenStackData::FuncType::Vert:
+                    if (opt->arguments.Find(id)) {
+                        str << "a.l"sv;
+                    } else {
+                        str << 'l';
+                    }
+                    vstd::to_string(id, str);
+                    break;
+                case CodegenStackData::FuncType::Pixel: {
+                    auto ite = opt->arguments.Find(id);
+                    if (!ite) {
+                        str << 'l';
+                        vstd::to_string(id, str);
+                    } else {
+                        if (ite.Value() == 0) {
+                            str << 'p';
+                        } else {
+                            str << 'l';
+                            vstd::to_string(id, str);
+                        }
+                    }
+                } break;
+                default: {
+                    str << 'l';
+                    vstd::to_string(id, str);
+                }
             }
-            str << 'l';
-            vstd::to_string(id, str);
             break;
         case Variable::Tag::SHARED:
             str << 's';
@@ -272,46 +306,44 @@ void CodegenUtility::GetFunctionDecl(Function func, vstd::string &funcDecl) {
     } else {
         data += "void"sv;
     }
-    switch (func.tag()) {
-        case Function::Tag::CALLABLE: {
-            data += " custom_"sv;
-            vstd::to_string((opt->GetFuncCount(func.hash())), data);
-            if (func.arguments().empty()) {
-                data += "()"sv;
-            } else {
-                data += '(';
-                for (auto &&i : func.arguments()) {
-                    if (i.tag() == Variable::Tag::REFERENCE) {
-                        if (auto usage = func.variable_usage(i.uid());
-                            usage == Usage::WRITE) {
-                            data += "out ";
-                        } else if (usage == Usage::READ_WRITE) {
-                            data += "inout ";
-                        } else {
-                            data += "in ";
-                        }
-                    }
-                    RegistStructType(i.type());
-                    Usage usage = func.variable_usage(i.uid());
-
-                    vstd::string varName;
-                    CodegenUtility::GetVariableName(i, varName);
-                    if (i.type()->is_accel()) {
-                        if (usage == Usage::READ) {
-                            CodegenUtility::GetTypeName(*i.type(), data, usage);
-                            data << ' ' << varName << ',';
-                        }
-                        GetTemplateName();
-                        data << ' ' << varName << "Inst,"sv;
+    {
+        data += " custom_"sv;
+        vstd::to_string((opt->GetFuncCount(func.hash())), data);
+        if (func.arguments().empty()) {
+            data += "()"sv;
+        } else {
+            data += '(';
+            for (auto &&i : func.arguments()) {
+                if (i.tag() == Variable::Tag::REFERENCE) {
+                    if (auto usage = func.variable_usage(i.uid());
+                        usage == Usage::WRITE) {
+                        data += "out ";
+                    } else if (usage == Usage::READ_WRITE) {
+                        data += "inout ";
                     } else {
-                        GetTypeName(i.type(), usage);
-                        data << ' ';
-                        data << varName << ',';
+                        data += "in ";
                     }
                 }
-                data[data.size() - 1] = ')';
+                RegistStructType(i.type());
+                Usage usage = func.variable_usage(i.uid());
+
+                vstd::string varName;
+                CodegenUtility::GetVariableName(i, varName);
+                if (i.type()->is_accel()) {
+                    if (usage == Usage::READ) {
+                        CodegenUtility::GetTypeName(*i.type(), data, usage);
+                        data << ' ' << varName << ',';
+                    }
+                    GetTemplateName();
+                    data << ' ' << varName << "Inst,"sv;
+                } else {
+                    GetTypeName(i.type(), usage);
+                    data << ' ';
+                    data << varName << ',';
+                }
             }
-        } break;
+            data[data.size() - 1] = ')';
+        }
     }
     if (tempIdx > 0) {
         funcDecl << "template<"sv;
@@ -325,70 +357,11 @@ void CodegenUtility::GetFunctionDecl(Function func, vstd::string &funcDecl) {
     funcDecl << '\n'
              << data;
 }
+void CodegenUtility::GetFunctionName(Function callable, vstd::string &result) {
+    result << "custom_"sv << vstd::to_string((opt->GetFuncCount(callable.hash())));
+}
 void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, StringStateVisitor &vis) {
     auto args = expr->arguments();
-    auto GenMakeFunc = [&]() {
-        uint tarDim = [&]() -> uint {
-            switch (expr->type()->tag()) {
-                case Type::Tag::VECTOR:
-                    return expr->type()->dimension();
-                case Type::Tag::MATRIX:
-                    return expr->type()->dimension() * expr->type()->dimension();
-                default:
-                    return 1;
-            }
-        }();
-        auto is_make_matrix = expr->type()->is_matrix();
-        auto n = luisa::format("{}", expr->type()->dimension());
-        if (args.size() == 1 && args[0]->type()->is_scalar()) {
-            str << "(("sv;
-            if (is_make_matrix) {
-                str << "make_float" << n << "x" << n;
-            } else {
-                GetTypeName(*expr->type(), str, Usage::READ);
-            }
-            str << ")("sv;
-            for (auto &&i : args) {
-                i->accept(vis);
-                str << ',';
-            }
-            *(str.end() - 1) = ')';
-            str << ')';
-        } else {
-            if (is_make_matrix) {
-                str << "make_float" << n << "x" << n;
-            } else {
-                GetTypeName(*expr->type(), str, Usage::READ);
-            }
-            str << '(';
-            uint count = 0;
-            for (auto &&i : args) {
-                i->accept(vis);
-                if (i->type()->is_vector()) {
-                    auto dim = i->type()->dimension();
-                    auto ele = i->type()->element();
-                    auto leftEle = tarDim - count;
-                    //More lefted
-                    if (dim <= leftEle) {
-                    } else {
-                        auto swizzle = "xyzw";
-                        str << '.' << vstd::string_view(swizzle, leftEle);
-                    }
-                    count += dim;
-                } else if (i->type()->is_scalar()) {
-                    count++;
-                }
-                str << ',';
-                if (count >= tarDim) break;
-            }
-            if (count < tarDim) {
-                for (auto i : vstd::range(tarDim - count)) {
-                    str << "0,"sv;
-                }
-            }
-            *(str.end() - 1) = ')';
-        }
-    };
     auto getPointer = [&]() {
         str << '(';
         uint64 sz = 1;
@@ -430,30 +403,29 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             }
         }
     };
-    auto PrintArgsAccelPossible = [&] {
-        uint64 sz = 0;
-        for (auto &&i : args) {
-            if (i->type()->is_accel()) {
-                if ((static_cast<uint>(expr->custom().variable_usage(expr->custom().arguments()[sz].uid())) & static_cast<uint>(Usage::WRITE)) == 0) {
-                    i->accept(vis);
-                    str << ',';
-                }
-                i->accept(vis);
-                str << "Inst"sv;
-            } else {
-                i->accept(vis);
-            }
-            ++sz;
-            if (sz != args.size()) {
-                str << ',';
-            }
-        }
-    };
     switch (expr->op()) {
         case CallOp::CUSTOM:
             str << "custom_"sv << vstd::to_string((opt->GetFuncCount(expr->custom().hash())));
             str << '(';
-            PrintArgsAccelPossible();
+            {
+                uint64 sz = 0;
+                for (auto &&i : args) {
+                    if (i->type()->is_accel()) {
+                        if ((static_cast<uint>(expr->custom().variable_usage(expr->custom().arguments()[sz].uid())) & static_cast<uint>(Usage::WRITE)) == 0) {
+                            i->accept(vis);
+                            str << ',';
+                        }
+                        i->accept(vis);
+                        str << "Inst"sv;
+                    } else {
+                        i->accept(vis);
+                    }
+                    ++sz;
+                    if (sz != args.size()) {
+                        str << ',';
+                    }
+                }
+            }
             str << ')';
             return;
 
@@ -704,7 +676,66 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             if (args.size() == 1 && (args[0]->type() == expr->type())) {
                 args[0]->accept(vis);
             } else {
-                GenMakeFunc();
+                uint tarDim = [&]() -> uint {
+                    switch (expr->type()->tag()) {
+                        case Type::Tag::VECTOR:
+                            return expr->type()->dimension();
+                        case Type::Tag::MATRIX:
+                            return expr->type()->dimension() * expr->type()->dimension();
+                        default:
+                            return 1;
+                    }
+                }();
+                auto is_make_matrix = expr->type()->is_matrix();
+                auto n = luisa::format("{}", expr->type()->dimension());
+                if (args.size() == 1 && args[0]->type()->is_scalar()) {
+                    str << "(("sv;
+                    if (is_make_matrix) {
+                        str << "make_float" << n << "x" << n;
+                    } else {
+                        GetTypeName(*expr->type(), str, Usage::READ);
+                    }
+                    str << ")("sv;
+                    for (auto &&i : args) {
+                        i->accept(vis);
+                        str << ',';
+                    }
+                    *(str.end() - 1) = ')';
+                    str << ')';
+                } else {
+                    if (is_make_matrix) {
+                        str << "make_float" << n << "x" << n;
+                    } else {
+                        GetTypeName(*expr->type(), str, Usage::READ);
+                    }
+                    str << '(';
+                    uint count = 0;
+                    for (auto &&i : args) {
+                        i->accept(vis);
+                        if (i->type()->is_vector()) {
+                            auto dim = i->type()->dimension();
+                            auto ele = i->type()->element();
+                            auto leftEle = tarDim - count;
+                            //More lefted
+                            if (dim <= leftEle) {
+                            } else {
+                                auto swizzle = "xyzw";
+                                str << '.' << vstd::string_view(swizzle, leftEle);
+                            }
+                            count += dim;
+                        } else if (i->type()->is_scalar()) {
+                            count++;
+                        }
+                        str << ',';
+                        if (count >= tarDim) break;
+                    }
+                    if (count < tarDim) {
+                        for (auto i : vstd::range(tarDim - count)) {
+                            str << "0,"sv;
+                        }
+                    }
+                    *(str.end() - 1) = ')';
+                }
             }
             return;
         }
@@ -836,6 +867,9 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             str << ')';
             return;
         }
+        case CallOp::GET_VERTEX_DATA:
+            str << "get_vert"sv;
+            break;
         default: {
             auto errorType = expr->op();
             VEngine_Log("Function Not Implemented"sv);
@@ -1009,28 +1043,21 @@ void main(uint3 thdId : SV_GroupThreadId, uint3 dspId : SV_DispatchThreadID, uin
 Args a = _Global[0];
 if(any(dspId >= a.dsp_c)) return;
 )"sv;
-
+            opt->funcType = CodegenStackData::FuncType::Kernel;
+            opt->arguments.Clear();
+            opt->arguments.reserve(func.arguments().size());
+            size_t idx = 0;
+            for (auto &&i : func.arguments()) {
+                opt->arguments.Emplace(i.uid(), idx);
+                ++idx;
+            }
         } else {
             GetFunctionDecl(func, result);
             result << "{\n"sv;
+            opt->funcType = CodegenStackData::FuncType::Callable;
         }
-
-        if (func.tag() == Function::Tag::KERNEL) {
-            opt->isKernel = true;
-            opt->arguments.Clear();
-            opt->arguments.reserve(func.arguments().size());
-            for (auto &&i : func.arguments()) {
-                opt->arguments.Emplace(i.uid());
-            }
-        } else {
-            opt->isKernel = false;
-        }
-        //opt->analyzer.reset();
-        //opt->analyzer.analyze(func);
-        // opt->allVariables.clear();
         StringStateVisitor vis(func, result);
         vis.sharedVariables = &opt->sharedVariable;
-        // vis.variableSet = &opt->allVariables;
         vis.VisitFunction(func);
         result << "}\n"sv;
     };
@@ -1046,13 +1073,134 @@ if(any(dspId >= a.dsp_c)) return;
     };
     callable(callable, func);
 }
-void CodegenUtility::GenerateCBuffer(
-    Function f,
-    std::span<const Variable> vars,
-    vstd::string &result) {
-    result << R"(struct Args{
-uint3 dsp_c;
+void CodegenUtility::CodegenVertex(Function vert, vstd::string &result) {
+    vstd::HashMap<void const *> callableMap;
+    auto gen = [&](auto &callable, Function func) -> void {
+        for (auto &&i : func.custom_callables()) {
+            if (callableMap.TryEmplace(i.get()).second) {
+                Function f(i.get());
+                callable(callable, f);
+            }
+        }
+    };
+    auto callable = [&](auto &callable, Function func) -> void {
+        gen(callable, func);
+        CodegenFunction(func, result);
+    };
+    gen(callable, vert);
+    vstd::string retName;
+    auto retType = vert.return_type();
+    GetTypeName(*retType, retName, Usage::READ);
+    result << retName << " vert(vertex vt){\n"sv;
+    opt->funcType = CodegenStackData::FuncType::Vert;
+    opt->arguments.Clear();
+    opt->arguments.reserve(vert.arguments().size());
+    size_t idx = 0;
+    for (auto &&i : vert.arguments()) {
+        opt->arguments.Emplace(i.uid(), idx);
+        ++idx;
+    }
+    {
+        StringStateVisitor vis(vert, result);
+        vis.sharedVariables = &opt->sharedVariable;
+        vis.VisitFunction(vert);
+    }
+    result << R"(
+}
+v2p main(vertex vt){
+v2p o;
 )"sv;
+
+    if (retType->is_vector()) {
+        result << "o.v0=vert(vt);\n"sv;
+    } else {
+        result << retName
+               << " r=vert(vt);\n"sv;
+        for (auto i : vstd::range(retType->members().size())) {
+            auto num = vstd::to_string(i);
+            result << "o.v"sv << num << "=r.v"sv << num << ";\n"sv;
+        }
+    }
+    result << R"(return o;
+}
+)"sv;
+}
+void CodegenUtility::CodegenPixel(Function pixel, vstd::string &result) {
+    vstd::HashMap<void const *> callableMap;
+    auto gen = [&](auto &callable, Function func) -> void {
+        for (auto &&i : func.custom_callables()) {
+            if (callableMap.TryEmplace(i.get()).second) {
+                Function f(i.get());
+                callable(callable, f);
+            }
+        }
+    };
+    auto callable = [&](auto &callable, Function func) -> void {
+        gen(callable, func);
+        CodegenFunction(func, result);
+    };
+    gen(callable, pixel);
+    vstd::string retName;
+    auto retType = pixel.return_type();
+    GetTypeName(*retType, retName, Usage::READ);
+    result << retName << " pixel(v2p p){\n"sv;
+    opt->funcType = CodegenStackData::FuncType::Pixel;
+    opt->arguments.Clear();
+    opt->arguments.reserve(pixel.arguments().size());
+    size_t idx = 0;
+    for (auto &&i : pixel.arguments()) {
+        opt->arguments.Emplace(i.uid(), idx);
+        ++idx;
+    }
+    {
+        StringStateVisitor vis(pixel, result);
+        vis.sharedVariables = &opt->sharedVariable;
+        vis.VisitFunction(pixel);
+    }
+    result << R"(
+}
+void main(v2p p)"sv;
+    if (retType->is_scalar() || retType->is_vector()) {
+        result << ",out "sv;
+        GetTypeName(*retType, result, Usage::READ);
+        result << R"( o0:SV_TARGET0){
+o0=pixel(p);
+}
+)"sv;
+    } else if (retType->is_structure()) {
+        size_t idx = 0;
+        for (auto &&i : retType->members()) {
+            assert(i->is_scalar() || i->is_vector());
+            result << ",out "sv;
+            GetTypeName(*i, result, Usage::READ);
+            auto num = vstd::to_string(idx);
+            result << " o"sv << num << ":SV_TARGET"sv << num;
+            ++idx;
+        }
+        result << "){\n"sv;
+        GetTypeName(*retType, result, Usage::READ);
+        result << " o=pixel(p);\n"sv;
+        idx = 0;
+        for (auto &&i : retType->members()) {
+            auto num = vstd::to_string(idx);
+            result << 'o' << num << "=o.v"sv << num << ";\n"sv;
+            ++idx;
+        }
+        result << "}\n"sv;
+    } else {
+        LUISA_ERROR("Illegal pixel shader return type!");
+    }
+
+    // TODO
+    // pixel return value
+    // value assignment
+}
+void CodegenUtility::GenerateCBuffer(
+    std::initializer_list<vstd::IRange<Variable> *> fs,
+    vstd::string &result,
+    vstd::string_view extraArgs) {
+
+    result << "struct Args{\n"sv << extraArgs;
     size_t alignCount = 0;
     auto isCBuffer = [&](Variable::Tag t) {
         switch (t) {
@@ -1068,12 +1216,14 @@ uint3 dsp_c;
         }
         return true;
     };
-    for (auto &&i : vars) {
-        if (!isCBuffer(i.tag())) continue;
-        GetTypeName(*i.type(), result, f.variable_usage(i.uid()));
-        result << ' ';
-        GetVariableName(i, result);
-        result << ";\n"sv;
+    for (auto &&f : fs) {
+        for (auto &&i : *f) {
+            if (!isCBuffer(i.tag())) continue;
+            GetTypeName(*i.type(), result, Usage::READ);
+            result << ' ';
+            GetVariableName(i, result);
+            result << ";\n"sv;
+        }
     }
     result << R"(};
 StructuredBuffer<Args> _Global:register(t0);
@@ -1124,31 +1274,10 @@ void CodegenUtility::GenerateBindless(
                 0u, 0u});
     }
 }
-CodegenResult CodegenUtility::Codegen(
-    Function kernel, vstd::string_view internalDataPath) {
-    assert(kernel.tag() == Function::Tag::KERNEL);
-    opt = CodegenStackData::Allocate();
-    CodegenStackData::ThreadLocalSpirv() = false;
-    opt->kernel = kernel;
-    auto disposeOpt = vstd::create_disposer([&] {
-        CodegenStackData::DeAllocate(std::move(opt));
-    });
-    vstd::string codegenData;
-    vstd::string varData;
-    CodegenFunction(kernel, codegenData);
-    vstd::string finalResult;
-    finalResult.reserve(65500);
 
-    finalResult << detail::HLSLHeader(internalDataPath);
-    if (kernel.requires_raytracing()) {
-        finalResult << detail::RayTracingHeader(internalDataPath);
-    }
-    opt->isKernel = false;
-    GenerateCBuffer(kernel, kernel.arguments(), varData);
-    CodegenResult::Properties properties;
-    uint64 immutableHeaderSize = finalResult.size();
-    properties.reserve(kernel.arguments().size() + opt->bindlessBufferCount + 4);
+void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount) {
     // Bindless Buffers;
+    registerCount = {0, 0, 1};
     properties.emplace_back(
         Property{
             ShaderVariableType::SampDescriptorHeap,
@@ -1176,13 +1305,38 @@ CodegenResult CodegenUtility::Codegen(
             0});
 
     GenerateBindless(properties, varData);
+}
+void CodegenUtility::PostprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult) {
 
+    if (!opt->customStructVector.empty()) {
+        vstd::vector<const StructGenerator *, VEngine_AllocType::VEngine, 8> structures(
+            opt->customStructVector.begin(),
+            opt->customStructVector.end());
+        pdqsort(structures.begin(), structures.end(), [](auto lhs, auto rhs) noexcept {
+            return lhs->GetType()->index() < rhs->GetType()->index();
+        });
+        for (auto v : structures) {
+            finalResult << "struct " << v->GetStructName() << "{\n"
+                        << v->GetStructDesc() << "};\n";
+        }
+    }
+    for (auto &&kv : opt->sharedVariable) {
+        auto &&i = kv.second;
+        finalResult << "groupshared "sv;
+        GetTypeName(*i.type()->element(), finalResult, Usage::READ);
+        finalResult << ' ';
+        GetVariableName(i, finalResult);
+        finalResult << '[';
+        vstd::to_string(i.type()->dimension(), finalResult);
+        finalResult << "];\n"sv;
+    }
+}
+void CodegenUtility::CodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult, vstd::string &varData, Function kernel, vstd::array<uint, 3> &registerCount) {
     enum class RegisterType : vbyte {
         CBV,
         UAV,
         SRV
     };
-    uint registerCount[3] = {0, 0, 1};
     auto Writable = [&](Variable const &v) {
         return (static_cast<uint>(kernel.variable_usage(v.uid())) & static_cast<uint>(Usage::WRITE)) != 0;
     };
@@ -1253,50 +1407,15 @@ CodegenResult CodegenUtility::Codegen(
                 break;
         }
     }
-    if (!opt->customStructVector.empty()) {
-        luisa::vector<const StructGenerator *> structures(
-            opt->customStructVector.begin(),
-            opt->customStructVector.end());
-        std::sort(structures.begin(), structures.end(), [](auto lhs, auto rhs) noexcept {
-            return lhs->GetType()->index() < rhs->GetType()->index();
-        });
-        structures.erase(
-            std::unique(structures.begin(), structures.end(), [](auto lhs, auto rhs) noexcept {
-                return lhs->GetType()->hash() == rhs->GetType()->hash();
-            }),
-            structures.end());
-        for (auto v : structures) {
-            finalResult << "struct " << v->GetStructName() << "{\n"
-                        << v->GetStructDesc() << "};\n";
-        }
-    }
-    for (auto &&kv : opt->sharedVariable) {
-        auto &&i = kv.second;
-        finalResult << "groupshared "sv;
-        GetTypeName(*i.type()->element(), finalResult, Usage::READ);
-        finalResult << ' ';
-        GetVariableName(i, finalResult);
-        finalResult << '[';
-        vstd::to_string(i.type()->dimension(), finalResult);
-        finalResult << "];\n"sv;
-    }
-
-    finalResult << varData << codegenData;
-
-    return {
-        std::move(finalResult),
-        std::move(properties),
-        opt->bindlessBufferCount,
-        immutableHeaderSize};
 }
-#ifdef USE_SPIRV
 
-vstd::optional<vstd::string> CodegenUtility::CodegenSpirv(Function kernel, vstd::string_view internalDataPath) {
+CodegenResult CodegenUtility::Codegen(
+    Function kernel, vstd::string_view internalDataPath) {
     assert(kernel.tag() == Function::Tag::KERNEL);
     opt = CodegenStackData::Allocate();
-    CodegenStackData::ThreadLocalSpirv() = true;
+    // CodegenStackData::ThreadLocalSpirv() = false;
     opt->kernel = kernel;
-    auto disposeOpt = vstd::create_disposer([&] {
+    auto disposeOpt = vstd::scope_exit([&] {
         CodegenStackData::DeAllocate(std::move(opt));
     });
     vstd::string codegenData;
@@ -1304,112 +1423,155 @@ vstd::optional<vstd::string> CodegenUtility::CodegenSpirv(Function kernel, vstd:
     CodegenFunction(kernel, codegenData);
     vstd::string finalResult;
     finalResult.reserve(65500);
-    finalResult << detail::HLSLHeaderSpirv(internalDataPath);
+
+    finalResult << detail::HLSLHeader(internalDataPath);
     if (kernel.requires_raytracing()) {
         finalResult << detail::RayTracingHeader(internalDataPath);
     }
-    size_t unChangedOffset = finalResult.size();
-
-    opt->isKernel = false;
-    GenerateCBuffer(kernel, kernel.arguments(), varData);
-    GenerateBindlessSpirv(varData);
-    auto Writable = [&](Variable const &v) {
-        return (static_cast<uint>(kernel.variable_usage(v.uid())) & static_cast<uint>(Usage::WRITE)) != 0;
-    };
-    uint registerCount = 1;
-    for (auto &&i : kernel.arguments()) {
-        auto print = [&] {
-            GetTypeName(*i.type(), varData, kernel.variable_usage(i.uid()));
-            varData << ' ';
-            vstd::string varName;
-            GetVariableName(i, varName);
-            varData << varName;
-        };
-        auto printInstBuffer = [&]<bool writable>() {
-            if constexpr (writable)
-                varData << "RWStructuredBuffer<MeshInst> "sv;
-            else
-                varData << "StructuredBuffer<MeshInst> "sv;
-            vstd::string varName;
-            GetVariableName(i, varName);
-            varName << "Inst"sv;
-            varData << varName;
-        };
-        auto genArg = [&]<bool rtBuffer = false, bool writable = false>(ShaderVariableType sT, char v) {
-            auto r = registerCount++;
-            Property prop = {
-                .type = sT,
-                .spaceIndex = 0,
-                .registerIndex = r,
-                .arrSize = 0};
-            if constexpr (rtBuffer) {
-                printInstBuffer.operator()<writable>();
-
-            } else {
-                print();
-            }
-            varData << ":register("sv << v;
-            vstd::to_string(r, varData);
-            varData << ");\n"sv;
-        };
-
-        switch (i.type()->tag()) {
-            case Type::Tag::TEXTURE:
-                if (Writable(i)) {
-                    genArg(ShaderVariableType::UAVDescriptorHeap, 'u');
-                } else {
-                    genArg(ShaderVariableType::SRVDescriptorHeap, 't');
-                }
-                break;
-            case Type::Tag::BUFFER: {
-                if (Writable(i)) {
-                    genArg(ShaderVariableType::RWStructuredBuffer, 'u');
-                } else {
-                    genArg(ShaderVariableType::StructuredBuffer, 't');
-                }
-            } break;
-            case Type::Tag::BINDLESS_ARRAY:
-                genArg(ShaderVariableType::StructuredBuffer, 't');
-                break;
-            case Type::Tag::ACCEL:
-                if (Writable(i)) {
-                    genArg.operator()<true, true>(ShaderVariableType::RWStructuredBuffer, 'u');
-                } else {
-                    genArg(ShaderVariableType::StructuredBuffer, 't');
-                    genArg.operator()<true>(ShaderVariableType::StructuredBuffer, 't');
-                }
-                break;
-        }
-    }
-    if (!opt->customStructVector.empty()) {
-        luisa::vector<const StructGenerator *> structures(
-            opt->customStructVector.begin(),
-            opt->customStructVector.end());
-        std::sort(structures.begin(), structures.end(), [](auto lhs, auto rhs) noexcept {
-            return lhs->GetType()->index() < rhs->GetType()->index();
-        });
-        structures.erase(
-            std::unique(structures.begin(), structures.end(), [](auto lhs, auto rhs) noexcept {
-                return lhs->GetType()->hash() == rhs->GetType()->hash();
-            }),
-            structures.end());
-        for (auto v : structures) {
-            finalResult << "struct " << v->GetStructName() << "{\n"
-                        << v->GetStructDesc() << "};\n";
-        }
-    }
-    for (auto &&i : opt->sharedVariable) {
-        finalResult << "groupshared "sv;
-        GetTypeName(*i.type()->element(), finalResult, Usage::READ);
-        finalResult << ' ';
-        GetVariableName(i, finalResult);
-        finalResult << '[';
-        vstd::to_string(i.type()->dimension(), finalResult);
-        finalResult << "];\n"sv;
-    }
-
+    opt->funcType = CodegenStackData::FuncType::Callable;
+    auto argRange = vstd::RangeImpl(vstd::CacheEndRange(kernel.arguments()) | vstd::ValueRange{});
+    GenerateCBuffer({static_cast<vstd::IRange<Variable> *>(&argRange)}, varData, "uint3 dsp_c;\n"sv);
+    CodegenResult::Properties properties;
+    uint64 immutableHeaderSize = finalResult.size();
+    vstd::array<uint, 3> registerCount;
+    PreprocessCodegenProperties(properties, varData, registerCount);
+    CodegenProperties(properties, finalResult, varData, kernel, registerCount);
+    PostprocessCodegenProperties(properties, finalResult);
     finalResult << varData << codegenData;
-    return finalResult;
+    return {
+        std::move(finalResult),
+        std::move(properties),
+        opt->bindlessBufferCount,
+        immutableHeaderSize};
 }
-#endif
+CodegenResult CodegenUtility::RasterCodegen(
+    MeshFormat const &meshFormat,
+    Function vertFunc,
+    Function pixelFunc,
+    vstd::string_view internalDataPath) {
+    assert(vertFunc.tag() == Function::Tag::CALLABLE && pixelFunc.tag() == Function::Tag::CALLABLE);
+    opt = CodegenStackData::Allocate();
+    // CodegenStackData::ThreadLocalSpirv() = false;
+    opt->kernel = vertFunc;
+    auto disposeOpt = vstd::scope_exit([&] {
+        CodegenStackData::DeAllocate(std::move(opt));
+    });
+    vstd::string codegenData;
+    vstd::string varData;
+    vstd::string finalResult;
+    finalResult.reserve(65500);
+    // Vertex
+    codegenData << "struct v2p{\n"sv;
+    auto v2pType = vertFunc.return_type();
+    if (v2pType->is_structure()) {
+        size_t memberIdx = 0;
+        for (auto &&i : v2pType->members()) {
+            assert(i->is_scalar() || i->is_vector());
+            GetTypeName(*i, codegenData, Usage::READ);
+            codegenData << " v"sv << vstd::to_string(memberIdx);
+            if (memberIdx == 0) {
+                codegenData << ":SV_POSITION;\n"sv;
+            } else {
+                codegenData << ":TEXCOORD"sv << vstd::to_string(memberIdx - 1) << ";\n"sv;
+            }
+            ++memberIdx;
+        }
+    } else if (v2pType->is_vector() && v2pType->dimension() == 4) {
+        codegenData << "float4 v0:SV_POSITION;\n"sv;
+    } else {
+        LUISA_ERROR("Illegal vertex return type!");
+    }
+    codegenData << R"(};
+#ifdef VS
+#define get_vert(tposition,tnormal,ttangent,tcolor,tuv0,tuv1,tuv2,tuv3,tvid,tiid){tvid=vt.vid;tiid=vt.iid;)"sv;
+    std::bitset<kVertexAttributeCount> bits;
+    bits.reset();
+    auto vertexAttriName = {
+        "position"sv,
+        "normal"sv,
+        "tangent"sv,
+        "color"sv,
+        "uv0"sv,
+        "uv1"sv,
+        "uv2"sv,
+        "uv3"sv};
+    auto semanticName = {
+        "POSITION"sv,
+        "NORMAL"sv,
+        "TANGENT"sv,
+        "COLOR"sv,
+        "UV0"sv,
+        "UV1"sv,
+        "UV2"sv,
+        "UV3"sv};
+    auto semanticType = {
+        "float3"sv,
+        "float3"sv,
+        "float4"sv,
+        "float4"sv,
+        "float2"sv,
+        "float2"sv,
+        "float2"sv,
+        "float2"sv};
+    for (auto i : vstd::range(meshFormat.vertex_stream_count())) {
+        for (auto &&j : meshFormat.attributes(i)) {
+            auto type = j.type;
+            assert(!bits[static_cast<size_t>(type)]);
+            bits[static_cast<size_t>(type)] = true;
+            auto name = vertexAttriName.begin()[static_cast<size_t>(type)];
+            codegenData << 't' << name << "=vt."sv << name << ';';
+        }
+    }
+    for (auto i : vstd::range(bits.size())) {
+        if (!bits[i]) {
+            auto name = vertexAttriName.begin()[i];
+            codegenData << 't' << name << "=0;"sv;
+        }
+    }
+    codegenData << "}\n"sv;
+
+    codegenData << "struct vertex{\n"sv;
+    for (auto i : vstd::range(meshFormat.vertex_stream_count())) {
+        for (auto &&j : meshFormat.attributes(i)) {
+            auto type = j.type;
+            auto idx = static_cast<size_t>(type);
+            codegenData << semanticType.begin()[idx] << ' ' << vertexAttriName.begin()[idx] << ':' << semanticName.begin()[idx] << ";\n"sv;
+        }
+    }
+    codegenData << R"(uint vid:SV_VERTEXID;
+uint iid:SV_INSTANCEID;
+};
+)"sv;
+    CodegenVertex(vertFunc, codegenData);
+    // TODO: gen vertex data
+    codegenData << "#elif defined(PS)\n"sv;
+    // TODO: gen pixel data
+    CodegenPixel(pixelFunc, codegenData);
+    codegenData << "#endif\n"sv;
+    finalResult << detail::HLSLHeader(internalDataPath);
+    if (vertFunc.requires_raytracing() || pixelFunc.requires_raytracing()) {
+        finalResult << detail::RayTracingHeader(internalDataPath);
+    }
+    auto vertRange = vstd::RangeImpl(vstd::CacheEndRange(vertFunc.arguments()) | vstd::ValueRange{});
+    auto pixelRange = vstd::RangeImpl(vstd::ite_range(pixelFunc.arguments().begin() + 1, pixelFunc.arguments().end()) | vstd::ValueRange{});
+    std::initializer_list<vstd::IRange<Variable> *> funcs = {&vertRange, &pixelRange};
+    opt->funcType = CodegenStackData::FuncType::Callable;
+    GenerateCBuffer(funcs, varData, R"(uint v_c;
+uint i_c;
+uint2 tex_c;
+)"sv);
+    CodegenResult::Properties properties;
+    uint64 immutableHeaderSize = finalResult.size();
+    vstd::array<uint, 3> registerCount;
+    PreprocessCodegenProperties(properties, varData, registerCount);
+    CodegenProperties(properties, finalResult, varData, vertFunc, registerCount);
+    CodegenProperties(properties, finalResult, varData, pixelFunc, registerCount);
+    PostprocessCodegenProperties(properties, finalResult);
+    finalResult << varData << codegenData;
+    return {
+        std::move(finalResult),
+        std::move(properties),
+        opt->bindlessBufferCount,
+        immutableHeaderSize};
+}
 }// namespace toolhub::directx

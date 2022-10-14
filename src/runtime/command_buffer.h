@@ -32,7 +32,7 @@ private:
 public:
     ~CommandBuffer() noexcept;
     CommandBuffer &operator=(CommandBuffer &&) noexcept = delete;
-    CommandBuffer &operator<<(Command *cmd) &noexcept;
+    CommandBuffer &operator<<(luisa::unique_ptr<Command> &&cmd) &noexcept;
     CommandBuffer &operator<<(Event::Signal) &noexcept;
     CommandBuffer &operator<<(Event::Wait) &noexcept;
     CommandBuffer &operator<<(SwapChain::Present p) &noexcept;
@@ -47,7 +47,7 @@ public:
     // compound commands
     template<typename... T>
     decltype(auto) operator<<(std::tuple<T...> args) &noexcept {
-        auto encode = [this]<size_t... i>(std::tuple<T...> a, std::index_sequence<i...>) noexcept -> decltype(auto) {
+        auto encode = [this]<size_t... i>(std::tuple<T...> a, std::index_sequence<i...>) noexcept->decltype(auto) {
             return (*this << ... << std::move(std::get<i>(a)));
         };
         return encode(std::move(args), std::index_sequence_for<T...>{});

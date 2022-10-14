@@ -43,25 +43,28 @@ uint CodegenStackData::AddBindlessType(Type const *type) {
             }))
         .Value();
 }
+/*
 static thread_local bool gIsCodegenSpirv = false;
 bool &CodegenStackData::ThreadLocalSpirv() {
     return gIsCodegenSpirv;
-}
+}*/
 
 StructGenerator *CodegenStackData::CreateStruct(Type const *t) {
     bool isRayType = t->description() == CodegenUtility::rayTypeDesc;
     bool isHitType = t->description() == CodegenUtility::hitTypeDesc;
-    auto ite = customStruct.Find(t);
-    if (ite) {
-        return ite.Value().get();
+    StructGenerator *newPtr;
+    auto ite = customStruct.TryEmplace(
+        t,
+        vstd::LazyEval([&] {
+            newPtr = new StructGenerator(
+                t,
+                structCount++,
+                generateStruct);
+            return vstd::create_unique(newPtr);
+        }));
+    if (!ite.second) {
+        return ite.first.Value().get();
     }
-    auto newPtr = new StructGenerator(
-        t,
-        structCount++,
-        generateStruct);
-    customStruct.ForceEmplace(
-        t,
-        vstd::create_unique(newPtr));
 
     if (isRayType) {
         rayDesc = newPtr;

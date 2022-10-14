@@ -1,9 +1,7 @@
 #pragma once
-
 #include <vstl/Common.h>
 #include "dx_codegen.h"
 #include "struct_generator.h"
-
 namespace toolhub::directx {
 
 struct CodegenStackData : public vstd::IOperatorNewBase {
@@ -14,8 +12,14 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     vstd::HashMap<uint64, uint64> funcTypes;
     vstd::HashMap<Type const *, vstd::unique_ptr<StructGenerator>> customStruct;
     vstd::HashMap<Type const *, uint64> bindlessBufferTypes;
-    vstd::HashMap<uint> arguments;
-    bool isKernel = false;
+    vstd::HashMap<uint, uint> arguments;
+    enum class FuncType : uint8_t{
+        Kernel,
+        Vert,
+        Pixel,
+        Callable
+    };
+    FuncType funcType;
     vstd::vector<StructGenerator *> customStructVector;
     uint64 count = 0;
     uint64 constCount = 0;
@@ -23,7 +27,7 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     uint64 tempCount = 0;
     uint64 bindlessBufferCount = 0;
     uint64 structCount = 0;
-
+    
     vstd::function<StructGenerator *(Type const *)> generateStruct;
     StructGenerator *rayDesc = nullptr;
     StructGenerator *hitDesc = nullptr;
@@ -40,7 +44,7 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
     uint64 GetTypeCount(Type const *t);
     ~CodegenStackData();
     static vstd::unique_ptr<CodegenStackData> Allocate();
-    static void DeAllocate(vstd::unique_ptr<CodegenStackData> &&v);
-    static bool &ThreadLocalSpirv();
+    static void DeAllocate(vstd::unique_ptr<CodegenStackData>&& v);
+    // static bool& ThreadLocalSpirv();
 };
 }// namespace toolhub::directx

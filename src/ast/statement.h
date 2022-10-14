@@ -9,7 +9,7 @@
 #include <ast/expression.h>
 
 namespace luisa::compute {
-
+class AstSerializer;
 struct StmtVisitor;
 
 /**
@@ -17,6 +17,7 @@ struct StmtVisitor;
  * 
  */
 class LC_AST_API Statement : public concepts::Noncopyable {
+    friend class AstSerializer;
 
 public:
     /// Statement types
@@ -85,6 +86,7 @@ struct StmtVisitor {
 };
 
 #define LUISA_MAKE_STATEMENT_ACCEPT_VISITOR() \
+    friend class AstSerializer;               \
     void accept(StmtVisitor &visitor) const override { visitor.visit(this); }
 
 /// Break statement

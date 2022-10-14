@@ -26,7 +26,7 @@ IUtil::Result LCUtil::compress_bc6h(Stream &stream, Image<float> const &src, lui
         true,
         0,
         device->defaultAllocator.get(),
-        LCDevice::maxAllocatorCount);
+        device->maxAllocatorCount);
     return IUtil::Result::Success;
 }
 
@@ -39,7 +39,7 @@ IUtil::Result LCUtil::compress_bc7(Stream &stream, Image<float> const &src, luis
         false,
         alphaImportance,
         device->defaultAllocator.get(),
-        LCDevice::maxAllocatorCount);
+        device->maxAllocatorCount);
     return IUtil::Result::Success;
 }
 

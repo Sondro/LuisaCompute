@@ -284,7 +284,7 @@ void CUDADevice::synchronize_event(uint64_t handle) noexcept {
     });
 }
 
-uint64_t CUDADevice::create_mesh(uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUpdateHint hint) noexcept {
+uint64_t CUDADevice::create_mesh(uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept {
     return with_handle([=] {
         auto mesh = new_with_allocator<CUDAMesh>(
             v_buffer, v_offset, v_stride, v_count,
@@ -299,7 +299,7 @@ void CUDADevice::destroy_mesh(uint64_t handle) noexcept {
     });
 }
 
-uint64_t CUDADevice::create_accel(AccelUpdateHint hint) noexcept {
+uint64_t CUDADevice::create_accel(AccelUsageHint hint) noexcept {
     return with_handle([=, this] {
         auto accel = new_with_allocator<CUDAAccel>(hint);
         return reinterpret_cast<uint64_t>(accel);

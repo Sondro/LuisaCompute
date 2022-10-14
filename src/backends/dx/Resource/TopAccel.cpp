@@ -19,16 +19,16 @@ void GetRayTransform(D3D12_RAYTRACING_INSTANCE_DESC &inst, float4x4 const &tr) {
         }
 }
 }// namespace detail
-TopAccel::TopAccel(Device *device, luisa::compute::AccelUpdateHint hint,
+TopAccel::TopAccel(Device *device, luisa::compute::AccelUsageHint hint,
                    bool allow_compact, bool allow_update)
     : device(device) {
     //TODO: allow_compact not supported
     allow_compact = false;
     auto GetPreset = [&] {
         switch (hint) {
-            case AccelUpdateHint::FAST_TRACE:
+            case AccelUsageHint::FAST_TRACE:
                 return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-            case AccelUpdateHint::FAST_BUILD:
+            case AccelUsageHint::FAST_BUILD:
                 return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
         }
     };
@@ -78,7 +78,7 @@ size_t TopAccel::PreProcess(
     uint64 size,
     vstd::span<AccelBuildCommand::Modification const> const &modifications,
     bool update) {
-    auto refreshUpdate = vstd::create_disposer([&] { this->update = update; });
+    auto refreshUpdate = vstd::scope_exit([&] { this->update = update; });
     if ((uint)(topLevelBuildDesc.Inputs.Flags &
                D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE) == 0 ||
         topLevelBuildDesc.Inputs.NumDescs != size) update = false;
@@ -266,7 +266,7 @@ bool TopAccel::RequireCompact() const {
 }
 bool TopAccel::CheckAccel(
     CommandBufferBuilder &builder) {
-    auto disp = vstd::create_disposer([&] { compactSize = 0; });
+    auto disp = vstd::scope_exit([&] { compactSize = 0; });
     if (compactSize == 0)
         return false;
     auto &&alloc = builder.GetCB()->GetAlloc();

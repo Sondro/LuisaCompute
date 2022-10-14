@@ -51,7 +51,7 @@ public:
      * @param device RTCDevice where scene builds
      * @param hint scene build hint
      */
-    ISPCAccel(RTCDevice device, AccelUpdateHint hint) noexcept;
+    ISPCAccel(RTCDevice device, AccelUsageHint hint) noexcept;
     ~ISPCAccel() noexcept;
     /**
      * @brief Generate handle for device usage

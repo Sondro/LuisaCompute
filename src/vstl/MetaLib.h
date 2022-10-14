@@ -636,7 +636,7 @@ public:
 };
 
 template<typename T>
-disposer<T> create_disposer(T &&t) {
+disposer<T> scope_exit(T &&t) {
     return disposer<T>(std::forward<T>(t));
 }
 
@@ -1315,7 +1315,7 @@ void push_back_func(Vec &&vec, Func &&func, size_t count) {
             std::back_inserter(vec),
             count,
             LazyEval([&] {
-                auto d = create_disposer([&] { ++i; });
+                auto d = scope_exit([&] { ++i; });
                 return func(i);
             }));
     } else {
@@ -1325,7 +1325,7 @@ void push_back_func(Vec &&vec, Func &&func, size_t count) {
 template<typename Vec>
 auto erase_last(Vec &&vec) {
     auto lastIte = vec.end() - 1;
-    auto disp = create_disposer([&] { vec.erase(lastIte); });
+    auto disp = scope_exit([&] { vec.erase(lastIte); });
     return std::move(*lastIte);
 }
 #define VSTD_TRIVIAL_COMPARABLE(T)               \

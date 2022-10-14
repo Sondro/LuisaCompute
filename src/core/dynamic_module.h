@@ -26,6 +26,7 @@ private:
     [[nodiscard]] static luisa::vector<std::pair<std::filesystem::path, size_t>> &_search_paths() noexcept;
 
 public:
+    DynamicModule() noexcept;
     /**
      * @brief Construct a new Dynamic Module object
      * 

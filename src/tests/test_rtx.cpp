@@ -22,11 +22,7 @@ int main(int argc, char *argv[]) {
     log_level_info();
 
     Context context{argv[0]};
-    if (argc <= 1) {
-        LUISA_INFO("Usage: {} <backend>. <backend>: cuda, dx, ispc, metal", argv[0]);
-        exit(1);
-    }
-    auto device = context.create_device(argv[1]);
+    auto device = context.create_device("dx");
 
     std::array vertices{
         float3(-0.5f, -0.5f, 0.0f),
@@ -104,16 +100,25 @@ int main(int argc, char *argv[]) {
 
     auto accel = device.create_accel();
     auto mesh = device.create_mesh(vertex_buffer, triangle_buffer,
-                                   Mesh::BuildHint::FAST_BUILD,
-                                   Mesh::UpdateHint::ALWAYS_REBUILD);
+                                   AccelUsageHint::FAST_BUILD);
     accel.emplace_back(mesh, scaling(1.5f));
     accel.emplace_back(mesh, translation(float3(-0.25f, 0.0f, 0.1f)) *
                                  rotation(float3(0.0f, 0.0f, 1.0f), 0.5f));
     stream << mesh.build()
            << accel.build();
+    /*
+    device.save(raytracing_kernel, ".data/raytracing");
+    auto raytracing_shader = device.load_shader<2, Buffer<float4>, Accel, uint>(".data/raytracing");
+    
+    auto raytracing_shader = device.compile(raytracing_kernel, false);
 
-    auto colorspace_shader = device.compile(colorspace_kernel);
-    auto raytracing_shader = device.compile(raytracing_kernel);
+    auto raytracing_shader = device.compile_to(raytracing_kernel, ".data/raytracing"sv);
+
+    */
+        
+    auto colorspace_shader = device.compile_to(colorspace_kernel, ".data/colorspace");
+    auto raytracing_shader = device.compile_to(raytracing_kernel, ".data/raytracing"sv);
+    
 
     static constexpr auto width = 512u;
     static constexpr auto height = 512u;

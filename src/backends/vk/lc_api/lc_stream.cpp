@@ -423,7 +423,7 @@ void LCStream::DispatchCmd(CommandList&& cmdList) {
 		command->accept(reorder);
 	}
 	auto cmdLists = reorder.command_lists();
-	auto AfterFunc = vstd::create_disposer([&] {
+	auto AfterFunc = vstd::scope_exit([&] {
 		for (auto command : commands) {
 			command->recycle();
 		}

@@ -7,15 +7,17 @@
 #include <vector>
 
 #include <core/spin_mutex.h>
-#include <core/stl/optional.h>
+
 #include <ast/statement.h>
 #include <ast/function.h>
 #include <ast/variable.h>
 #include <ast/expression.h>
 #include <ast/constant_data.h>
 #include <ast/type_registry.h>
+#include <core/stl/optional.h>
 
 namespace luisa::compute {
+class AstSerializer;
 class Statement;
 class Expression;
 class FunctionSerializer;
@@ -29,6 +31,7 @@ namespace luisa::compute::detail {
  * Build kernel or callable function
  */
 class LC_AST_API FunctionBuilder : public luisa::enable_shared_from_this<FunctionBuilder> {
+    friend class AstSerializer;
 
 private:
     /**
@@ -200,8 +203,18 @@ private:
     template<typename Def>
     static auto _define(Function::Tag tag, Def &&def) {
         auto f = make_shared<FunctionBuilder>(tag);
-        FunctionStackGuard guard{f.get()};
-        f->with(&f->_body, std::forward<Def>(def));
+        push(f.get());
+#ifdef LUISA_AST_EXCEPTION
+        try {
+#endif
+            f->with(&f->_body, std::forward<Def>(def));
+#ifdef LUISA_AST_EXCEPTION
+        } catch (...) {
+            pop(f.get());
+            throw;
+        }
+#endif
+        pop(f.get());
         return luisa::const_pointer_cast<const FunctionBuilder>(f);
     }
 

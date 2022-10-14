@@ -22,11 +22,11 @@ private:
     uint64_t _t_buffer;
     uint64_t _t_offset;
     uint64_t _t_count;
-    AccelUpdateHint _hint;
+    AccelUsageHint _hint;
     std::atomic_bool _buffers_already_set{false};
 
 public:
-    LLVMMesh(RTCDevice device, AccelUpdateHint hint,
+    LLVMMesh(RTCDevice device, AccelUsageHint hint,
              uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count,
              uint64_t t_buffer, size_t t_offset, size_t t_count) noexcept;
     ~LLVMMesh() noexcept;

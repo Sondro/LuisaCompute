@@ -37,14 +37,14 @@ bool BottomAccel::RequireCompact() const {
 }
 BottomAccel::BottomAccel(
     Device *device,
-    luisa::compute::AccelUpdateHint hint,
+    luisa::compute::AccelUsageHint hint,
     bool allow_compact, bool allow_update)
     : device(device) {
     auto GetPreset = [&] {
         switch (hint) {
-            case AccelUpdateHint::FAST_TRACE:
+            case AccelUsageHint::FAST_TRACE:
                 return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-            case AccelUpdateHint::FAST_BUILD:
+            case AccelUsageHint::FAST_BUILD:
                 return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
         }
     };
@@ -79,7 +79,7 @@ size_t BottomAccel::PreProcessStates(
     Buffer const *iHandle,
     size_t idxOffset, size_t idxSize,
     BottomAccelData &bottomData) {
-    auto refreshUpdate = vstd::create_disposer([&] { this->update = update; });
+    auto refreshUpdate = vstd::scope_exit([&] { this->update = update; });
     if ((uint)(hint & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE) == 0)
         update = false;
     detail::MeshPreprocess(vHandle, iHandle, tracker);
@@ -128,7 +128,7 @@ size_t BottomAccel::PreProcessStates(
 }
 bool BottomAccel::CheckAccel(
     CommandBufferBuilder &builder) {
-    auto disp = vstd::create_disposer([&] { compactSize = 0; });
+    auto disp = vstd::scope_exit([&] { compactSize = 0; });
     if (compactSize == 0)
         return false;
     auto &&alloc = builder.GetCB()->GetAlloc();

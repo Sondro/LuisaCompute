@@ -37,7 +37,7 @@ class TopAccel : public vstd::IOperatorNewBase {
 
 public:
     bool RequireCompact() const;
-    TopAccel(Device *device, luisa::compute::AccelUpdateHint hint,
+    TopAccel(Device *device, luisa::compute::AccelUsageHint hint,
              bool allow_compact, bool allow_update);
     uint Length() const { return topLevelBuildDesc.Inputs.NumDescs; }
 

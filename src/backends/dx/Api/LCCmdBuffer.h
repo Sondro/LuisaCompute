@@ -18,12 +18,17 @@ struct ButtomCompactCmd {
     size_t offset;
     size_t size;
 };
+struct ReorderFuncTable {
+    bool is_res_in_bindless(uint64_t bindless_handle, uint64_t resource_handle) const noexcept;
+    Usage get_usage(uint64_t shader_handle, size_t argument_index) const noexcept;
+};
 class LCCmdBuffer final : public vstd::IOperatorNewBase {
 protected:
     Device *device;
     ResourceStateTracker tracker;
     uint64 lastFence = 0;
-    CommandReorderVisitor reorder;
+    ReorderFuncTable reorderFuncTable;
+    CommandReorderVisitor<ReorderFuncTable, false> reorder;
 
 public:
     CommandQueue queue;
@@ -37,14 +42,14 @@ public:
     void Sync();
     void Present(
         LCSwapChain *swapchain,
-        RenderTexture *rt,
+        TextureBase *rt,
         size_t maxAlloc = std::numeric_limits<size_t>::max());
     void CompressBC(
-        RenderTexture *rt,
+        TextureBase *rt,
         luisa::vector<std::byte> &result,
         bool isHDR,
         float alphaImportance,
-        IGpuAllocator* allocator,
+        IGpuAllocator *allocator,
         size_t maxAlloc = std::numeric_limits<size_t>::max());
 };
 

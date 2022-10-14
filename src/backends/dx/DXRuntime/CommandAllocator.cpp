@@ -1,4 +1,3 @@
-
 #include <DXRuntime/CommandAllocator.h>
 #include <DXRuntime/CommandQueue.h>
 namespace toolhub::directx {
@@ -31,7 +30,6 @@ void CommandAllocatorBase::Complete(
         (*evt)();
     }
 }
-
 
 CommandBuffer *CommandAllocatorBase::GetBuffer() const {
     return cbuffer;

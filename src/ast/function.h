@@ -10,6 +10,7 @@
 #include <ast/constant_data.h>
 
 namespace luisa::compute {
+class AstSerializer;
 
 namespace detail {
 class FunctionBuilder;
@@ -23,6 +24,7 @@ class Expression;
  * 
  */
 class LC_AST_API Function {
+    friend class AstSerializer;
 
 public:
     struct Hash {

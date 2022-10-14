@@ -241,7 +241,7 @@ public:
      * @param hint build hint
      * @return handle of CUDAMesh object
      */
-    uint64_t create_mesh(uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUpdateHint hint)  noexcept override;
+    uint64_t create_mesh(uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint)  noexcept override;
     /**
      * @brief Destroy a mesh
      * 
@@ -254,7 +254,7 @@ public:
      * @param hint build hint
      * @return handle of CUDAAccel object
      */
-    uint64_t create_accel(AccelUpdateHint hint) noexcept override;
+    uint64_t create_accel(AccelUsageHint hint) noexcept override;
     /**
      * @brief Destroy an accel
      * 

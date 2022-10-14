@@ -52,7 +52,7 @@ public:
     void destroy_buffer(uint64_t handle) noexcept override;
     uint64_t create_stream(bool for_present) noexcept override;
     void destroy_stream(uint64_t handle) noexcept override;
-    void dispatch(uint64_t stream_handle, CommandList &&list) noexcept override;
+    void dispatch(uint64_t stream_handle, const CommandList &list) noexcept override;
     void synchronize_stream(uint64_t stream_handle) noexcept override;
     uint64_t create_shader(Function kernel, std::string_view meta_options) noexcept override;
     void destroy_shader(uint64_t handle) noexcept override;
@@ -61,9 +61,11 @@ public:
     void wait_event(uint64_t handle, uint64_t stream_handle) noexcept override;
     void destroy_event(uint64_t handle) noexcept override;
     void synchronize_event(uint64_t handle) noexcept override;
-    uint64_t create_mesh(AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept override;
+    uint64_t create_mesh(
+        uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count,
+        uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept override;
     void destroy_mesh(uint64_t handle) noexcept override;
-    uint64_t create_accel(AccelBuildHint build_hint, AccelUpdateHint update_hint) noexcept override;
+    uint64_t create_accel(AccelUsageHint hint) noexcept override;
     void destroy_accel(uint64_t handle) noexcept override;
     uint64_t create_bindless_array(size_t size) noexcept override;
     void destroy_bindless_array(uint64_t handle) noexcept override;
@@ -77,11 +79,14 @@ public:
     void remove_buffer_in_bindless_array(uint64_t array, size_t index) noexcept override;
     void remove_tex2d_in_bindless_array(uint64_t array, size_t index) noexcept override;
     void remove_tex3d_in_bindless_array(uint64_t array, size_t index) noexcept override;
+    bool is_resource_in_bindless_array(uint64_t array, uint64_t handle) const noexcept override;
+    bool requires_command_reordering() const noexcept override;
     void dispatch(uint64_t stream_handle, luisa::move_only_function<void()> &&func) noexcept override;
     uint64_t create_swap_chain(uint64_t window_handle, uint64_t stream_handle, uint width, uint height, bool allow_hdr, uint back_buffer_size) noexcept override;
     void destroy_swap_chain(uint64_t handle) noexcept override;
     PixelStorage swap_chain_pixel_storage(uint64_t handle) noexcept override;
     void present_display_in_stream(uint64_t stream_handle, uint64_t swapchain_handle, uint64_t image_handle) noexcept override;
+    void dispatch(uint64_t stream_handle, luisa::span<const CommandList> lists) noexcept override;
 };
 
 }// namespace luisa::compute::metal

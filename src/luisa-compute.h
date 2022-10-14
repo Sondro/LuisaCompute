@@ -7,7 +7,7 @@
 #include <core/basic_traits.h>
 #include <core/basic_types.h>
 #include <core/binary_buffer.h>
-#include <core/binary_io.h>
+#include <core/binary_io_visitor.h>
 #include <core/clock.h>
 #include <core/concepts.h>
 #include <core/constants.h>
@@ -15,10 +15,12 @@
 #include <core/dll_export.h>
 #include <core/dynamic_module.h>
 #include <core/first_fit.h>
+#include <core/stl/hash.h>
 #include <core/intrin.h>
 #include <core/json.h>
 #include <core/json_fwd.h>
 #include <core/logging.h>
+#include "core/stl/lru_cache.h"
 #include <core/macro.h>
 #include <core/mathematics.h>
 #include <core/observer.h>
@@ -33,6 +35,7 @@
 #include <ast/expression.h>
 #include <ast/function.h>
 #include <ast/function_builder.h>
+#include <ast/function_serializer.h>
 #include <ast/interface.h>
 #include <ast/op.h>
 #include <ast/statement.h>

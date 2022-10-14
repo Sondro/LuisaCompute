@@ -182,7 +182,7 @@ void LLVMDevice::synchronize_event(uint64_t handle) noexcept {
 
 uint64_t LLVMDevice::create_mesh(
     uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count,
-    uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUpdateHint hint) noexcept {
+    uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept {
     auto mesh = luisa::new_with_allocator<LLVMMesh>(
         _rtc_device, hint,
         v_buffer, v_offset, v_stride, v_count,
@@ -194,7 +194,7 @@ void LLVMDevice::destroy_mesh(uint64_t handle) noexcept {
     luisa::delete_with_allocator(reinterpret_cast<LLVMMesh *>(handle));
 }
 
-uint64_t LLVMDevice::create_accel(AccelUpdateHint hint) noexcept {
+uint64_t LLVMDevice::create_accel(AccelUsageHint hint) noexcept {
     auto accel = luisa::new_with_allocator<LLVMAccel>(_rtc_device, hint);
     return reinterpret_cast<uint64_t>(accel);
 }

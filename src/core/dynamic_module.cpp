@@ -23,11 +23,11 @@ DynamicModule::DynamicModule(const std::filesystem::path &folder, std::string_vi
     if ((_handle = dynamic_module_load(p)) == nullptr) {
         LUISA_ERROR_WITH_LOCATION(
             "Failed to load dynamic module: {}.",
-            p.string());
+            p.string<char, std::char_traits<char>, luisa::allocator<char>>());
     }
     LUISA_INFO(
         "Loaded dynamic module '{}' in {} ms.",
-        p.string(), clock.toc());
+        p.string<char, std::char_traits<char>, luisa::allocator<char>>(), clock.toc());
 }
 
 std::mutex &DynamicModule::_search_path_mutex() noexcept {
@@ -50,7 +50,7 @@ DynamicModule::DynamicModule(std::string_view name) noexcept {
         if ((_handle = dynamic_module_load(p)) != nullptr) {
             LUISA_INFO(
                 "Loaded dynamic module '{}' in {} ms.",
-                p.string(), clock.toc());
+                p.string<char, std::char_traits<char>, luisa::allocator<char>>(), clock.toc());
             return;
         }
     }
@@ -101,7 +101,7 @@ luisa::optional<DynamicModule> DynamicModule::load(std::string_view name) noexce
         if (auto handle = dynamic_module_load(p)) {
             LUISA_INFO(
                 "Loaded dynamic module '{}' in {} ms.",
-                p.string(), clock.toc());
+                p.string<char, std::char_traits<char>, luisa::allocator<char>>(), clock.toc());
             return DynamicModule{handle};
         }
     }
@@ -121,7 +121,7 @@ luisa::optional<DynamicModule> DynamicModule::load(const std::filesystem::path &
     if (auto handle = dynamic_module_load(p)) {
         LUISA_INFO(
             "Loaded dynamic module '{}' in {} ms.",
-            p.string(), clock.toc());
+            p.string<char, std::char_traits<char>, luisa::allocator<char>>(), clock.toc());
         return DynamicModule{handle};
     }
     return luisa::nullopt;

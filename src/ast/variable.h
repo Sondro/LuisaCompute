@@ -7,8 +7,8 @@
 #include <ast/type.h>
 #include <ast/usage.h>
 #include <core/stl/hash.h>
-
 namespace luisa::compute {
+class AstSerializer;
 
 namespace detail {
 class FunctionBuilder;
@@ -16,6 +16,7 @@ class FunctionBuilder;
 
 /// Variable class
 class Variable {
+    friend class AstSerializer;
 
 public:
     /// Variable tags
@@ -38,7 +39,11 @@ public:
         THREAD_ID,
         BLOCK_ID,
         DISPATCH_ID,
-        DISPATCH_SIZE
+        DISPATCH_SIZE,
+
+        MESH_VERTEX,
+        MESH_INSTANCE,
+        TEXEL_SIZE
     };
 
 private:

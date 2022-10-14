@@ -23,8 +23,10 @@ public:
     bool operator!=(IteEndTag tag) const { return !operator==(tag); }
 };
 namespace detail {
-class BuilderFlag : public IOperatorNewBase {};
-class RangeFlag : public IOperatorNewBase {};
+struct BuilderFlag : public IOperatorNewBase {};
+struct RangeFlag : public IOperatorNewBase {
+    IteEndTag end() const { return {}; }
+};
 }// namespace detail
 template<typename T>
 static constexpr bool IterableType = std::is_base_of_v<detail::RangeFlag, std::remove_cvref_t<T>>;
@@ -47,7 +49,6 @@ public:
         builder.begin(ite);
         return {this};
     }
-    IteEndTag end() const { return {}; }
     void operator++() {
         builder.next(ite);
     }
@@ -137,7 +138,6 @@ public:
     virtual bool operator==(IteEndTag) const = 0;
     virtual void operator++() = 0;
     virtual T operator*() = 0;
-    IteEndTag end() const { return {}; }
 };
 template<typename Ite>
 class v_RangeImpl : public IRange<decltype(*std::declval<Ite>())> {
@@ -329,9 +329,8 @@ public:
     decltype(auto) operator*() {
         return **ite;
     }
-    IteEndTag end() const { return {}; }
 };
-class range : detail::RangeFlag {
+class range : public detail::RangeFlag {
     int64 num;
     int64 b;
     int64 e;
@@ -342,12 +341,11 @@ public:
         num = b;
         return {this};
     }
-    IteEndTag end() const { return {}; }
     bool operator==(IteEndTag) const {
         return num == e;
     }
     void operator++() { num += inc; }
-    int64& operator*() {
+    int64 &operator*() {
         return num;
     }
 
@@ -355,7 +353,7 @@ public:
     range(int64 e) : b(0), e(e), inc(1) {}
 };
 template<typename T>
-class ptr_range : detail::RangeFlag {
+class ptr_range : public detail::RangeFlag {
     T *ptr;
     T *b;
     T *e;
@@ -368,7 +366,6 @@ public:
         ptr = b;
         return {this};
     }
-    IteEndTag end() const { return {}; }
     bool operator==(IteEndTag) const {
         return ptr == e;
     }
@@ -377,6 +374,35 @@ public:
     }
     T &operator*() {
         return *ptr;
+    }
+};
+template<typename T, typename E>
+class ite_range : public detail::RangeFlag {
+    Storage<T> ptr;
+    T b;
+    E e;
+    bool begined{false};
+    T *Ptr() { return reinterpret_cast<T *>(&ptr); }
+    T const *Ptr() const { return reinterpret_cast<T const*>(&ptr); }
+
+public:
+    ite_range(T &&b, E &&e) : b(std::forward<T>(b)), e(std::forward<E>(e)) {}
+    ~ite_range() {
+        if (begined) { Ptr()->~T(); }
+    }
+    IteRef<ite_range> begin() {
+        if (begined) { Ptr()->~T(); }
+        new (Ptr()) T(std::forward<T>(b));
+        return {this};
+    }
+    bool operator==(IteEndTag) const {
+        return (*Ptr()) == e;
+    }
+    void operator++() {
+        ++(*Ptr());
+    }
+    decltype(auto) operator*() {
+        return **Ptr();
     }
 };
 template<typename... Ts>
@@ -400,7 +426,6 @@ struct v_TupleIterator : public detail::RangeFlag {
         };
         return detail::SampleTupleFuncTable<decltype(ites) &, decltype(func) &, Sequencer>::table.begin()[index](ites, func);
     }
-    vstd::IteEndTag end() const { return {}; }
     bool operator==(vstd::IteEndTag) const {
         return index == sizeof...(Ts);
     }
@@ -457,7 +482,6 @@ struct v_PairIterator : public detail::RangeFlag {
         else
             return *a;
     }
-    vstd::IteEndTag end() const { return {}; }
     bool operator==(vstd::IteEndTag t) const {
         return ite && b == t;
     }

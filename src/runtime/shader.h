@@ -42,11 +42,9 @@ using prototype_to_shader_invocation_t = typename prototype_to_shader_invocation
 class LC_RUNTIME_API ShaderInvokeBase {
 
 private:
-    ShaderDispatchCommand *_command;
+    luisa::unique_ptr<ShaderDispatchCommand> _command;
     Function _kernel;
-    size_t _argument_index{0u};
 
-private:
 public:
     explicit ShaderInvokeBase(uint64_t handle, Function kernel) noexcept
         : _command{ShaderDispatchCommand::create(handle, kernel)},
@@ -104,9 +102,7 @@ public:
 protected:
     [[nodiscard]] auto _parallelize(uint3 dispatch_size) &&noexcept {
         _command->set_dispatch_size(dispatch_size);
-        ShaderDispatchCommand *command{nullptr};
-        std::swap(command, _command);
-        return command;
+        return std::move(_command);
     }
 };
 
@@ -161,7 +157,12 @@ private:
     Shader(Device::Interface *device,
            luisa::shared_ptr<const detail::FunctionBuilder> kernel,
            const std::filesystem::path &file_path) noexcept
-        : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), file_path.string())},
+        : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), file_path.string<char, std::char_traits<char>, luisa::allocator<char>>())},
+          _kernel{std::move(kernel)} {}
+    Shader(Device::Interface *device,
+           luisa::shared_ptr<const detail::FunctionBuilder> kernel,
+           bool use_cache) noexcept
+        : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), use_cache)},
           _kernel{std::move(kernel)} {}
 
 private:
@@ -170,7 +171,7 @@ private:
            const std::filesystem::path &file_path) noexcept
         : Resource{[device, &file_path]() noexcept {
               std::array arg_types{Type::of<Args>()...};
-              auto handle = device->load_shader(file_path.string(), arg_types);
+              auto handle = device->load_shader(file_path.string<char, std::char_traits<char>, luisa::allocator<char>>(), arg_types);
               return handle == Device::invalid_handle ?
                          Resource{} :
                          Resource{device, Tag::SHADER, handle};

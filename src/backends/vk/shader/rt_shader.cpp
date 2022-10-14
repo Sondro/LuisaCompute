@@ -13,7 +13,7 @@ RTShader::RTShader(
 	: Resource(device) {
 	vstd::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 	vstd::vector<VkShaderModule> shaderModule;
-	auto disp = vstd::create_disposer([&] {
+	auto disp = vstd::scope_exit([&] {
 		for (auto&& i : shaderModule) {
 			vkDestroyShaderModule(device->device, i, Device::Allocator());
 		}

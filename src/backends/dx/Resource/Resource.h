@@ -13,6 +13,7 @@ public:
 		BindlessArray,
 		Mesh,
 		SwapChain,
+		DepthBuffer
 	};
 
 protected:

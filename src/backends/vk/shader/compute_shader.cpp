@@ -22,7 +22,7 @@ ComputeShader::ComputeShader(
 	shaderStage.module = ShaderUtility::LoadShader(spirvCode, device->device);
 	shaderStage.pName = "main";
 	computePipelineCreateInfo.stage = shaderStage;
-	auto d = vstd::create_disposer([&] {
+	auto d = vstd::scope_exit([&] {
 		vkDestroyShaderModule(device->device, shaderStage.module, Device::Allocator());
 	});
 	auto CreatePipeline = [&](VkPipelineCache cache) {

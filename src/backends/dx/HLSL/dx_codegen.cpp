@@ -1,5 +1,3 @@
-
-
 #include "dx_codegen.h"
 #include "struct_generator.h"
 #include "codegen_stack_data.h"
@@ -139,7 +137,7 @@ void StringStateVisitor::visit(const MemberExpr *expr) {
 }
 void StringStateVisitor::visit(const AccessExpr *expr) {
     str << "(";
-    auto disp = vstd::create_disposer([&] {
+    auto disp = vstd::scope_exit([&] {
         str << ")";
     });
     auto t = expr->range()->type();

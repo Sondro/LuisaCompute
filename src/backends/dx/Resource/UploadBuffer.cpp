@@ -40,7 +40,7 @@ void UploadBuffer::CopyData(uint64 offset, vstd::span<vbyte const> data) const {
 	range.Begin = offset;
     range.End = offset + data.size();
 	ThrowIfFailed(allocHandle.resource->Map(0, &range, reinterpret_cast<void**>(&mappedPtr)));
-	auto disp = vstd::create_disposer([&] {
+	auto disp = vstd::scope_exit([&] {
 		allocHandle.resource->Unmap(0, &range);
 	});
     memcpy(reinterpret_cast<vbyte *>(mappedPtr) + offset, data.data(), data.size());

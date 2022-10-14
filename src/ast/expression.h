@@ -20,6 +20,7 @@
 #include <ast/constant_data.h>
 
 namespace luisa::compute {
+class AstSerializer;
 
 struct ExprVisitor;
 
@@ -32,6 +33,7 @@ class FunctionBuilder;
  * 
  */
 class LC_AST_API Expression : public concepts::Noncopyable {
+    friend class AstSerializer;
 
 public:
     /// Expression type
@@ -98,6 +100,7 @@ struct ExprVisitor {
 };
 
 #define LUISA_MAKE_EXPRESSION_ACCEPT_VISITOR() \
+    friend class AstSerializer;                \
     void accept(ExprVisitor &visitor) const override { visitor.visit(this); }
 
 /// Unary expression
@@ -330,7 +333,7 @@ public:
 };
 
 /// Reference expression
-class RefExpr final : public Expression {
+class LC_AST_API RefExpr final : public Expression {
 
 private:
     Variable _variable;
@@ -379,7 +382,7 @@ public:
 };
 
 /// Call expression
-class CallExpr final : public Expression {
+class LC_AST_API CallExpr final : public Expression {
 
 public:
     using ArgumentList = luisa::vector<const Expression *>;
@@ -437,7 +440,7 @@ enum struct CastOp {
 };
 
 /// Cast expression
-class CastExpr final : public Expression {
+class LC_AST_API CastExpr final : public Expression {
 
 private:
     const Expression *_source;

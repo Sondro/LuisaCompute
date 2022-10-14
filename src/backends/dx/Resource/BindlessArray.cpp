@@ -56,7 +56,7 @@ BindlessArray::MapIndex BindlessArray::AddIndex(size_t ptr) {
 void BindlessArray::Bind(size_t handle, Property const &prop, uint index) {
     auto &bindGrp = binded[index].first;
     auto &indices = binded[index].second;
-    auto dsp = vstd::create_disposer([&] {
+    auto dsp = vstd::scope_exit([&] {
         updateMap.ForceEmplace(
             index,
             bindGrp);

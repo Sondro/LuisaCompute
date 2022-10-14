@@ -1,4 +1,3 @@
-
 #include <Shader/ComputeShader.h>
 #include <Shader/ShaderSerializer.h>
 #include <vstl/BinaryReader.h>
@@ -7,162 +6,215 @@
 #include <vstl/MD5.h>
 namespace toolhub::directx {
 namespace ComputeShaderDetail {
-static void SavePSO(vstd::string_view fileName, BinaryIO* fileStream, ComputeShader const* cs) {
-	ComPtr<ID3DBlob> psoCache;
-	cs->Pso()->GetCachedBlob(&psoCache);
-	fileStream->write_cache(fileName, {reinterpret_cast<std::byte const*>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
+
+static void SavePSO(vstd::string_view fileName, BinaryIOVisitor *fileStream, ComputeShader const *cs) {
+    ComPtr<ID3DBlob> psoCache;
+    cs->Pso()->GetCachedBlob(&psoCache);
+    fileStream->write_cache(fileName, {reinterpret_cast<std::byte const *>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
 };
 }// namespace ComputeShaderDetail
-ComputeShader* ComputeShader::LoadPresetCompute(
-	BinaryIO* fileIo,
-	Device* device,
-	vstd::span<Type const* const> types,
-	vstd::string_view fileName) {
-	using namespace ComputeShaderDetail;
-	bool oldDeleted = false;
-	auto result = ShaderSerializer::DeSerialize(
-		fileName,
-		device,
-		*fileIo,
-		{},
-		oldDeleted);
-	//Cached
+ComputeShader *ComputeShader::LoadPresetCompute(
+    BinaryIOVisitor *fileIo,
+    Device *device,
+    vstd::span<Type const *const> types,
+    vstd::string_view fileName) {
+    using namespace ComputeShaderDetail;
+    bool oldDeleted = false;
+    vstd::MD5 lastMD5;
+    auto result = ShaderSerializer::DeSerialize(
+        fileName,
+        false,
+        device,
+        *fileIo,
+        {},
+        oldDeleted,
+        &lastMD5);
+    //Cached
 
-	if (result) {
-		// args check
-		auto args = result->Args();
-		auto DeleteFunc = [&] {
-			delete result;
-			return nullptr;
-		};
-		if (args.size() != types.size()) {
-			return DeleteFunc();
-		} else {
-			for (auto i : vstd::range(args.size())) {
-				auto& srcType = args[i];
-				auto dstType = SavedArgument{types[i]};
-				if (srcType.structSize != dstType.structSize ||
-					srcType.tag != dstType.tag) {
-					return DeleteFunc();
-				}
-			}
-		}
-		if (oldDeleted) {
-			SavePSO(fileName, fileIo, result);
-		}
-	}
-	return result;
+    if (result) {
+        // args check
+        auto args = result->Args();
+        auto DeleteFunc = [&] {
+            delete result;
+            return nullptr;
+        };
+        if (args.size() != types.size()) {
+            return DeleteFunc();
+        } else {
+            for (auto i : vstd::range(args.size())) {
+                auto &srcType = args[i];
+                auto dstType = SavedArgument{types[i]};
+                if (srcType.structSize != dstType.structSize ||
+                    srcType.tag != dstType.tag) {
+                    return DeleteFunc();
+                }
+            }
+        }
+        if (oldDeleted) {
+            SavePSO(lastMD5.ToString(), fileIo, result);
+        }
+    }
+    return result;
 }
-ComputeShader* ComputeShader::CompileCompute(
-	BinaryIO* fileIo,
-	Device* device,
-	Function kernel,
-	vstd::function<CodegenResult()> const& codegen,
-	uint3 blockSize,
-	uint shaderModel,
-	vstd::string_view fileName,
-	vstd::optional<vstd::MD5> const& checkMD5) {
-	using namespace ComputeShaderDetail;
-	bool saveCacheFile;
-	static constexpr bool PRINT_CODE = false;
+ComputeShader *ComputeShader::CompileCompute(
+    BinaryIOVisitor *fileIo,
+    Device *device,
+    Function kernel,
+    vstd::function<CodegenResult()> const &codegen,
+    vstd::optional<vstd::MD5> const &checkMD5,
+    uint3 blockSize,
+    uint shaderModel,
+    vstd::string_view fileName,
+    bool byteCodeIsCache) {
+    using namespace ComputeShaderDetail;
+    static constexpr bool PRINT_CODE = false;
 
-	auto CompileNewCompute = [&]<bool WriteCache>() {
-		auto&& str = codegen();
-		if constexpr (PRINT_CODE) {
-			std::cout
-				<< "\n===============================\n"
-				<< str.result
-				<< "\n===============================\n";
-		}
-		auto compResult = Device::Compiler()->CompileCompute(
-			str.result,
-			true,
-			shaderModel);
-		return compResult.multi_visit_or(
-			vstd::UndefEval<ComputeShader*>{},
-			[&](vstd::unique_ptr<DXByteBlob> const& buffer) {
-				auto kernelArgs = ShaderSerializer::SerializeKernel(kernel);
-				if constexpr (WriteCache) {
-					auto serData = ShaderSerializer::Serialize(
-						str.properties,
-						kernelArgs,
-						{buffer->GetBufferPtr(), buffer->GetBufferSize()},
-						checkMD5,
-						str.bdlsBufferCount,
-						blockSize);
-					fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const*>(serData.data()), serData.byte_size()});
-				}
-				auto cs = new ComputeShader(
-					blockSize,
-					std::move(str.properties),
-					std::move(kernelArgs),
-					{buffer->GetBufferPtr(),
-					 buffer->GetBufferSize()},
-					device);
-				cs->bindlessCount = str.bdlsBufferCount;
-				if constexpr (WriteCache) {
-					SavePSO(fileName, fileIo, cs);
-				}
-				return cs;
-			},
-			[](auto&& err) {
-				std::cout << err << '\n';
-				VSTL_ABORT();
-				return nullptr;
-			});
-	};
-	if (!fileName.empty()) {
+    auto CompileNewCompute = [&]<bool WriteCache>() {
+        auto str = codegen();
+        vstd::MD5 md5;
+        if constexpr (WriteCache) {
+            md5 = vstd::MD5({reinterpret_cast<vbyte const *>(str.result.data() + str.immutableHeaderSize), str.result.size() - str.immutableHeaderSize});
+        }
+        if constexpr (PRINT_CODE) {
+            std::cout
+                << "\n===============================\n"
+                << str.result
+                << "\n===============================\n";
+        }
+        auto compResult = Device::Compiler()->CompileCompute(
+            str.result,
+            true,
+            shaderModel);
 
-		bool oldDeleted = false;
-		//Cached
-		auto result = ShaderSerializer::DeSerialize(
-			fileName,
-			device,
-			*fileIo,
-			checkMD5,
-			oldDeleted);
-		if (result) {
-			if (oldDeleted) {
-				SavePSO(fileName, fileIo, result);
-			}
-			return result;
-		}
+        return compResult.multi_visit_or(
+            vstd::UndefEval<ComputeShader *>{},
+            [&](vstd::unique_ptr<DXByteBlob> const &buffer) {
+                auto kernelArgs = [&] {
+                    if (kernel.builder() == nullptr) {
+                        return vstd::vector<SavedArgument>();
+                    } else {
+                        return ShaderSerializer::SerializeKernel(kernel);
+                    }
+                }();
+                if constexpr (WriteCache) {
+                    auto serData = ShaderSerializer::Serialize(
+                        str.properties,
+                        kernelArgs,
+                        {buffer->GetBufferPtr(), buffer->GetBufferSize()},
+                        md5,
+                        str.bdlsBufferCount,
+                        blockSize);
+                    if (byteCodeIsCache) {
+                        fileIo->write_cache(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+                    } else {
+                        fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+                    }
+                }
+                auto cs = new ComputeShader(
+                    blockSize,
+                    std::move(str.properties),
+                    std::move(kernelArgs),
+                    {buffer->GetBufferPtr(),
+                     buffer->GetBufferSize()},
+                    device);
+                cs->bindlessCount = str.bdlsBufferCount;
+                if constexpr (WriteCache) {
+                    SavePSO(md5.ToString(), fileIo, cs);
+                }
+                return cs;
+            },
+            [](auto &&err) {
+                std::cout << err << '\n';
+                VSTL_ABORT();
+                return nullptr;
+            });
+    };
+    if (!fileName.empty()) {
 
-		return CompileNewCompute.operator()<true>();
-	} else {
-		return CompileNewCompute.operator()<false>();
-	}
+        bool oldDeleted = false;
+        vstd::MD5 lastMD5;
+        //Cached
+        auto result = ShaderSerializer::DeSerialize(
+            fileName,
+            byteCodeIsCache,
+            device,
+            *fileIo,
+            checkMD5,
+            oldDeleted,
+            &lastMD5);
+        if (result) {
+            if (oldDeleted) {
+                SavePSO(lastMD5.ToString(), fileIo, result);
+            }
+            return result;
+        }
+
+        return CompileNewCompute.operator()<true>();
+    } else {
+        return CompileNewCompute.operator()<false>();
+    }
 }
-
+void ComputeShader::SaveCompute(
+    BinaryIOVisitor *fileIo,
+    Function kernel,
+    CodegenResult &str,
+    uint3 blockSize,
+    uint shaderModel,
+    vstd::string_view fileName) {
+    using namespace ComputeShaderDetail;
+    vstd::MD5 md5({reinterpret_cast<vbyte const *>(str.result.data() + str.immutableHeaderSize), str.result.size() - str.immutableHeaderSize});
+    if (ShaderSerializer::CheckMD5(fileName, md5, *fileIo)) return;
+    auto compResult = Device::Compiler()->CompileCompute(
+        str.result,
+        true,
+        shaderModel);
+    compResult.multi_visit(
+        [&](vstd::unique_ptr<DXByteBlob> const &buffer) {
+            auto kernelArgs = ShaderSerializer::SerializeKernel(kernel);
+            auto serData = ShaderSerializer::Serialize(
+                str.properties,
+                kernelArgs,
+                {buffer->GetBufferPtr(), buffer->GetBufferSize()},
+                md5,
+                str.bdlsBufferCount,
+                blockSize);
+            fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+        },
+        [](auto &&err) {
+            std::cout << err << '\n';
+            VSTL_ABORT();
+        });
+}
 ComputeShader::ComputeShader(
-	uint3 blockSize,
-	vstd::vector<Property>&& prop,
-	vstd::vector<SavedArgument>&& args,
-	vstd::span<vbyte const> binData,
-	Device* device)
-	: Shader(std::move(prop), std::move(args), device->device.Get()),
-	  blockSize(blockSize),
-	  device(device) {
-	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.pRootSignature = rootSig.Get();
-	psoDesc.CS.pShaderBytecode = binData.data();
-	psoDesc.CS.BytecodeLength = binData.size();
-	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-	ThrowIfFailed(device->device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(pso.GetAddressOf())));
+    uint3 blockSize,
+    vstd::vector<Property> &&prop,
+    vstd::vector<SavedArgument> &&args,
+    vstd::span<std::byte const> binData,
+    Device *device)
+    : Shader(std::move(prop), std::move(args), device->device.Get()),
+      blockSize(blockSize),
+      device(device) {
+    D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.pRootSignature = rootSig.Get();
+    psoDesc.CS.pShaderBytecode = binData.data();
+    psoDesc.CS.BytecodeLength = binData.size();
+    psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+    ThrowIfFailed(device->device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(pso.GetAddressOf())));
 }
 ComputeShader::ComputeShader(
-	uint3 blockSize,
-	Device* device,
-	vstd::vector<Property>&& prop,
-	vstd::vector<SavedArgument>&& args,
-	ComPtr<ID3D12RootSignature>&& rootSig,
-	ComPtr<ID3D12PipelineState>&& pso)
-	: device(device),
-	  blockSize(blockSize),
-	  Shader(std::move(prop), std::move(args), std::move(rootSig)),
-	  pso(std::move(pso)) {
+    uint3 blockSize,
+    Device *device,
+    vstd::vector<Property> &&prop,
+    vstd::vector<SavedArgument> &&args,
+    ComPtr<ID3D12RootSignature> &&rootSig,
+    ComPtr<ID3D12PipelineState> &&pso)
+    : device(device),
+      blockSize(blockSize),
+      Shader(std::move(prop), std::move(args), std::move(rootSig)),
+      pso(std::move(pso)) {
 }
 
 ComputeShader::~ComputeShader() {
 }
+
 }// namespace toolhub::directx

@@ -6,14 +6,14 @@
 #include <core/platform.h>
 #include <runtime/context.h>
 #include <runtime/device.h>
-#include <core/binary_io.h>
+#include <core/binary_io_visitor.h>
 
 #ifdef LUISA_PLATFORM_WINDOWS
 #include <windows.h>
 #endif
 
 namespace luisa::compute {
-
+// Make context global, so dynamic modules cannot be over-loaded
 struct Context::Impl {
     std::filesystem::path runtime_directory;
     std::filesystem::path cache_directory;
@@ -23,7 +23,7 @@ struct Context::Impl {
     luisa::vector<Device::Creator *> device_creators;
     luisa::vector<Device::Deleter *> device_deleters;
     luisa::vector<luisa::string> installed_backends;
-    BinaryIO *file_io{nullptr};
+    BinaryIOVisitor *file_io{nullptr};
 };
 
 namespace detail {
@@ -37,9 +37,6 @@ namespace detail {
 Context::Context(const std::filesystem::path &program) noexcept
     : _impl{luisa::make_shared<Impl>()} {
     _impl->runtime_directory = detail::runtime_directory(program);
-#ifdef LUISA_PLATFORM_WINDOWS
-    SetDllDirectoryW(_impl->runtime_directory.c_str());
-#endif
     LUISA_INFO("Created context for program '{}'.", program.filename().string<char>());
     LUISA_INFO("Runtime directory: {}.", _impl->runtime_directory.string<char>());
     _impl->cache_directory = _impl->runtime_directory / ".cache";
@@ -60,8 +57,9 @@ Context::Context(const std::filesystem::path &program) noexcept
             using namespace std::string_view_literals;
             constexpr std::array possible_prefixes{
                 "luisa-compute-backend-"sv,
+                // Make Mingw happy
                 "libluisa-compute-backend-"sv};
-            auto filename = path.stem().string();
+            auto filename = path.stem().string<char, std::char_traits<char>, luisa::allocator<char>>();
             for (auto prefix : possible_prefixes) {
                 if (filename.starts_with(prefix)) {
                     auto name = filename.substr(prefix.size());
@@ -91,36 +89,50 @@ const std::filesystem::path &Context::data_directory() const noexcept {
     return _impl->data_directory;
 }
 
-Device Context::create_device(std::string_view backend_name_in, luisa::string_view property_json) noexcept {
+Device Context::create_device(std::string_view backend_name_in,  DeviceSettings const* settings) noexcept {
     luisa::string backend_name{backend_name_in};
     for (auto &c : backend_name) { c = static_cast<char>(std::tolower(c)); }
-    if (std::find(_impl->installed_backends.cbegin(),
-                  _impl->installed_backends.cend(),
-                  backend_name) == _impl->installed_backends.cend()) {
+    auto impl = _impl.get();
+    if (std::find(impl->installed_backends.cbegin(),
+                  impl->installed_backends.cend(),
+                  backend_name) == impl->installed_backends.cend()) {
         LUISA_ERROR_WITH_LOCATION("Backend '{}' is not installed.", backend_name);
     }
-    auto [create, destroy] = [backend_name, this] {
-        if (auto iter = std::find(_impl->device_identifiers.cbegin(),
-                                  _impl->device_identifiers.cend(),
-                                  backend_name);
-            iter != _impl->device_identifiers.cend()) {
-            auto i = iter - _impl->device_identifiers.cbegin();
-            auto c = _impl->device_creators[i];
-            auto d = _impl->device_deleters[i];
-            return std::make_pair(c, d);
-        }
-        auto &&m = _impl->loaded_modules.emplace_back(
-            _impl->runtime_directory,
+    Device::Creator *creator;
+    Device::Deleter *deleter;
+    size_t index;
+    if (auto iter = std::find(impl->device_identifiers.cbegin(),
+                              impl->device_identifiers.cend(),
+                              backend_name);
+        iter != impl->device_identifiers.cend()) {
+        index = iter - impl->device_identifiers.cbegin();
+        creator = impl->device_creators[index];
+        deleter = impl->device_deleters[index];
+    } else {
+#ifdef LUISA_PLATFORM_WINDOWS
+        SetDllDirectoryW(impl->runtime_directory.c_str());
+#endif
+        auto &&m = impl->loaded_modules.emplace_back(
+            impl->runtime_directory,
             fmt::format("luisa-compute-backend-{}", backend_name));
-        auto c = m.function<Device::Creator>("create");
-        auto d = m.function<Device::Deleter>("destroy");
-        _impl->device_identifiers.emplace_back(backend_name);
-        _impl->device_creators.emplace_back(c);
-        _impl->device_deleters.emplace_back(d);
-        return std::make_pair(c, d);
-    }();
-    return Device{Device::Handle{create(*this, property_json), destroy}};
+#ifdef LUISA_PLATFORM_WINDOWS
+        SetDllDirectoryW(nullptr);
+#endif
+        creator = m.function<Device::Creator>("create");
+        deleter = m.function<Device::Deleter>("destroy");
+        index = impl->device_identifiers.size();
+        impl->device_identifiers.emplace_back(backend_name);
+        impl->device_creators.emplace_back(creator);
+        impl->device_deleters.emplace_back(deleter);
+    }
+    return Device{Device::Handle{creator(Context(_impl, index), settings), deleter}};
 }
+
+Context::Context(
+    luisa::shared_ptr<Impl> const &impl,
+    size_t index)
+    : _impl(impl),
+      _index(index) {}
 
 Context::~Context() noexcept {
     if (_impl != nullptr) {
@@ -132,17 +144,20 @@ Context::~Context() noexcept {
 luisa::span<const luisa::string> Context::installed_backends() const noexcept {
     return _impl->installed_backends;
 }
+luisa::span<const DynamicModule> Context::loaded_modules() const noexcept {
+    return _impl->loaded_modules;
+}
 
 Device Context::create_default_device() noexcept {
     LUISA_ASSERT(!installed_backends().empty(), "No backends installed.");
     return create_device(installed_backends().front());
 }
 
-BinaryIO *Context::get_fileio_visitor() const noexcept {
+BinaryIOVisitor *Context::get_fileio_visitor() const noexcept {
     return _impl->file_io;
 }
 
-void Context::set_fileio_visitor(BinaryIO *file_io) noexcept {
+void Context::set_fileio_visitor(BinaryIOVisitor *file_io) noexcept {
     _impl->file_io = file_io;
 }
 }// namespace luisa::compute

@@ -13,7 +13,7 @@ namespace luisa::compute::cuda {
 
 CUDAMesh::CUDAMesh(
     CUdeviceptr v_buffer, size_t v_offset, size_t v_stride, size_t v_count,
-    CUdeviceptr t_buffer, size_t t_offset, size_t t_count, AccelUpdateHint hint) noexcept
+    CUdeviceptr t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint) noexcept
     : _vertex_buffer{v_buffer + v_offset},
       _vertex_stride{v_stride}, _vertex_count{v_count},
       _triangle_buffer{t_buffer + t_offset},
@@ -36,19 +36,19 @@ inline OptixBuildInput CUDAMesh::_make_build_input() const noexcept {
     return build_input;
 }
 
-[[nodiscard]] inline auto cuda_mesh_build_options(AccelUpdateHint hint, OptixBuildOperation op) noexcept {
+[[nodiscard]] inline auto cuda_mesh_build_options(AccelUsageHint hint, OptixBuildOperation op) noexcept {
     OptixAccelBuildOptions build_options{};
     build_options.operation = op;
     switch (hint) {
-        case AccelUpdateHint::FAST_TRACE:
+        case AccelUsageHint::FAST_TRACE:
             build_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION |
                                        OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
             break;
-        case AccelUpdateHint::FAST_UPDATE:
+        case AccelUsageHint::FAST_UPDATE:
             build_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION |
                                        OPTIX_BUILD_FLAG_ALLOW_UPDATE;
             break;
-        case AccelUpdateHint::FAST_BUILD:
+        case AccelUsageHint::FAST_BUILD:
             build_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_UPDATE |
                                        OPTIX_BUILD_FLAG_PREFER_FAST_BUILD;
             break;
@@ -59,7 +59,7 @@ inline OptixBuildInput CUDAMesh::_make_build_input() const noexcept {
 void CUDAMesh::build(CUDADevice *device, CUDAStream *stream, const MeshBuildCommand *command) noexcept {
 
     auto build_input = _make_build_input();
-    if (_handle != 0u && _build_hint != AccelUpdateHint::FAST_TRACE &&
+    if (_handle != 0u && _build_hint != AccelUsageHint::FAST_TRACE &&
         command->request() == AccelBuildRequest::PREFER_UPDATE) {
         auto build_options = cuda_mesh_build_options(
             _build_hint, OPTIX_BUILD_OPERATION_UPDATE);
@@ -92,7 +92,7 @@ void CUDAMesh::build(CUDADevice *device, CUDAStream *stream, const MeshBuildComm
         return (x + alignment - 1u) / alignment * alignment;
     };
     auto cuda_stream = stream->handle();
-    if (_build_hint == AccelUpdateHint::FAST_BUILD) {// no compaction
+    if (_build_hint == AccelUsageHint::FAST_BUILD) {// no compaction
         if (_bvh_buffer_size < sizes.outputSizeInBytes) {
             _bvh_buffer_size = sizes.outputSizeInBytes;
             if (_bvh_buffer_handle) { LUISA_CHECK_CUDA(cuMemFreeAsync(_bvh_buffer_handle, cuda_stream)); }

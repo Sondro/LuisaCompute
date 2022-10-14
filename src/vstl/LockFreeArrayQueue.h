@@ -133,7 +133,7 @@ public:
 			return optional<T>();
 		}
 		auto value = &arr[GetIndex(tail++, capacity)];
-		auto disp = create_disposer([value, this]() {
+		auto disp = scope_exit([value, this]() {
 			if constexpr (!std::is_trivially_destructible_v<T>) {
 				value->~T();
 			}
@@ -148,7 +148,7 @@ public:
 			return optional<T>();
 		}
 		auto value = &arr[GetIndex(tail++, capacity)];
-		auto disp = create_disposer([value, this]() {
+		auto disp = scope_exit([value, this]() {
 			if constexpr (!std::is_trivially_destructible_v<T>) {
 				value->~T();
 			}

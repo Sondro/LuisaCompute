@@ -5,11 +5,11 @@
 #include <vstl/VGuid.h>
 #include <dxgi1_4.h>
 #include <DXRuntime/ShaderPaths.h>
-#include <core/binary_io.h>
+#include <core/binary_io_visitor.h>
 #include <Shader/CommandSignature.h>
 #include <vstl/BinaryReader.h>
 namespace luisa::compute {
-class BinaryIO;
+class BinaryIOVisitor;
 }
 class ElementAllocator;
 using Microsoft::WRL::ComPtr;
@@ -28,12 +28,13 @@ public:
 	void read(luisa::span<std::byte> dst) override;
 	~BinaryStream();
 };
-struct SerializeVisitor : public luisa::compute::BinaryIO {
+struct SerializeVisitor : public luisa::compute::BinaryIOVisitor {
 	ShaderPaths const& path;
 	SerializeVisitor(
 		ShaderPaths const& path);
 	luisa::unique_ptr<luisa::compute::IBinaryStream> Read(vstd::string const& filePath);
 	void Write(vstd::string const& filePath, luisa::span<std::byte const> data);
+//	static vstd::string_view FileNameFilter(vstd::string_view path);
 	luisa::unique_ptr<luisa::compute::IBinaryStream> read_bytecode(luisa::string_view name) override;
 	luisa::unique_ptr<luisa::compute::IBinaryStream> read_cache(luisa::string_view name) override;
 	void write_bytecode(luisa::string_view name, luisa::span<std::byte const> data) override;
@@ -41,8 +42,9 @@ struct SerializeVisitor : public luisa::compute::BinaryIO {
 };
 class Device {
 public:
+    size_t maxAllocatorCount = 2;
 	ShaderPaths const& path;
-	std::atomic<luisa::compute::BinaryIO*> fileIo = nullptr;
+	std::atomic<luisa::compute::BinaryIOVisitor*> fileIo = nullptr;
 	mutable SerializeVisitor serVisitor;
 	struct LazyLoadShader {
 	public:
@@ -84,7 +86,7 @@ public:
     vstd::unique_ptr<ComputeShader> bc7_1;
     vstd::unique_ptr<ComputeShader> bc7_2;
     vstd::unique_ptr<ComputeShader> bc7_3;*/
-	Device(ShaderPaths const& path, uint index = 0);
+	Device(ShaderPaths const& path, uint index);
 	Device(Device const&) = delete;
 	Device(Device&&) = delete;
 	~Device();

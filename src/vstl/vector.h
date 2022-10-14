@@ -21,13 +21,13 @@ struct vector_stack_obj<T, 0> {
 };
 template<typename F>
 constexpr auto VectorFuncReturnType() {
-	if constexpr (std::is_invocable_v<F>) {
-		return TypeOf<std::invoke_result_t<F>>{};
-	} else if constexpr (std::is_invocable_v<F, size_t>) {
-		return TypeOf<std::invoke_result_t<F, size_t>>{};
-	} else {
-		return TypeOf<void>{};
-	}
+    if constexpr (std::is_invocable_v<F>) {
+        return TypeOf<std::invoke_result_t<F>>{};
+    } else if constexpr (std::is_invocable_v<F, size_t>) {
+        return TypeOf<std::invoke_result_t<F, size_t>>{};
+    } else {
+        return TypeOf<void>{};
+    }
 }
 template<typename F>
 using VectorFuncReturnType_t = typename decltype(VectorFuncReturnType<F>())::Type;
@@ -148,6 +148,8 @@ public:
     size_t size() const noexcept { return mSize; }
     size_t byte_size() const noexcept { return mSize * sizeof(T); }
     size_t capacity() const noexcept { return mCapacity; }
+    vector(T const *beg, T const *end)
+        : vector(beg, size_t(end - beg)) {}
     vector(size_t mSize) noexcept : mSize(mSize) {
         InitCapacity(mSize);
         if constexpr (!(std::is_trivially_constructible_v<T>)) {
@@ -438,7 +440,7 @@ public:
     T erase_last() noexcept {
         mSize--;
         if constexpr (!(std::is_trivially_destructible_v<T>)) {
-            auto disp = create_disposer([this]() {
+            auto disp = scope_exit([this]() {
                 (vec.arr + mSize)->~T();
             });
             return std::move(vec.arr[mSize]);

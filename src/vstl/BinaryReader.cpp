@@ -13,7 +13,6 @@ BinaryReader::BinaryReader(vstd::string const &path) {
     if (isAvaliable) {
         VSTD_FSEEK(ifs, 0, SEEK_END);
         length = VSTD_FTELL(ifs);
-        VSTD_FSEEK(ifs, 0, SEEK_SET);
     } else {
         length = 0;
     }
@@ -25,13 +24,34 @@ void BinaryReader::Read(void *ptr, uint64 len) {
         targetEnd = length;
         len = targetEnd - currentPos;
     }
+    auto lastPos = currentPos;
     currentPos = targetEnd;
     if (len == 0) return;
+    VSTD_FSEEK(ifs, lastPos, SEEK_SET);
     fread(ptr, len, 1, ifs);
 }
-eastl::vector<uint8_t> BinaryReader::Read(bool addNullEnd) {
-    if (!isAvaliable) return eastl::vector<uint8_t>();
+vstd::string BinaryReader::ReadToString() {
+    if (!isAvaliable) return {};
+    auto len = GetLength();
+    uint64 targetEnd = currentPos + len;
+    if (targetEnd > length) {
+        targetEnd = length;
+        len = targetEnd - currentPos;
+    }
+    auto lastPos = currentPos;
+    currentPos = targetEnd;
+    if (len == 0) {};
+    vstd::string str;
+    str.resize(len);
+    VSTD_FSEEK(ifs, lastPos, SEEK_SET);
+    fread(str.data(), len, 1, ifs);
+    return str;
+}
+
+luisa::vector<uint8_t> BinaryReader::Read(bool addNullEnd) {
+    if (!isAvaliable) return luisa::vector<uint8_t>();
     auto len = length;
+    auto lastPos = currentPos;
     uint64 targetEnd = currentPos + len;
     if (targetEnd > length) {
         targetEnd = length;
@@ -39,22 +59,16 @@ eastl::vector<uint8_t> BinaryReader::Read(bool addNullEnd) {
     }
     if (len == 0) {
         if (addNullEnd)
-            return eastl::vector<uint8_t>({0});
+            return luisa::vector<uint8_t>({0});
         else
-            return eastl::vector<uint8_t>();
+            return luisa::vector<uint8_t>();
     }
-    eastl::vector<uint8_t> result;
+    luisa::vector<uint8_t> result;
     result.resize(addNullEnd ? (len + 1) : len);
     currentPos = targetEnd;
+    VSTD_FSEEK(ifs, lastPos, SEEK_SET);
     fread(result.data(), len, 1, ifs);
     return result;
-}
-
-void BinaryReader::SetPos(uint64 pos) {
-    if (!isAvaliable) return;
-    if (pos > length) pos = length;
-    currentPos = pos;
-    VSTD_FSEEK(ifs, currentPos, SEEK_SET);
 }
 BinaryReader::~BinaryReader() {
     if (!isAvaliable) return;
