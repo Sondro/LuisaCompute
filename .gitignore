@@ -345,4 +345,4 @@ doxygen_output
 *.S
 
 # XMake
-.xmake/
+.xmake/**
