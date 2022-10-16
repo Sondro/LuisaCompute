@@ -149,25 +149,25 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
     RasterState const &state,
     vstd::span<PixelFormat const> rtv,
     DepthFormat dsv) {
-    auto BlendState = [](BlendOp op) {
+    auto GetBlendState = [](BlendWeight op) {
         switch (op) {
-            case BlendOp::One:
+            case BlendWeight::One:
                 return D3D12_BLEND_ONE;
-            case BlendOp::SrcColor:
+            case BlendWeight::PrimColor:
                 return D3D12_BLEND_SRC_COLOR;
-            case BlendOp::DstColor:
+            case BlendWeight::ImgColor:
                 return D3D12_BLEND_DEST_COLOR;
-            case BlendOp::SrcAlpha:
+            case BlendWeight::PrimAlpha:
                 return D3D12_BLEND_SRC_ALPHA;
-            case BlendOp::DstAlpha:
+            case BlendWeight::ImgAlpha:
                 return D3D12_BLEND_DEST_ALPHA;
-            case BlendOp::OneMinusSrcColor:
+            case BlendWeight::OneMinusPrimColor:
                 return D3D12_BLEND_INV_SRC_COLOR;
-            case BlendOp::OneMinusDstColor:
+            case BlendWeight::OneMinusImgColor:
                 return D3D12_BLEND_INV_DEST_COLOR;
-            case BlendOp::OneMinusSrcAlpha:
+            case BlendWeight::OneMinusPrimAlpha:
                 return D3D12_BLEND_INV_SRC_ALPHA;
-            case BlendOp::OneMinusDstAlpha:
+            case BlendWeight::OneMinusImgAlpha:
                 return D3D12_BLEND_INV_DEST_ALPHA;
             default:
                 return D3D12_BLEND_ZERO;
@@ -232,14 +232,15 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
     if (state.blend_state.enableBlend) {
         D3D12_RENDER_TARGET_BLEND_DESC blend{
             .RenderTargetWriteMask = 15};
-        auto &v = state.blend_state;
+        auto &v = state.blend_state;    
         blend.BlendEnable = true;
         blend.BlendOp = D3D12_BLEND_OP_ADD;
         blend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-        blend.SrcBlend = BlendState(v.src_op);
-        blend.DestBlend = BlendState(v.dst_op);
-        blend.SrcBlendAlpha = blend.SrcBlend;
-        blend.DestBlendAlpha = blend.DestBlend;
+        blend.SrcBlend = GetBlendState(v.prim_op);
+        blend.DestBlend = GetBlendState(v.img_op);
+        blend.SrcBlendAlpha = D3D12_BLEND_ZERO;
+        blend.DestBlendAlpha = D3D12_BLEND_ONE;
+        blend.LogicOp = D3D12_LOGIC_OP_NOOP;
 
         result.BlendState = {
             .AlphaToCoverageEnable = false,

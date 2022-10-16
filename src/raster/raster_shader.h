@@ -142,9 +142,16 @@ class RasterShader : public Resource {
     RasterState _raster_state;
     luisa::vector<PixelFormat> _rtv_format;
     DepthFormat _dsv_format;
-    void check_rtv_format(){
-        if(_rtv_format.size() > 8){
+    void check_rtv_format() {
+        if (_rtv_format.size() > 8) {
             LUISA_ERROR("Render target count must be less than 8!");
+        }
+    }
+    void check_func(Function func) {
+        for (auto &&i : func.arguments()) {
+            if ((static_cast<uint>(func.variable_usage(i.uid())) & static_cast<uint>(Usage::WRITE)) != 0) {
+                LUISA_ERROR("Rasterization may not support unordered access!");
+            }
         }
     }
 #endif
@@ -182,6 +189,8 @@ class RasterShader : public Resource {
 #ifndef NDEBUG
             _rtv_format.resize(rtv_format.size());
             memcpy(_rtv_format.data(), rtv_format.data(), rtv_format.size_bytes());
+            check_func(Function{_vert.get()});
+            check_func(Function{_pixel.get()});
 #endif
         }
 
@@ -215,6 +224,8 @@ class RasterShader : public Resource {
 #ifndef NDEBUG
             _rtv_format.resize(rtv_format.size());
             memcpy(_rtv_format.data(), rtv_format.data(), rtv_format.size_bytes());
+            check_func(Function{_vert.get()});
+            check_func(Function{_pixel.get()});
 #endif
         }
     // AOT Shader
@@ -230,7 +241,11 @@ class RasterShader : public Resource {
               Tag::RASTER_SHADER,
               // TODO
               device->load_raster_shader(
-                  file_path.string<char, std::char_traits<char>, luisa::allocator<char>>()))
+                mesh_format,
+                raster_state,
+                rtv_format,
+                dsv_format,
+                file_path.string<char, std::char_traits<char>, luisa::allocator<char>>()))
 #ifndef NDEBUG
         ,_mesh_format(mesh_format),
         _raster_state(raster_state),

@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
                 $return(v2p.color);
             })
             .case_(1, [&] {
-                $return(make_float4(make_float3(1) - v2p.color.xyz(), 1.0f));
+                $return(make_float4(make_float3(1) - v2p.color.xyz(), 0.5f));
             });
         return make_float4(0, 0, 0, 1);
     };
@@ -98,7 +98,13 @@ int main(int argc, char *argv[]) {
         .depth_state = {
             .enableDepth = true,
             .write = true,
-            .comparison = Comparison::Less}};
+            .comparison = Comparison::Less},
+        .blend_state = {
+            .enableBlend = true,
+            .op = BlendOp::Add,
+            .img_op = BlendWeight::OneMinusPrimAlpha,
+            .prim_op = BlendWeight::PrimAlpha
+        }};
     auto depth = device.create_depth_buffer(DepthFormat::D32, uint2(width, height));
     auto tex = device.create_image<float>(PixelStorage::BYTE4, uint2(width, height));
     auto dstFormat = tex.format();

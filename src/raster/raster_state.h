@@ -21,7 +21,7 @@ private:
 public:
     MeshFormat() {}
     MeshFormat(MeshFormat &&) = default;
-    MeshFormat(MeshFormat const&) = default;
+    MeshFormat(MeshFormat const &) = default;
     size_t vertex_attribute_count() const {
         size_t count = 0;
         for (auto &&i : _streams) {
@@ -51,28 +51,34 @@ enum class TopologyType : uint8_t {
     Line,
     Triangle
 };
-enum class BlendOp : uint8_t {
+enum class BlendWeight : uint8_t {
     Zero,
     One,
-    SrcColor,
-    DstColor,
-    SrcAlpha,
-    DstAlpha,
-    OneMinusSrcColor,
-    OneMinusDstColor,
-    OneMinusSrcAlpha,
-    OneMinusDstAlpha
+    PrimColor,
+    ImgColor,
+    PrimAlpha,
+    ImgAlpha,
+    OneMinusPrimColor,
+    OneMinusImgColor,
+    OneMinusPrimAlpha,
+    OneMinusImgAlpha
+};
+enum class BlendOp : uint8_t {
+    Add,
+    Subtract,
+    Min,
+    Max
 };
 enum class StencilOp : uint8_t {
     Keep,
     Zero,
     Replace
 };
-
 struct BlendState {
     bool enableBlend{};
-    BlendOp src_op{BlendOp::Zero};
-    BlendOp dst_op{BlendOp::One};
+    BlendOp op{BlendOp::Add};
+    BlendWeight prim_op{BlendWeight::Zero};
+    BlendWeight img_op{BlendWeight::One};
 };
 struct DepthState {
     bool enableDepth{};
