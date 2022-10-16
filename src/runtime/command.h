@@ -406,9 +406,13 @@ protected:
     [[nodiscard]] std::byte *_make_space(size_t size) noexcept;
 
     template<typename T>
-        requires std::is_base_of_v<Argument, T> &&
-            std::negation_v<std::is_same<T, Argument>>
-    void _encode_argument(T argument) noexcept;
+        requires(std::is_base_of_v<Argument, T> &&
+                     std::negation_v<std::is_same<T, Argument>>)
+    void _encode_argument(T argument) noexcept {
+        auto p = _make_space(sizeof(T));
+        std::memcpy(p, &argument, sizeof(T));
+        _argument_count++;
+    }
 
 public:
     [[nodiscard]] auto argument_count() const noexcept { return static_cast<size_t>(_argument_count); }

@@ -95,16 +95,15 @@ int main(int argc, char *argv[]) {
     meshFormat.emplace_vertex_stream(vertAttribs);
     RasterState rasterState{
         .cull_mode = CullMode::None,
-        .depth_state = {
-            .enableDepth = true,
-            .write = true,
-            .comparison = Comparison::Less},
         .blend_state = {
             .enableBlend = true,
             .op = BlendOp::Add,
+            .prim_op = BlendWeight::PrimAlpha,
             .img_op = BlendWeight::OneMinusPrimAlpha,
-            .prim_op = BlendWeight::PrimAlpha
-        }};
+        },
+        .depth_state = {.enableDepth = true, .comparison = Comparison::Less, .write = true},
+
+    };
     auto depth = device.create_depth_buffer(DepthFormat::D32, uint2(width, height));
     auto tex = device.create_image<float>(PixelStorage::BYTE4, uint2(width, height));
     auto dstFormat = tex.format();

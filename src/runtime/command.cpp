@@ -7,15 +7,6 @@
 
 namespace luisa::compute {
 
-template<typename T>
-    requires std::is_base_of_v<ShaderDispatchCommandBase::Argument, T> &&
-        std::negation_v<std::is_same<T, ShaderDispatchCommandBase::Argument>>
-void ShaderDispatchCommandBase::_encode_argument(T argument) noexcept {
-    auto p = _make_space(sizeof(T));
-    std::memcpy(p, &argument, sizeof(T));
-    _argument_count++;
-}
-
 std::byte *ShaderDispatchCommandBase::_make_space(size_t size) noexcept {
     auto offset = _argument_buffer.size();
     _argument_buffer.resize(offset + size);

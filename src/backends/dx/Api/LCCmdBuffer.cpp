@@ -686,8 +686,8 @@ public:
                     auto bf = reinterpret_cast<Buffer *>(e.handle());
                     return D3D12_VERTEX_BUFFER_VIEW{
                         .BufferLocation = bf->GetAddress() + e.offset(),
-                        .StrideInBytes = static_cast<uint>(e.stride()),
-                        .SizeInBytes = static_cast<uint>(e.size())};
+                        .SizeInBytes = static_cast<uint>(e.size()),
+                        .StrideInBytes = static_cast<uint>(e.stride())};
                 });
             cmdList->IASetVertexBuffers(0, vbv.size(), vbv.data());
             auto const &i = mesh.index();
@@ -700,8 +700,8 @@ public:
                         auto bf = reinterpret_cast<Buffer *>(i.handle());
                         D3D12_INDEX_BUFFER_VIEW idx{
                             .BufferLocation = bf->GetAddress() + i.offset(),
-                            .Format = DXGI_FORMAT_R32_UINT,
-                            .SizeInBytes = static_cast<uint>(i.size_bytes())};
+                            .SizeInBytes = static_cast<uint>(i.size_bytes()),
+                            .Format = DXGI_FORMAT_R32_UINT};
                         cmdList->IASetIndexBuffer(&idx);
                         cmdList->DrawIndexedInstanced(i.size_bytes() / sizeof(uint), mesh.instance_count(), 0, 0, 0);
                     }

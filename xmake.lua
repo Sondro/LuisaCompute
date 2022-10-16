@@ -62,7 +62,7 @@ function BuildProject(config)
 		if is_plat("windows") then
 			set_runtimes("MDd")
 		end
-		add_cxflags("/GS", "/Gd")
+		add_cxflags("/GS", "/Gd", "/Zc:preprocessor")
 		local event = GetValue(config.debugEvent)
 		if (type(event) == "function") then
 			event()
@@ -72,7 +72,7 @@ function BuildProject(config)
 		if is_plat("windows") then
 			set_runtimes("MD")
 		end
-		add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT")
+		add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT", "/Zc:preprocessor")
 		local event = GetValue(config.releaseEvent)
 		if (type(event) == "function") then
 			event()

@@ -52,6 +52,7 @@ ScopeStmt* AstSerializer::DeserStmtDerive(IJsonDict const* dict) {
 	auto arr = dict->Get("scope"sv).get_or<IJsonArray*>(nullptr);
 	assert(arr);
 	DeserStmtScope(*ptr, arr);
+	return ptr;
 }
 template<>
 IfStmt* AstSerializer::DeserStmtDerive(IJsonDict const* dict) {

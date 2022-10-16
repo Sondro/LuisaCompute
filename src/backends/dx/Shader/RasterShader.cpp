@@ -107,10 +107,10 @@ void RasterShader::GetMeshFormatState(
             inputLayout.emplace_back(D3D12_INPUT_ELEMENT_DESC{
                 .SemanticName = SemanticName.begin()[static_cast<uint>(attr.type)],
                 .SemanticIndex = SemanticIndex.begin()[static_cast<uint>(attr.type)],
-                .AlignedByteOffset = offset,
                 .Format = format,
-                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-                .InputSlot = static_cast<uint>(i)});
+                .InputSlot = static_cast<uint>(i),
+                .AlignedByteOffset = offset,
+                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA});
             offset += size;
         }
         // TODO
@@ -224,15 +224,15 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
         }
     };
     D3D12_GRAPHICS_PIPELINE_STATE_DESC result = {
+        .SampleMask = ~0u,
         .PrimitiveTopologyType = GetTopology(state.topology),
-        .SampleDesc = {.Count = 1, .Quality = 0},
         .NumRenderTargets = static_cast<uint>(rtv.size()),
-        .SampleMask = ~0u};
+        .SampleDesc = {.Count = 1, .Quality = 0}};
 
     if (state.blend_state.enableBlend) {
         D3D12_RENDER_TARGET_BLEND_DESC blend{
             .RenderTargetWriteMask = 15};
-        auto &v = state.blend_state;    
+        auto &v = state.blend_state;
         blend.BlendEnable = true;
         blend.BlendOp = D3D12_BLEND_OP_ADD;
         blend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
@@ -312,10 +312,10 @@ vstd::MD5 RasterShader::GenMD5(
     };
     Hashes h{
         .codeMd5 = codeMD5,
+        .meshFormatMD5 = vstd_xxhash_gethash(streamHashes.data(), streamHashes.byte_size()),
         .rasterStateMD5 = vstd_xxhash_gethash(&state, sizeof(RasterState)),
         .rtv = vstd_xxhash_gethash(rtv.data(), rtv.size_bytes()),
-        .dsv = vstd_xxhash_gethash(&dsv, sizeof(DepthFormat)),
-        .meshFormatMD5 = vstd_xxhash_gethash(streamHashes.data(), streamHashes.byte_size())};
+        .dsv = vstd_xxhash_gethash(&dsv, sizeof(DepthFormat))};
     return vstd::MD5(
         vstd::span<vbyte const>{
             reinterpret_cast<vbyte const *>(&h),
