@@ -36,35 +36,35 @@ int main(int argc, char *argv[]) {
 
     Context context{argv[0]};
     auto device = context.create_device("dx");
-    Callable vert = []() noexcept {
+    Callable vert = [](Float2 v) noexcept {
         auto vert = get_vertex_data();
         Var<v2p> o;
         vert.position *= make_float3(0.5);
         switch_(vert.instance_id)
             .case_(0, [&] {
-                vert.position -= make_float3(0.5, 0, 0.1);
+                vert.position -= make_float3(v, 0.1f);
             })
             .case_(1, [&] {
-                vert.position += make_float3(0.5, 0, 0.1);
+                vert.position += make_float3(v, 0.1f);
             });
         switch_(object_id())
             .case_(0, [&] {
-                vert.position -= make_float3(0, 0.5, 0.2);
+                vert.position -= make_float3(v.yx(), 0.2f);
             })
             .case_(1, [&] {
-                vert.position += make_float3(0, 0.5, 0.2);
+                vert.position += make_float3(v.yx(), 0.2f);
             });
         o.pos = make_float4(vert.position, 1.0f);
         o.color = vert.color;
         return o;
     };
-    Callable pixel = [](Var<v2p> v2p) noexcept {
+    Callable pixel = [](Var<v2p> v2p, Float a) noexcept {
         switch_(object_id())
             .case_(0, [&] {
                 $return(v2p.color);
             })
             .case_(1, [&] {
-                $return(make_float4(make_float3(1) - v2p.color.xyz(), 0.5f));
+                $return(make_float4(make_float3(a) - v2p.color.xyz(), 0.5f));
             });
         return make_float4(0, 0, 0, 1);
     };
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
     stream
         << vb.copy_from(vertPoses) << ib.copy_from(indices)
         << clearShader(tex).dispatch(width, height) << depth.clear(0.5)
-        << shader().draw(&scene, viewport, &depth, tex)
+        << shader(float2(0.5, 0), 0.5).draw(&scene, viewport, &depth, tex)
         << printShader(tex, resultBuffer).dispatch(width, height)
         << resultBuffer.copy_to(pixels.data())
         << synchronize();

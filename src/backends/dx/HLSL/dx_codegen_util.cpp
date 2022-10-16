@@ -97,7 +97,7 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
                         if (ite.Value() == 0) {
                             str << 'p';
                         } else {
-                            str << 'l';
+                            str << "a.l"sv;
                             vstd::to_string(id, str);
                         }
                     }
@@ -1088,7 +1088,7 @@ void CodegenUtility::CodegenVertex(Function vert, vstd::string &result) {
     vstd::string retName;
     auto retType = vert.return_type();
     GetTypeName(*retType, retName, Usage::READ);
-    result << retName << " vert(vertex vt){\n"sv;
+    result << retName << " vert(vertex vt){\nArgs a = _Global[0];\n"sv;
     opt->funcType = CodegenStackData::FuncType::Vert;
     opt->arguments.Clear();
     opt->arguments.reserve(vert.arguments().size());
@@ -1140,7 +1140,7 @@ void CodegenUtility::CodegenPixel(Function pixel, vstd::string &result) {
     vstd::string retName;
     auto retType = pixel.return_type();
     GetTypeName(*retType, retName, Usage::READ);
-    result << retName << " pixel(v2p p){\n"sv;
+    result << retName << " pixel(v2p p){\nArgs a = _Global[0];\n"sv;
     opt->funcType = CodegenStackData::FuncType::Pixel;
     opt->arguments.Clear();
     opt->arguments.reserve(pixel.arguments().size());
