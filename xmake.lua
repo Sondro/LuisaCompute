@@ -1,5 +1,4 @@
 add_rules("mode.release", "mode.debug")
-
 function GetValue(funcOrValue)
 	if type(funcOrValue) == 'function' then
 		return funcOrValue()
@@ -61,8 +60,8 @@ function BuildProject(config)
 		set_optimize("none")
 		if is_plat("windows") then
 			set_runtimes("MDd")
+			add_cxflags("/GS", "/Gd", "/Zc:preprocessor")
 		end
-		add_cxflags("/GS", "/Gd", "/Zc:preprocessor")
 		local event = GetValue(config.debugEvent)
 		if (type(event) == "function") then
 			event()
@@ -71,8 +70,8 @@ function BuildProject(config)
 		set_optimize("fastest")
 		if is_plat("windows") then
 			set_runtimes("MD")
+			add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT", "/Zc:preprocessor")
 		end
-		add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT", "/Zc:preprocessor")
 		local event = GetValue(config.releaseEvent)
 		if (type(event) == "function") then
 			event()
