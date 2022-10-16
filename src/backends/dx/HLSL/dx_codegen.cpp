@@ -388,7 +388,6 @@ StringStateVisitor::StringStateVisitor(
     : str(str), f(f) {
 }
 void StringStateVisitor::VisitFunction(Function func) {
-
     for (auto &&v : func.local_variables()) {
         if (v.type()->is_structure()) {
             vstd::string typeName;

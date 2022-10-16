@@ -16,19 +16,32 @@ private:
         uint64 Allocate(uint64 size) override;
         void DeAllocate(uint64 handle) override;
     };
+    class DescHeapVisitor : public vstd::StackAllocatorVisitor {
+    public:
+        D3D12_DESCRIPTOR_HEAP_TYPE type;
+        Device *device;
+        uint64 Allocate(uint64 size) override;
+        void DeAllocate(uint64 handle) override;
+        DescHeapVisitor(Device *device, D3D12_DESCRIPTOR_HEAP_TYPE type) : type(type), device(device) {}
+    };
 
     Visitor<ReadbackBuffer> rbVisitor;
     Visitor<DefaultBuffer> dbVisitor;
     Visitor<UploadBuffer> ubVisitor;
+    DescHeapVisitor rtvVisitor;
+    DescHeapVisitor dsvVisitor;
     vstd::StackAllocator uploadAllocator;
     vstd::StackAllocator defaultAllocator;
     vstd::StackAllocator readbackAllocator;
+
     vstd::unique_ptr<DefaultBuffer> scratchBuffer;
     //TODO: allocate commandbuffer
     CommandAllocator(Device *device, IGpuAllocator *resourceAllocator, D3D12_COMMAND_LIST_TYPE type);
     vstd::StackAllocator::Chunk Allocate(vstd::StackAllocator &allocator, uint64 size, size_t align);
 
 public:
+    vstd::StackAllocator rtvAllocator;
+    vstd::StackAllocator dsvAllocator;
     ~CommandAllocator();
     DefaultBuffer const *AllocateScratchBuffer(size_t targetSize);
     BufferView GetTempReadbackBuffer(uint64 size, size_t align = 0);

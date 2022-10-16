@@ -12,14 +12,36 @@ static void SavePSO(vstd::string_view fileName, BinaryIOVisitor *fileStream, Ras
     s->Pso()->GetCachedBlob(&psoCache);
     fileStream->write_cache(fileName, {reinterpret_cast<std::byte const *>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
 };
+static vstd::vector<SavedArgument> GetKernelArgs(Function vertexKernel, Function pixelKernel) {
+    if (vertexKernel.builder() == nullptr || pixelKernel.builder() == nullptr) {
+        return {};
+    } else {
+        auto vertArgs =
+            vstd::CacheEndRange(vertexKernel.arguments()) |
+            vstd::TransformRange(
+                [&](Variable const &var) {
+                    return std::pair<Variable, Usage>{var, vertexKernel.variable_usage(var.uid())};
+                });
+        auto pixelSpan = pixelKernel.arguments();
+        auto pixelArgs =
+            vstd::ite_range(pixelSpan.begin() + 1, pixelSpan.end()) |
+            vstd::TransformRange(
+                [&](Variable const &var) {
+                    return std::pair<Variable, Usage>{var, pixelKernel.variable_usage(var.uid())};
+                });
+        auto args = vstd::RangeImpl(vstd::PairIterator(vertArgs, pixelArgs));
+        return ShaderSerializer::SerializeKernel(args);
+    }
+}
 }// namespace RasterShaderDetail
 RasterShader::RasterShader(
     Device *device,
     vstd::vector<Property> &&prop,
     vstd::vector<SavedArgument> &&args,
     ComPtr<ID3D12RootSignature> &&rootSig,
-    ComPtr<ID3D12PipelineState> &&pso)
-    : Shader(std::move(prop), std::move(args), std::move(rootSig)), pso(std::move(pso)) {}
+    ComPtr<ID3D12PipelineState> &&pso,
+    TopologyType type)
+    : Shader(std::move(prop), std::move(args), std::move(rootSig)), pso(std::move(pso)), type(type), device(device) {}
 void RasterShader::GetMeshFormatState(
     vstd::vector<D3D12_INPUT_ELEMENT_DESC> &inputLayout,
     MeshFormat const &meshFormat) {
@@ -104,18 +126,21 @@ RasterShader::RasterShader(
     DepthFormat dsv,
     vstd::span<std::byte const> vertBinData,
     vstd::span<std::byte const> pixelBinData)
-    : Shader(std::move(prop), std::move(args), device->device.Get(), true) {
+    : Shader(std::move(prop), std::move(args), device->device.Get(), true),
+      device(device),
+      type(state.topology) {
     vstd::vector<D3D12_INPUT_ELEMENT_DESC> layouts;
-    auto psoState = GetState(
+    auto psoDesc = GetState(
         layouts,
         meshFormat,
         state,
         rtv,
         dsv);
-    psoState.pRootSignature = this->rootSig.Get();
-    psoState.VS = {.pShaderBytecode = vertBinData.data(), .BytecodeLength = vertBinData.size()};
-    psoState.PS = {.pShaderBytecode = pixelBinData.data(), .BytecodeLength = pixelBinData.size()};
-    ThrowIfFailed(device->device->CreateGraphicsPipelineState(&psoState, IID_PPV_ARGS(pso.GetAddressOf())));
+
+    psoDesc.pRootSignature = this->rootSig.Get();
+    psoDesc.VS = {.pShaderBytecode = vertBinData.data(), .BytecodeLength = vertBinData.size()};
+    psoDesc.PS = {.pShaderBytecode = pixelBinData.data(), .BytecodeLength = pixelBinData.size()};
+    ThrowIfFailed(device->device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(pso.GetAddressOf())));
 }
 RasterShader::~RasterShader() {}
 D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
@@ -198,9 +223,15 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
                 return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         }
     };
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC result = {
+        .PrimitiveTopologyType = GetTopology(state.topology),
+        .SampleDesc = {.Count = 1, .Quality = 0},
+        .NumRenderTargets = static_cast<uint>(rtv.size()),
+        .SampleMask = ~0u};
 
-    D3D12_RENDER_TARGET_BLEND_DESC blend{};
     if (state.blend_state.enableBlend) {
+        D3D12_RENDER_TARGET_BLEND_DESC blend{
+            .RenderTargetWriteMask = 15};
         auto &v = state.blend_state;
         blend.BlendEnable = true;
         blend.BlendOp = D3D12_BLEND_OP_ADD;
@@ -209,16 +240,20 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC RasterShader::GetState(
         blend.DestBlend = BlendState(v.dst_op);
         blend.SrcBlendAlpha = blend.SrcBlend;
         blend.DestBlendAlpha = blend.DestBlend;
-        blend.RenderTargetWriteMask = std::numeric_limits<vbyte>::max();
-    }
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC result = {
-        .BlendState = {
+
+        result.BlendState = {
             .AlphaToCoverageEnable = false,
             .IndependentBlendEnable = false,
-            .RenderTarget = {blend}},
-        .PrimitiveTopologyType = GetTopology(state.topology),
-        .SampleDesc = {.Count = 1, .Quality = 0},
-        .NumRenderTargets = static_cast<uint>(rtv.size())};
+            .RenderTarget = {blend}};
+    } else {
+        D3D12_RENDER_TARGET_BLEND_DESC blend{
+            .RenderTargetWriteMask = 15};
+        result.BlendState = {
+            .AlphaToCoverageEnable = false,
+            .IndependentBlendEnable = false,
+            .RenderTarget = {blend}};
+    }
+
     D3D12_DEPTH_STENCIL_DESC &depth = result.DepthStencilState;
     if (state.depth_state.enableDepth) {
         auto &v = state.depth_state;
@@ -300,7 +335,7 @@ RasterShader *RasterShader::CompileRaster(
     vstd::string_view fileName,
     bool byteCodeIsCache) {
     static constexpr bool PRINT_CODE = false;
-
+    vstd::optional<vstd::MD5> psoMd5 = GenMD5(md5, meshFormat, state, rtv, dsv);
     auto CompileNewCompute = [&](bool writeCache) -> RasterShader * {
         auto str = codegen();
         if constexpr (PRINT_CODE) {
@@ -323,73 +358,19 @@ RasterShader *RasterShader::CompileRaster(
             VSTL_ABORT();
             return nullptr;
         }
-        auto kernelArgs = [&] -> vstd::vector<SavedArgument> {
-            if (vertexKernel.builder() == nullptr || pixelKernel.builder() == nullptr) {
-                return {};
-            } else {
-                auto vertArgs =
-                    vstd::CacheEndRange(vertexKernel.arguments()) |
-                    vstd::TransformRange(
-                        [&](Variable const &var) {
-                            return std::pair<Variable, Usage>{var, vertexKernel.variable_usage(var.uid())};
-                        });
-                auto pixelSpan = pixelKernel.arguments();
-                auto pixelArgs =
-                    vstd::ite_range(pixelSpan.begin() + 1, pixelSpan.end()) |
-                    vstd::TransformRange(
-                        [&](Variable const &var) {
-                            return std::pair<Variable, Usage>{var, pixelKernel.variable_usage(var.uid())};
-                        });
-                auto args = vstd::RangeImpl(vstd::PairIterator(vertArgs, pixelArgs));
-                return ShaderSerializer::SerializeKernel(args);
-            }
-        }();
+        auto kernelArgs = RasterShaderDetail::GetKernelArgs(vertexKernel, pixelKernel);
         auto GetSpan = [&](DXByteBlob const &blob) {
             return vstd::span<std::byte const>{blob.GetBufferPtr(), blob.GetBufferSize()};
         };
         auto vertBin = GetSpan(*compResult.vertex.get<0>());
         auto pixelBin = GetSpan(*compResult.pixel.get<0>());
         if (writeCache) {
-            /*
-            vstd::vector<D3D12_INPUT_ELEMENT_DESC> elements;
-            vstd::vector<InputElement> inputElement;
-            auto psoState = GetState(elements, meshFormat, state, rtv, dsv);
-            inputElement.push_back_func(
-                elements.size(),
-                [&](size_t i){
-                    auto& src = elements[i];
-                    return InputElement{
-                        .inputSlot = src.InputSlot,
-                        .alignedByteOffset = src.AlignedByteOffset,
-                        .format = src.Format,
-                        .semanticIndex = src.SemanticIndex,
-                        .type
-                    }
-                }
-            )
-            RasterHeaderData headerData = {
-                psoState.BlendState,
-                psoState.RasterizerState,
-                psoState.DepthStencilState,
-                psoState.PrimitiveTopologyType,
-                psoState.NumRenderTargets,
-                static_cast<uint>(elements.size())};
-            memcpy(&headerData.RTVFormats, psoState.RTVFormats, 8 * sizeof(DXGI_FORMAT));
-            headerData.DSVFormat = psoState.DSVFormat;
-            auto serData = ShaderSerializer::RasterSerialize(
-                str.properties,
-                kernelArgs,
-                vertBin,
-                pixelBin,
-                md5,
-                str.bdlsBufferCount,
-                headerData,
-                elements.data());
+            auto serData = ShaderSerializer::RasterSerialize(str.properties, kernelArgs, vertBin, pixelBin, md5, str.bdlsBufferCount);
             if (byteCodeIsCache) {
                 fileIo->write_cache(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
             } else {
                 fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
-            }*/
+            }
         }
 
         auto s = new RasterShader(
@@ -403,23 +384,77 @@ RasterShader *RasterShader::CompileRaster(
             vertBin,
             pixelBin);
         s->bindlessCount = str.bdlsBufferCount;
-
         if (writeCache) {
-            RasterShaderDetail::SavePSO(md5.ToString(), fileIo, s);
+            RasterShaderDetail::SavePSO(psoMd5->ToString(), fileIo, s);
         }
         return s;
     };
+
     if (!fileName.empty()) {
         bool oldDeleted = false;
-        auto result = ShaderSerializer::RasterDeSerialize(fileName, byteCodeIsCache, device, *fileIo, {md5}, oldDeleted);
+        auto result = ShaderSerializer::RasterDeSerialize(
+            fileName, byteCodeIsCache, device, *fileIo, md5,
+            psoMd5, meshFormat, state, rtv, dsv, oldDeleted);
         if (result) {
             if (oldDeleted) {
-                RasterShaderDetail::SavePSO(md5.ToString(), fileIo, result);
+                RasterShaderDetail::SavePSO(psoMd5->ToString(), fileIo, result);
             }
         }
         return CompileNewCompute(true);
     } else {
         return CompileNewCompute(false);
     }
+}
+void RasterShader::SaveRaster(
+    BinaryIOVisitor *fileIo,
+    Device *device,
+    CodegenResult const &str,
+    vstd::MD5 const &md5,
+    vstd::string_view fileName,
+    Function vertexKernel,
+    Function pixelKernel,
+    uint shaderModel) {
+    if (ShaderSerializer::CheckMD5(fileName, md5, *fileIo)) return;
+    auto compResult = Device::Compiler()->CompileRaster(
+        str.result,
+        true,
+        shaderModel);
+    if (compResult.vertex.IsTypeOf<vstd::string>()) {
+        std::cout << compResult.vertex.get<1>() << '\n';
+        VSTL_ABORT();
+        return;
+    }
+    if (compResult.pixel.IsTypeOf<vstd::string>()) {
+        std::cout << compResult.pixel.get<1>() << '\n';
+        VSTL_ABORT();
+        return;
+    }
+    auto kernelArgs = RasterShaderDetail::GetKernelArgs(vertexKernel, pixelKernel);
+    auto GetSpan = [&](DXByteBlob const &blob) {
+        return vstd::span<std::byte const>{blob.GetBufferPtr(), blob.GetBufferSize()};
+    };
+    auto vertBin = GetSpan(*compResult.vertex.get<0>());
+    auto pixelBin = GetSpan(*compResult.pixel.get<0>());
+    auto serData = ShaderSerializer::RasterSerialize(str.properties, kernelArgs, vertBin, pixelBin, md5, str.bdlsBufferCount);
+    fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+}
+RasterShader *RasterShader::LoadRaster(
+    BinaryIOVisitor *fileIo,
+    Device *device,
+    const MeshFormat &mesh_format,
+    const RasterState &raster_state,
+    luisa::span<const PixelFormat> rtv_format,
+    DepthFormat dsv_format,
+    vstd::string_view fileName) {
+    vstd::optional<vstd::MD5> md5;
+    bool cacheDeleted = false;
+    auto ptr = ShaderSerializer::RasterDeSerialize(fileName, false, device, *device->fileIo, {}, md5, mesh_format, raster_state, rtv_format, dsv_format, cacheDeleted);
+    if (ptr && cacheDeleted) {
+        RasterShaderDetail::SavePSO(
+            md5->ToString(),
+            fileIo,
+            ptr);
+    }
+    return ptr;
 }
 }// namespace toolhub::directx

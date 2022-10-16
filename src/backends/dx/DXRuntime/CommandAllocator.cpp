@@ -54,7 +54,11 @@ CommandAllocator::CommandAllocator(
     : CommandAllocatorBase(device, resourceAllocator, type),
       uploadAllocator(TEMP_SIZE, &ubVisitor),
       readbackAllocator(TEMP_SIZE, &rbVisitor),
-      defaultAllocator(TEMP_SIZE, &dbVisitor) {
+      defaultAllocator(TEMP_SIZE, &dbVisitor),
+      rtvAllocator(64, &rtvVisitor),
+      dsvAllocator(64, &dsvVisitor),
+      rtvVisitor(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV),
+      dsvVisitor(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV) {
     rbVisitor.self = this;
     ubVisitor.self = this;
     dbVisitor.self = this;
@@ -71,6 +75,8 @@ void CommandAllocator::Reset(CommandQueue *queue) {
     readbackAllocator.Clear();
     uploadAllocator.Clear();
     defaultAllocator.Clear();
+    rtvAllocator.Clear();
+    dsvAllocator.Clear();
     CommandAllocatorBase::Reset(queue);
 }
 
@@ -139,6 +145,16 @@ BufferView CommandAllocator::GetTempDefaultBuffer(uint64 size, size_t align) {
         package,
         chunk.offset,
         size};
+}
+
+uint64 CommandAllocator::DescHeapVisitor::Allocate(uint64 size) {
+    return reinterpret_cast<uint64>(new DescriptorHeap(
+        device,
+        type,
+        size, false));
+}
+void CommandAllocator::DescHeapVisitor::DeAllocate(uint64 handle) {
+    delete reinterpret_cast<DescriptorHeap *>(handle);
 }
 CommandAllocatorBase::~CommandAllocatorBase() {
 }

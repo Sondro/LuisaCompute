@@ -31,5 +31,11 @@ inline VertexData get_vertex_data() {
          LUISA_EXPR(data.instance_id)});
     return data;
 }
+inline auto object_id(){
+    return Var<uint>{detail::FunctionBuilder::current()->object_id()};
+}
+inline auto texel_size(){
+    return def<uint2>(detail::FunctionBuilder::current()->texel_size());
+}
 #undef LUISA_EXPR
 }// namespace luisa::compute

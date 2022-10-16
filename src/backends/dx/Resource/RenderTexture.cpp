@@ -89,8 +89,7 @@ RenderTexture::RenderTexture(
     : TextureBase(device, width, height, format, dimension, depth, mip),
       allocHandle(allocator),
       allowUav(allowUav) {
-    D3D12_RESOURCE_DESC texDesc;
-    memset(&texDesc, 0, sizeof(D3D12_RESOURCE_DESC));
+    D3D12_RESOURCE_DESC texDesc{};
     switch (dimension) {
         case TextureDimension::Cubemap:
         case TextureDimension::Tex2DArray:
@@ -113,7 +112,7 @@ RenderTexture::RenderTexture(
     texDesc.SampleDesc.Count = 1;
     texDesc.SampleDesc.Quality = 0;
     texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    texDesc.Flags = allowUav ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
+    texDesc.Flags = allowUav ? (D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) : D3D12_RESOURCE_FLAG_NONE;
 
     if (!allocator) {
         auto prop = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);

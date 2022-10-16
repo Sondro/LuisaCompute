@@ -1,7 +1,6 @@
-
 #include <DXRuntime/ResourceStateTracker.h>
 #include <DXRuntime/CommandBuffer.h>
-#include <Resource/Resource.h>
+#include <Resource/TextureBase.h>
 namespace toolhub::directx {
 namespace detail {
 static bool IsWriteState(D3D12_RESOURCE_STATES state) {
@@ -32,7 +31,7 @@ void ResourceStateTracker::RecordState(
                 writeStateMap.Emplace(resource);
             }
             return State{
-				.fence = lock ? fenceCount : 0,
+                .fence = lock ? fenceCount : 0,
                 .lastState = initState,
                 .curState = state,
                 .uavBarrier = (state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS && initState == state),
@@ -132,6 +131,30 @@ void ResourceStateTracker::MarkWritable(Resource const *res, bool writable) {
         writeStateMap.Emplace(res);
     } else {
         writeStateMap.Remove(res);
+    }
+}
+D3D12_RESOURCE_STATES ResourceStateTracker::BufferReadState() const {
+    switch (listType) {
+        case D3D12_COMMAND_LIST_TYPE_COMPUTE:
+            return (D3D12_RESOURCE_STATES)(0x1 | 0x40 | 0x800);
+        case D3D12_COMMAND_LIST_TYPE_COPY:
+            return D3D12_RESOURCE_STATE_COPY_SOURCE;
+        default:
+            return (D3D12_RESOURCE_STATES)(0x1 | 0x2 | 0x80 | 0x40 | 0x800);
+    }
+}
+D3D12_RESOURCE_STATES ResourceStateTracker::TextureReadState(TextureBase const *tex) const {
+    if (tex->GetTag() == Resource::Tag::DepthBuffer) {
+        return D3D12_RESOURCE_STATE_DEPTH_READ;
+    } else {
+        switch (listType) {
+            case D3D12_COMMAND_LIST_TYPE_COMPUTE:
+                return (D3D12_RESOURCE_STATES)(0x40 | 0x800);
+            case D3D12_COMMAND_LIST_TYPE_COPY:
+                return D3D12_RESOURCE_STATE_COPY_SOURCE;
+            default:
+                return (D3D12_RESOURCE_STATES)(0x80 | 0x40 | 0x800);
+        }
     }
 }
 }// namespace toolhub::directx

@@ -3,6 +3,7 @@
 namespace toolhub::directx {
 class CommandBufferBuilder;
 class Resource;
+class TextureBase;
 class ResourceStateTracker : public vstd::IOperatorNewBase {
 private:
     struct State {
@@ -22,27 +23,8 @@ private:
 
 public:
     D3D12_COMMAND_LIST_TYPE listType = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-    D3D12_RESOURCE_STATES BufferReadState() const {
-        switch (listType) {
-            case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-                return (D3D12_RESOURCE_STATES)(0x1 | 0x40 | 0x800);
-            case D3D12_COMMAND_LIST_TYPE_COPY:
-                return D3D12_RESOURCE_STATE_COPY_SOURCE;
-            default:
-                return (D3D12_RESOURCE_STATES)(0x1 | 0x2 | 0x80 | 0x40 | 0x800);
-        }
-    }
-    D3D12_RESOURCE_STATES TextureReadState() const {
-        switch (listType) {
-            case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-                return (D3D12_RESOURCE_STATES)(0x40 | 0x800);
-            case D3D12_COMMAND_LIST_TYPE_COPY:
-                return D3D12_RESOURCE_STATE_COPY_SOURCE;
-            default:
-                return (D3D12_RESOURCE_STATES)(0x80 | 0x40 | 0x800);
-        }
-    }
-
+    D3D12_RESOURCE_STATES BufferReadState() const ;
+    D3D12_RESOURCE_STATES TextureReadState(TextureBase const* tex) const;
     void ClearFence() { fenceCount++; }
     vstd::HashMap<Resource const *> const &WriteStateMap() const { return writeStateMap; }
     ResourceStateTracker();

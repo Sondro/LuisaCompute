@@ -1,13 +1,9 @@
 #pragma once
 #include <raster/vertex_attribute.h>
 #include <core/stl/optional.h>
+#include <raster/depth_format.h>
+#include <raster/viewport.h>
 namespace luisa::compute {
-enum class DepthFormat : uint8_t {
-    D16,
-    D24S8,
-    D32,
-    D32S8A24
-};
 enum class Comparison : uint8_t {
     Never,
     Less,
@@ -23,6 +19,9 @@ private:
     luisa::vector<luisa::vector<VertexAttribute>> _streams;
 
 public:
+    MeshFormat() {}
+    MeshFormat(MeshFormat &&) = default;
+    MeshFormat(MeshFormat const&) = default;
     size_t vertex_attribute_count() const {
         size_t count = 0;
         for (auto &&i : _streams) {
@@ -104,6 +103,7 @@ struct RasterState {
     bool depth_clip{true};
     bool conservative{false};
 };
+
 // Make raster state hash-able
 static_assert(alignof(RasterState) == 1);
 }// namespace luisa::compute

@@ -39,7 +39,7 @@ public:
     void remove_tex2d_in_bindless_array(uint64_t array, size_t index) noexcept override;
     void remove_tex3d_in_bindless_array(uint64_t array, size_t index) noexcept override;
     uint64_t create_depth_buffer(DepthFormat format, uint width, uint height) noexcept;
-     void destroy_depth_buffer(uint64_t handle) noexcept;
+    void destroy_depth_buffer(uint64_t handle) noexcept;
     IUtil *get_util() noexcept override;
     // stream
     uint64_t create_stream(StreamTag stream_tag) noexcept override;
@@ -62,8 +62,8 @@ public:
         const RasterState &raster_state,
         luisa::span<const PixelFormat> rtv_format,
         DepthFormat dsv_format,
-            Function vert,
-            Function pixel,
+        Function vert,
+        Function pixel,
         luisa::string_view serialization_path) noexcept override;
 
     uint64_t create_raster_shader(
@@ -71,9 +71,20 @@ public:
         const RasterState &raster_state,
         luisa::span<const PixelFormat> rtv_format,
         DepthFormat dsv_format,
-            Function vert,
-            Function pixel,
+        Function vert,
+        Function pixel,
         bool use_cache) noexcept override;
+    [[nodiscard]] uint64_t load_raster_shader(
+        const MeshFormat &mesh_format,
+        const RasterState &raster_state,
+        luisa::span<const PixelFormat> rtv_format,
+        DepthFormat dsv_format,
+        luisa::string_view ser_path) noexcept override;
+    void save_raster_shader(
+        const MeshFormat &mesh_format,
+        Function vert,
+        Function pixel,
+        luisa::string_view serialization_path) noexcept override;
 
     // event
     uint64_t create_event() noexcept override;

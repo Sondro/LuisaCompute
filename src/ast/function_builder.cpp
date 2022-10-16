@@ -154,6 +154,8 @@ const RefExpr *FunctionBuilder::thread_id() noexcept { return _builtin(Variable:
 const RefExpr *FunctionBuilder::block_id() noexcept { return _builtin(Variable::Tag::BLOCK_ID); }
 const RefExpr *FunctionBuilder::dispatch_id() noexcept { return _builtin(Variable::Tag::DISPATCH_ID); }
 const RefExpr *FunctionBuilder::dispatch_size() noexcept { return _builtin(Variable::Tag::DISPATCH_SIZE); }
+const RefExpr *FunctionBuilder::texel_size() noexcept { return _builtin(Variable::Tag::TEXEL_SIZE); }
+const RefExpr *FunctionBuilder::object_id() noexcept { return _builtin(Variable::Tag::OBJECT_ID); }
 
 const RefExpr *FunctionBuilder::_builtin(Variable::Tag tag) noexcept {
     if (auto iter = std::find_if(
@@ -165,7 +167,9 @@ const RefExpr *FunctionBuilder::_builtin(Variable::Tag tag) noexcept {
     Variable v{Type::of<uint3>(), tag, _next_variable_uid()};
     _builtin_variables.emplace_back(v);
     // for callables, builtin variables are treated like arguments
-    if (_tag != Function::Tag::KERNEL) [[unlikely]] {
+    if (_tag != Function::Tag::KERNEL &&
+        v.tag() >= Variable::Tag::THREAD_ID &&
+         v.tag() <= Variable::Tag::DISPATCH_SIZE) [[unlikely]] {
         _arguments.emplace_back(v);
         _argument_bindings.emplace_back();
     }
@@ -223,11 +227,51 @@ const MemberExpr *FunctionBuilder::member(const Type *type, const Expression *se
     return _create_expression<MemberExpr>(type, self, member_index);
 }
 
-const MemberExpr *FunctionBuilder::swizzle(const Type *type, const Expression *self, size_t swizzle_size, uint64_t swizzle_code) noexcept {
+const Expression *FunctionBuilder::swizzle(const Type *type, const Expression *self, size_t swizzle_size, uint64_t swizzle_code) noexcept {
+    // special handling for literal swizzles
     if (self->tag() == Expression::Tag::LITERAL) {
-        auto v = local(self->type());
-        assign(v, self);
-        self = v;
+        auto element = luisa::visit(
+            [&](auto &&v) noexcept -> const Expression * {
+                using TVec = std::decay_t<decltype(v)>;
+                if constexpr (is_vector_v<TVec>) {
+                    using TElem = vector_element_t<TVec>;
+                    switch (swizzle_size) {
+                        case 1u: {
+                            auto i = swizzle_code & 0b11u;
+                            return literal(Type::of<TElem>(), v[i]);
+                        }
+                        case 2u: {
+                            auto i = (swizzle_code >> 0u) & 0b11u;
+                            auto j = (swizzle_code >> 4u) & 0b11u;
+                            return literal(Type::of<TVec>(),
+                                           Vector<TElem, 2u>{v[i], v[j]});
+                        }
+                        case 3u: {
+                            auto i = (swizzle_code >> 0u) & 0b11u;
+                            auto j = (swizzle_code >> 4u) & 0b11u;
+                            auto k = (swizzle_code >> 8u) & 0b11u;
+                            return literal(Type::of<TVec>(),
+                                           Vector<TElem, 3u>{v[i], v[j], v[k]});
+                        }
+                        case 4u: {
+                            auto i = (swizzle_code >> 0u) & 0b11u;
+                            auto j = (swizzle_code >> 4u) & 0b11u;
+                            auto k = (swizzle_code >> 8u) & 0b11u;
+                            auto l = (swizzle_code >> 12u) & 0b11u;
+                            return literal(Type::of<TVec>(),
+                                           Vector<TElem, 4u>{v[i], v[j], v[k], v[l]});
+                        }
+                        default:
+                            LUISA_ERROR_WITH_LOCATION("Invalid swizzle size.");
+                            break;
+                    }
+                } else {
+                    LUISA_ERROR_WITH_LOCATION("Swizzle must be a vector but got '{}'.",
+                                              self->type()->description());
+                }
+            },
+            static_cast<const LiteralExpr *>(self)->value());
+        return element;
     }
     return _create_expression<MemberExpr>(type, self, swizzle_size, swizzle_code);
 }
@@ -433,10 +477,8 @@ const CallExpr *FunctionBuilder::call(const Type *type, Function custom, luisa::
     auto in_iter = args.begin();
     for (auto i = 0u; i < f->_arguments.size(); i++) {
         if (auto v_tag = f->_arguments[i].tag();
-            v_tag == Variable::Tag::THREAD_ID ||
-            v_tag == Variable::Tag::BLOCK_ID ||
-            v_tag == Variable::Tag::DISPATCH_ID ||
-            v_tag == Variable::Tag::DISPATCH_SIZE) {
+            v_tag >= Variable::Tag::THREAD_ID &&
+            v_tag <= Variable::Tag::DISPATCH_SIZE) {
             call_args[i] = _builtin(v_tag);
         } else {
             call_args[i] = luisa::visit(

@@ -71,14 +71,11 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
         case Variable::Tag::DISPATCH_SIZE:
             str << "a.dsp_c"sv;
             break;
-        case Variable::Tag::MESH_VERTEX:
-            str << "a.v_c"sv;
-            break;
-        case Variable::Tag::MESH_INSTANCE:
-            str << "a.i_c"sv;
-            break;
         case Variable::Tag::TEXEL_SIZE:
             str << "a.tex_c"sv;
+            break;
+        case Variable::Tag::OBJECT_ID:
+            str << "obj_id"sv;
             break;
         case Variable::Tag::LOCAL:
             switch (opt->funcType) {
@@ -1482,6 +1479,7 @@ CodegenResult CodegenUtility::RasterCodegen(
         LUISA_ERROR("Illegal vertex return type!");
     }
     codegenData << R"(};
+uint obj_id:register(b0);
 #ifdef VS
 #define get_vert(tposition,tnormal,ttangent,tcolor,tuv0,tuv1,tuv2,tuv3,tvid,tiid){tvid=vt.vid;tiid=vt.iid;)"sv;
     std::bitset<kVertexAttributeCount> bits;
@@ -1556,10 +1554,7 @@ uint iid:SV_INSTANCEID;
     auto pixelRange = vstd::RangeImpl(vstd::ite_range(pixelFunc.arguments().begin() + 1, pixelFunc.arguments().end()) | vstd::ValueRange{});
     std::initializer_list<vstd::IRange<Variable> *> funcs = {&vertRange, &pixelRange};
     opt->funcType = CodegenStackData::FuncType::Callable;
-    GenerateCBuffer(funcs, varData, R"(uint v_c;
-uint i_c;
-uint2 tex_c;
-)"sv);
+    GenerateCBuffer(funcs, varData, "uint2 tex_c;\n"sv);
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;

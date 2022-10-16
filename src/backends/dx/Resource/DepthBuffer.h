@@ -1,6 +1,6 @@
 #pragma once
 #include <Resource/TextureBase.h>
-#include <raster/raster_state.h>
+#include <raster/depth_format.h>
 #include <Resource/AllocHandle.h>
 namespace toolhub::directx {
 class DepthBuffer final : public TextureBase {

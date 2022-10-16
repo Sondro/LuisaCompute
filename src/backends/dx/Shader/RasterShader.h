@@ -12,14 +12,17 @@ class RasterShader final : public Shader {
 private:
     ComPtr<ID3D12PipelineState> pso;
     Device *device;
+    TopologyType type;
     RasterShader(
         Device *device,
         vstd::vector<Property> &&prop,
         vstd::vector<SavedArgument> &&args,
         ComPtr<ID3D12RootSignature> &&rootSig,
-        ComPtr<ID3D12PipelineState> &&pso);
+        ComPtr<ID3D12PipelineState> &&pso,
+        TopologyType type);
 
 public:
+    TopologyType TopoType() const { return type; }
     ID3D12PipelineState *Pso() const { return pso.Get(); }
     Tag GetTag() const noexcept override { return Tag::RasterShader; }
     static vstd::MD5 GenMD5(
@@ -64,5 +67,22 @@ public:
         DepthFormat dsv,
         vstd::string_view fileName,
         bool byteCodeIsCache);
+    static void SaveRaster(
+        BinaryIOVisitor *fileIo,
+        Device *device,
+        CodegenResult const &result,
+        vstd::MD5 const &md5,
+        vstd::string_view fileName,
+        Function vertexKernel,
+        Function pixelKernel,
+        uint shaderModel);
+    static RasterShader *LoadRaster(
+        BinaryIOVisitor *fileIo,
+        Device *device,
+        const MeshFormat &mesh_format,
+        const RasterState &raster_state,
+        luisa::span<const PixelFormat> rtv_format,
+        DepthFormat dsv_format,
+        vstd::string_view fileName);
 };
 }// namespace toolhub::directx

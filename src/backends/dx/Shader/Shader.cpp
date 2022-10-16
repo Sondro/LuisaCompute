@@ -106,4 +106,55 @@ void Shader::SetComputeResource(
         cmdList,
         BufferView(bAccel->GetAccelBuffer()));
 }
+void Shader::SetRasterResource(
+    uint propertyName,
+    CommandBufferBuilder *cb,
+    BufferView buffer) const {
+    auto cmdList = cb->CmdList();
+    auto &&var = properties[propertyName];
+    switch (var.type) {
+        case ShaderVariableType::ConstantBuffer: {
+            cmdList->SetGraphicsRootConstantBufferView(
+                propertyName,
+                buffer.buffer->GetAddress() + buffer.offset);
+        } break;
+        case ShaderVariableType::StructuredBuffer: {
+            cmdList->SetGraphicsRootShaderResourceView(
+                propertyName,
+                buffer.buffer->GetAddress() + buffer.offset);
+        } break;
+        case ShaderVariableType::RWStructuredBuffer: {
+            cmdList->SetGraphicsRootUnorderedAccessView(
+                propertyName,
+                buffer.buffer->GetAddress() + buffer.offset);
+        } break;
+    }
+}
+void Shader::SetRasterResource(
+    uint propertyName,
+    CommandBufferBuilder *cb,
+    DescriptorHeapView view) const {
+    auto cmdList = cb->CmdList();
+    auto &&var = properties[propertyName];
+    switch (var.type) {
+        case ShaderVariableType::UAVDescriptorHeap:
+        case ShaderVariableType::CBVDescriptorHeap:
+        case ShaderVariableType::SampDescriptorHeap:
+        case ShaderVariableType::SRVDescriptorHeap: {
+            cmdList->SetGraphicsRootDescriptorTable(
+                propertyName,
+                view.heap->hGPU(view.index));
+        } break;
+    }
+}
+void Shader::SetRasterResource(
+    uint propertyName,
+    CommandBufferBuilder *cmdList,
+    TopAccel const *bAccel) const {
+    return SetRasterResource(
+        propertyName,
+        cmdList,
+        BufferView(bAccel->GetAccelBuffer()));
+}
+
 }// namespace toolhub::directx

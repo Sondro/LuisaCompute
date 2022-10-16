@@ -1,21 +1,16 @@
 #pragma once
-#include <raster/raster_state.h>
+#include <raster/depth_format.h>
 #include <runtime/resource.h>
 namespace luisa::compute {
-class DepthBuffer : public Resource {
+class LC_RUNTIME_API DepthBuffer : public Resource {
 private:
     uint2 _size{};
     DepthFormat _format{};
 
 public:
-    DepthBuffer(Device::Interface *device, DepthFormat format, uint2 size)
-        : _size(size), _format(format),
-          Resource(
-              device,
-              Tag::DEPTH_BUFFER,
-              device->create_depth_buffer(format, size.x, size.y)) {
-    }
+    DepthBuffer(Device::Interface *device, DepthFormat format, uint2 size);
     [[nodiscard]] auto size() const noexcept { return _size; }
     [[nodiscard]] auto format() const noexcept { return _format; }
+    [[nodiscard]] luisa::unique_ptr<Command> clear(float value) const noexcept;
 };
-}// namespace luisa::compute
+}// namespace luisa::computep

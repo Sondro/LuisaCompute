@@ -37,6 +37,8 @@ public:
     void Reset();
     void CreateUAV(ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC &pDesc, uint64 index);
     void CreateSRV(ID3D12Resource *resource, const D3D12_SHADER_RESOURCE_VIEW_DESC &pDesc, uint64 index);
+    void CreateRTV(ID3D12Resource *resource, const D3D12_RENDER_TARGET_VIEW_DESC& pDesc, uint64 index);
+    void CreateDSV(ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& pDesc, uint64 index);
     void CreateSampler(D3D12_SAMPLER_DESC const &desc, uint64 index);
     ~DescriptorHeap();
     Tag GetTag() const override { return Tag::DescriptorHeap; }

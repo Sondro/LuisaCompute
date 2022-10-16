@@ -40,10 +40,9 @@ public:
         BLOCK_ID,
         DISPATCH_ID,
         DISPATCH_SIZE,
-
-        MESH_VERTEX,
-        MESH_INSTANCE,
-        TEXEL_SIZE
+        // raster builtins
+        TEXEL_SIZE,
+        OBJECT_ID
     };
 
 private:

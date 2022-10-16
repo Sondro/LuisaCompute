@@ -19,10 +19,11 @@
 #include <runtime/sampler.h>
 #include <runtime/command_list.h>
 
-#include <raster/raster_state.h>
 #include <runtime/stream_tag.h>
+#include <raster/depth_format.h>
 namespace luisa::compute {
-
+class MeshFormat;
+class RasterState;
 class Context;
 
 class Event;
@@ -66,6 +67,7 @@ class Kernel2D;
 
 template<typename... Args>
 class Kernel3D;
+class DepthBuffer;
 
 namespace detail {
 
@@ -176,12 +178,14 @@ public:
             Function pixel,
             bool use_cache) noexcept { return ~0; }
 
-        [[nodiscard]] virtual uint64_t load_raster_shader(luisa::string_view ser_path) noexcept { return ~0; }
-        virtual void save_raster_shader(
+        [[nodiscard]] virtual uint64_t load_raster_shader(
             const MeshFormat &mesh_format,
             const RasterState &raster_state,
             luisa::span<const PixelFormat> rtv_format,
             DepthFormat dsv_format,
+            luisa::string_view ser_path) noexcept { return ~0; }
+        virtual void save_raster_shader(
+            const MeshFormat &mesh_format,
             Function vert,
             Function pixel,
             luisa::string_view serialization_path) noexcept {}
@@ -227,7 +231,7 @@ public:
     [[nodiscard]] IUtil *get_util() const noexcept { return _impl->get_util(); }
 
     [[nodiscard]] Stream create_stream(StreamTag stream_tag = StreamTag::COMPUTE) noexcept;// see definition in runtime/stream.cpp
-    [[nodiscard]] Event create_event() noexcept;                          // see definition in runtime/event.cpp
+    [[nodiscard]] Event create_event() noexcept;                                           // see definition in runtime/event.cpp
 
     [[nodiscard]] SwapChain create_swapchain(
         uint64_t window_handle, const Stream &stream, uint2 resolution,
@@ -251,6 +255,7 @@ public:
     [[nodiscard]] auto create_image(PixelStorage pixel, uint2 size, uint mip_levels = 1u) noexcept {
         return _create<Image<T>>(pixel, size, mip_levels);
     }
+    DepthBuffer create_depth_buffer(DepthFormat depth_format, uint2 size) noexcept;
 
     template<typename T>
     [[nodiscard]] auto create_volume(PixelStorage pixel, uint width, uint height, uint depth, uint mip_levels = 1u) noexcept {

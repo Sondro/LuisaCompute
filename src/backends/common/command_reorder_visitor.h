@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vstl/Common.h>
 #include <runtime/command.h>
+#include <raster/raster_scene.h>
 
 namespace luisa::compute {
 /*
@@ -96,6 +97,7 @@ private:
     luisa::unordered_map<uint64_t, BindlessHandle *> bindlessMap;
     int64_t bindlessMaxLayer = -1;
     int64_t maxMeshLevel = -1;
+    int64_t maxBufferReadLevel = -1;
     int64_t maxAccelReadLevel = -1;
     int64_t maxAccelWriteLevel = -1;
     luisa::vector<vstd::vector<Command const *, VEngine_AllocType::VEngine, 4>> commandLists;
@@ -147,17 +149,18 @@ private:
         size_t layer = std::max<int64_t>(handle->view.readLayer + 1, handle->view.writeLayer + 1);
 
         switch (handle->type) {
+            case ResourceType::Buffer: {
+                layer = std::max<int64_t>(layer, maxBufferReadLevel);
+            } break;
             case ResourceType::Mesh: {
                 auto maxAccelLevel = std::max(maxAccelReadLevel, maxAccelWriteLevel);
                 layer = std::max<int64_t>(layer, maxAccelLevel + 1);
-                break;
-            }
+            } break;
             case ResourceType::Accel: {
                 auto maxAccelLevel = std::max(maxAccelReadLevel, maxAccelWriteLevel);
                 layer = std::max<int64_t>(layer, maxAccelLevel + 1);
                 layer = std::max<int64_t>(layer, maxMeshLevel + 1);
-                break;
-            }
+            } break;
             default: break;
         }
         return layer;
@@ -519,6 +522,7 @@ public:
         bindlessMap.clear();
         bindlessMaxLayer = -1;
         maxAccelReadLevel = -1;
+        maxBufferReadLevel = -1;
         maxAccelWriteLevel = -1;
         maxMeshLevel = -1;
         luisa::span<decltype(commandLists)::value_type> sp(commandLists.data(), layerCount);
@@ -552,7 +556,7 @@ public:
         visit(command, command->handle());
     }
     void visit(const DrawRasterSceneCommand *command) noexcept override {
-        auto SetDst = [&](ShaderDispatchCommandBase::TextureArgument const &a) {
+        auto SetTexDst = [&](ShaderDispatchCommandBase::TextureArgument const &a) {
             AddDispatchHandle(
                 a.handle,
                 ResourceType::Texture,
@@ -563,9 +567,30 @@ public:
             auto &&rtv = command->rtv_texs();
             auto &&dsv = command->dsv_tex();
             for (auto &&i : rtv) {
-                SetDst(i);
+                SetTexDst(i);
             }
-            SetDst(dsv);
+            if (dsv.handle != ~0ull) {
+                SetTexDst(dsv);
+            }
+            auto scene = command->scene;
+            for (auto &&mesh : scene->meshes) {
+                for (auto &&v : mesh.vertex_buffers()) {
+                    AddDispatchHandle(
+                        v.handle(),
+                        ResourceType::Buffer,
+                        Range(v.offset(), v.size()),
+                        false);
+                }
+                auto &&i = mesh.index();
+                if (i.index() == 0) {
+                    auto idx = luisa::get<0>(i);
+                    AddDispatchHandle(
+                        idx.handle(),
+                        ResourceType::Buffer,
+                        Range(idx.offset_bytes(), idx.size_bytes()),
+                        false);
+                }
+            }
         });
     }
 
@@ -583,6 +608,9 @@ public:
         auto sz = command->size();
         auto binSize = pixel_storage_size(command->storage(), sz.x, sz.y, sz.z);
         AddCommand(command, SetRW(command->texture(), CopyRange(command->level(), 1), ResourceType::Texture, command->buffer(), CopyRange(command->buffer_offset(), binSize), ResourceType::Buffer));
+    }
+    void visit(const ClearDepthCommand* command) noexcept override{
+        AddCommand(command, SetWrite(command->handle(), Range{}, ResourceType::Texture));
     }
 
     // BindlessArray : read multi resources
@@ -610,6 +638,7 @@ public:
                 Range(command->triangle_buffer_offset(),
                       command->triangle_buffer_size())));
     }
+    
     void visit(const CustomCommand *command) noexcept override {
         dispatchReadHandle.clear();
         dispatchWriteHandle.clear();

@@ -10,8 +10,10 @@ GFXFormat DepthBuffer::GetDepthFormat(DepthFormat f) {
             return GFXFormat_D24_UNorm_S8_UInt;
         case DepthFormat::D32:
             return GFXFormat_D32_Float;
-        default:
+        case DepthFormat::D32S8A24:
             return GFXFormat_D32_Float_S8X24_UInt;
+        default:
+            return GFXFormat_Unknown;
     }
 }
 DepthBuffer::DepthBuffer(
@@ -25,6 +27,50 @@ DepthBuffer::DepthBuffer(
           GetDepthFormat(format),
           TextureDimension::Tex2D, 1, 1),
       allocHandle(alloc) {
+    D3D12_RESOURCE_DESC texDesc{};
+    texDesc.Alignment = 0;
+    texDesc.Width = this->width;
+    texDesc.Height = this->height;
+    texDesc.DepthOrArraySize = depth;
+    texDesc.MipLevels = mip;
+    texDesc.Format = (DXGI_FORMAT)this->format;
+    texDesc.SampleDesc.Count = 1;
+    texDesc.SampleDesc.Quality = 0;
+    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+    if (!alloc) {
+        auto prop = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+        D3D12_HEAP_PROPERTIES const *propPtr = &prop;
+        ThrowIfFailed(device->device->CreateCommittedResource(
+            propPtr,
+            D3D12_HEAP_FLAG_NONE,
+            &texDesc,
+            GetInitState(),
+            nullptr,
+            IID_PPV_ARGS(&allocHandle.resource)));
+    } else {
+        ID3D12Heap *heap;
+        uint64 offset;
+        allocHandle.allocateHandle = alloc->AllocateTextureHeap(
+            device,
+            this->format,
+            width,
+            height,
+            depth,
+            dimension,
+            mip,
+            &heap,
+            &offset,
+            true);
+        ThrowIfFailed(device->device->CreatePlacedResource(
+            heap,
+            offset,
+            &texDesc,
+            GetInitState(),
+            nullptr,
+            IID_PPV_ARGS(&allocHandle.resource)));
+    }
 }
 DepthBuffer::~DepthBuffer() {
     if (srvIdx != ~0u) device->globalHeap->ReturnIndex(srvIdx);

@@ -63,6 +63,19 @@ public:
 		CommandBufferBuilder* cmdList,
 		TopAccel const* bAccel) const;
 
+	void SetRasterResource(
+		uint propertyName,
+		CommandBufferBuilder* cmdList,
+		BufferView buffer) const;
+	void SetRasterResource(
+		uint propertyName,
+		CommandBufferBuilder* cmdList,
+		DescriptorHeapView view) const;
+	void SetRasterResource(
+		uint propertyName,
+		CommandBufferBuilder* cmdList,
+		TopAccel const* bAccel) const;
+
 	KILL_COPY_CONSTRUCT(Shader)
 	KILL_MOVE_CONSTRUCT(Shader)
 };

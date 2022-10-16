@@ -306,7 +306,10 @@ public:
     [[nodiscard]] const RefExpr *dispatch_id() noexcept;
     /// Return dispatch size.
     [[nodiscard]] const RefExpr *dispatch_size() noexcept;
-
+    /// Return raster texture size
+    [[nodiscard]] const RefExpr *texel_size() noexcept;
+    /// Return raster object id
+    [[nodiscard]] const RefExpr *object_id() noexcept;
     // variables
     /// Add local variable of type
     [[nodiscard]] const RefExpr *local(const Type *type) noexcept;
@@ -348,7 +351,7 @@ public:
     /// Create member expression
     [[nodiscard]] const MemberExpr *member(const Type *type, const Expression *self, size_t member_index) noexcept;
     /// Create swizzle expression
-    [[nodiscard]] const MemberExpr *swizzle(const Type *type, const Expression *self, size_t swizzle_size, uint64_t swizzle_code) noexcept;
+    [[nodiscard]] const Expression *swizzle(const Type *type, const Expression *self, size_t swizzle_size, uint64_t swizzle_code) noexcept;
     /// Create access expression
     [[nodiscard]] const AccessExpr *access(const Type *type, const Expression *range, const Expression *index) noexcept;
     /// Create cast expression

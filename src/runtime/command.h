@@ -21,6 +21,7 @@
 #include <runtime/pixel.h>
 #include <ast/function_builder.h>
 #include <runtime/stream_tag.h>
+#include <raster/viewport.h>
 
 namespace luisa::compute {
 class CmdDeser;
@@ -40,7 +41,8 @@ class CmdSer;
         MeshBuildCommand,              \
         BindlessArrayUpdateCommand,    \
         CustomCommand,                 \
-        DrawRasterSceneCommand
+        DrawRasterSceneCommand,        \
+        ClearDepthCommand
 
 #define LUISA_MAKE_COMMAND_FWD_DECL(CMD) class CMD;
 LUISA_MAP(LUISA_MAKE_COMMAND_FWD_DECL, LUISA_COMPUTE_RUNTIME_COMMANDS)
@@ -496,14 +498,17 @@ private:
     uint64_t _handle{};
     Function _vertex_func{};
     Function _pixel_func{};
-    RasterScene *_scene{nullptr};
     TextureArgument _rtv_texs[8];
-    size_t _rtv_count;
-    TextureArgument _dsv_tex;
+    size_t _rtv_count{};
+    TextureArgument _dsv_tex{};
     size_t _arg_count{0};
+
     Function arg_kernel() const;
 
 public:
+    RasterScene *scene{};
+    Viewport viewport{};
+
     explicit DrawRasterSceneCommand(
         uint64_t handle,
         Function vertex_func,
@@ -517,12 +522,11 @@ public:
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] auto vertex_func() const noexcept { return _vertex_func; }
     [[nodiscard]] auto pixel_func() const noexcept { return _pixel_func; }
-    [[nodiscard]] auto scene() const noexcept { return _scene; }
-    void set_scene(RasterScene *scene) noexcept { _scene = scene; }
     [[nodiscard]] auto rtv_texs() const noexcept { return luisa::span<const TextureArgument>{_rtv_texs, _rtv_count}; }
     [[nodiscard]] auto const &dsv_tex() const noexcept { return _dsv_tex; }
     void set_rtv_texs(luisa::span<const TextureArgument> tex) {
         assert(tex.size() <= 8);
+        _rtv_count = tex.size();
         memcpy(_rtv_texs, tex.data(), tex.size_bytes());
     }
     void set_dsv_tex(TextureArgument tex) {
@@ -646,6 +650,18 @@ public:
         : Command{Command::Tag::EBindlessArrayUpdateCommand}, _handle{handle} {}
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     LUISA_MAKE_COMMAND_COMMON(BindlessArrayUpdateCommand, StreamTag::COPY)
+};
+class ClearDepthCommand final : public Command {
+    uint64_t _handle;
+    float _value;
+
+public:
+    explicit ClearDepthCommand(uint64_t handle, float value) noexcept
+        : Command{Command::Tag::EClearDepthCommand}, _handle{handle}, _value(value) {}
+    [[nodiscard]] auto handle() const noexcept { return _handle; }
+    [[nodiscard]] auto value() const noexcept { return _value; }
+
+    LUISA_MAKE_COMMAND_COMMON(ClearDepthCommand, StreamTag::GRAPHICS)
 };
 class CustomCommand final : public Command {
 public:

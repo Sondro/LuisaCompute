@@ -19,8 +19,10 @@
 #include "HLSL/dx_codegen.h"
 #include <remote/DatabaseInclude.h>
 #include <ast/function_builder.h>
+#include <Resource/DepthBuffer.h>
 using namespace toolhub::directx;
 namespace toolhub::directx {
+static constexpr uint kShaderModel = 63u;
 LCDevice::LCDevice(Context &&ctx, DeviceSettings const *settings)
     : LCDeviceInterface(std::move(ctx)),
       shaderPaths{},
@@ -183,7 +185,7 @@ uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noex
             [&]() { return std::move(code); },
             checkMD5,
             kernel.block_size(),
-            65u,
+            kShaderModel,
             file_name,
             false));
 }
@@ -202,7 +204,7 @@ uint64 LCDevice::create_shader(Function kernel, bool use_cache) noexcept {
             [&]() { return std::move(code); },
             checkMD5,
             kernel.block_size(),
-            65u,
+            kShaderModel,
             file_name,
             true));
 }
@@ -226,7 +228,7 @@ void LCDevice::save_shader(Function kernel, luisa::string_view file_name) noexce
         kernel,
         code,
         kernel.block_size(),
-        65u,
+        kShaderModel,
         file_name);
 }
 void LCDevice::destroy_shader(uint64 handle) noexcept {
@@ -315,8 +317,59 @@ uint64_t LCDevice::create_raster_shader(
     DepthFormat dsv_format,
     Function vert,
     Function pixel,
-    luisa::string_view serialization_path) noexcept {
+    luisa::string_view file_name) noexcept {
+    auto code = CodegenUtility::RasterCodegen(mesh_format, vert, pixel, shaderPaths.dataFolder);
+    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
+    auto shader = RasterShader::CompileRaster(
+        nativeDevice.fileIo,
+        &nativeDevice,
+        vert,
+        pixel,
+        [&] { return std::move(code); },
+        checkMD5,
+        kShaderModel,
+        mesh_format,
+        raster_state,
+        rtv_format,
+        dsv_format,
+        file_name,
+        true);
+    return reinterpret_cast<uint64>(shader);
+}
+
+uint64_t LCDevice::load_raster_shader(
+    const MeshFormat &mesh_format,
+    const RasterState &raster_state,
+    luisa::span<const PixelFormat> rtv_format,
+    DepthFormat dsv_format,
+    luisa::string_view ser_path) noexcept {
+    auto ptr = RasterShader::LoadRaster(
+        nativeDevice.fileIo,
+        &nativeDevice,
+        mesh_format,
+        raster_state,
+        rtv_format,
+        dsv_format,
+        ser_path);
+    if (ptr) return reinterpret_cast<uint64>(ptr);
     return ~0ull;
+}
+void LCDevice::save_raster_shader(
+    const MeshFormat &mesh_format,
+    Function vert,
+    Function pixel,
+    luisa::string_view file_name) noexcept {
+    auto code = CodegenUtility::RasterCodegen(mesh_format, vert, pixel, shaderPaths.dataFolder);
+    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
+    RasterShader::SaveRaster(
+        nativeDevice.fileIo,
+        &nativeDevice,
+        code,
+        checkMD5,
+        file_name,
+        vert,
+        pixel,
+        kShaderModel);
 }
 
 uint64_t LCDevice::create_raster_shader(
@@ -329,9 +382,7 @@ uint64_t LCDevice::create_raster_shader(
     bool use_cache) noexcept {
     auto code = CodegenUtility::RasterCodegen(mesh_format, vert, pixel, shaderPaths.dataFolder);
     vstd::string file_name;
-    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.
-    immutableHeaderSize});
-    checkMD5 = RasterShader::GenMD5(checkMD5, mesh_format, raster_state, rtv_format, dsv_format);
+    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
     if (use_cache) {
         file_name << checkMD5.ToString() << ".dxil";
     }
@@ -342,7 +393,7 @@ uint64_t LCDevice::create_raster_shader(
         pixel,
         [&] { return std::move(code); },
         checkMD5,
-        65,
+        kShaderModel,
         mesh_format,
         raster_state,
         rtv_format,
@@ -352,9 +403,16 @@ uint64_t LCDevice::create_raster_shader(
     return reinterpret_cast<uint64>(shader);
 }
 uint64_t LCDevice::create_depth_buffer(DepthFormat format, uint width, uint height) noexcept {
+    return reinterpret_cast<uint64_t>(
+        static_cast<TextureBase *>(
+            new DepthBuffer(
+                &nativeDevice,
+                width, height,
+                format, nativeDevice.defaultAllocator.get())));
 }
 
 void LCDevice::destroy_depth_buffer(uint64_t handle) noexcept {
+    delete reinterpret_cast<TextureBase *>(handle);
 }
 
 VSTL_EXPORT_C LCDeviceInterface *create(Context &&c, DeviceSettings const *settings) {

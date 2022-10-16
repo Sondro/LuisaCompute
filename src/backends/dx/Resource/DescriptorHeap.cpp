@@ -55,6 +55,12 @@ void DescriptorHeap::CreateUAV(ID3D12Resource *resource, const D3D12_UNORDERED_A
 void DescriptorHeap::CreateSRV(ID3D12Resource *resource, const D3D12_SHADER_RESOURCE_VIEW_DESC &pDesc, uint64 index) {
     device->device->CreateShaderResourceView(resource, &pDesc, hCPU(index));
 }
+void DescriptorHeap::CreateRTV(ID3D12Resource *resource, const D3D12_RENDER_TARGET_VIEW_DESC &pDesc, uint64 index) {
+    device->device->CreateRenderTargetView(resource, &pDesc, hCPU(index));
+}
+void DescriptorHeap::CreateDSV(ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC &pDesc, uint64 index) {
+    device->device->CreateDepthStencilView(resource, &pDesc, hCPU(index));
+}
 void DescriptorHeap::CreateSampler(D3D12_SAMPLER_DESC const &desc, uint64 index) {
     device->device->CreateSampler(&desc, hCPU(index));
 }

@@ -11,23 +11,6 @@ struct ShaderBuildData {
     vstd::vector<std::byte> binData;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
 };
-struct RasterHeaderData {
-    D3D12_BLEND_DESC blendState;
-    D3D12_RASTERIZER_DESC rasterizerState;
-    D3D12_DEPTH_STENCIL_DESC depthStencilState;
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE primitiveTopologyType;
-    uint numRtv;
-    uint inputLayoutCount;
-    DXGI_FORMAT RTVFormats[8];
-    DXGI_FORMAT DSVFormat;
-};
-struct InputElement {
-    VertexAttributeType type;
-    UINT semanticIndex;
-    DXGI_FORMAT format;
-    UINT inputSlot;
-    UINT alignedByteOffset;
-};
 class ShaderSerializer {
     static size_t SerializeRootSig(
         vstd::span<Property const> properties,
@@ -52,9 +35,7 @@ public:
         vstd::span<std::byte const> vertBin,
         vstd::span<std::byte const> pixelBin,
         vstd::MD5 const &checkMD5,
-        uint bindlessCount,
-        RasterHeaderData const &headerData,
-        InputElement const* inputElement);
+        uint bindlessCount);
     static ComputeShader *DeSerialize(
         luisa::string_view fileName,
         bool byteCodeIsCache,
@@ -68,9 +49,13 @@ public:
         bool byteCodeIsCache,
         Device *device,
         BinaryIOVisitor &streamFunc,
-        vstd::optional<vstd::MD5> const &checkMD5,
-        bool &clearCache,
-        vstd::MD5 *lastMD5 = nullptr);
+        vstd::optional<vstd::MD5> const& ilMd5,
+        vstd::optional<vstd::MD5>& psoMd5,
+        MeshFormat const &meshFormat,
+        RasterState const &state,
+        vstd::span<PixelFormat const> rtv,
+        DepthFormat dsv,
+        bool &clearCache);
     static bool CheckMD5(
         vstd::string_view fileName,
         vstd::MD5 const &checkMD5,

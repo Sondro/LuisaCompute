@@ -2,11 +2,12 @@
 #include <raster/raster_kernel.h>
 #include <dsl/func.h>
 #include <runtime/shader.h>
+#include <raster/raster_state.h>
 #include <raster/depth_buffer.h>
-#include <rtx/accel.h>
-#include <runtime/bindless_array.h>
 namespace luisa::compute {
 class RasterScene;
+class Accel;
+class BindlessArray;
 namespace detail {
 template<typename T>
 struct PixelDst : public std::false_type {};
@@ -34,7 +35,7 @@ static constexpr bool LegalDst() {
     }
 }
 }// namespace detail
-class RasterShaderInvoke {
+class LC_RASTER_API RasterShaderInvoke {
 private:
     luisa::unique_ptr<DrawRasterSceneCommand> _command;
     Function _vert;
@@ -94,23 +95,39 @@ public:
     }
 
     // see definition in rtx/accel.cpp
-    RasterShaderInvoke &operator<<(const Accel &accel) noexcept {
-        _command->encode_accel(accel.handle());
-        return *this;
-    }
-
+    RasterShaderInvoke &operator<<(const Accel &accel) noexcept;
     // see definition in runtime/bindless_array.cpp
-    RasterShaderInvoke &operator<<(const BindlessArray &array) noexcept {
-        _command->encode_bindless_array(array.handle());
-        return *this;
-    }
+    RasterShaderInvoke &operator<<(const BindlessArray &array) noexcept;
+#ifndef NDEBUG
+    MeshFormat const *_mesh_format;
+    RasterState const *_raster_state;
+    luisa::span<PixelFormat const> _rtv_format;
+    DepthFormat _dsv_format;
+    void check_dst(luisa::span<PixelFormat const> rt_formats, DepthBuffer const *depth);
+    void check_scene(RasterScene *scene);
+#endif
     template<typename... Rtv>
         requires(sizeof...(Rtv) == 0 || detail::LegalDst<Rtv...>())
-    [[nodiscard]] auto draw(RasterScene *scene, DepthBuffer const &dsv, Rtv const &...rtv) &&noexcept {
-        auto tex_args = {ShaderDispatchCommandBase::TextureArgument(dsv.handle(), 0), detail::PixelDst<std::remove_cvref_t<Rtv>>::get(rtv)...};
-        _command->set_dsv_tex(tex_args.begin()[0]);
-        _command->set_rtv_texs({tex_args.begin() + 1, tex_args.size() - 1});
-        _command->set_scene(scene);
+    [[nodiscard]] auto draw(RasterScene *scene, Viewport viewport, DepthBuffer const *dsv, Rtv const &...rtv) &&noexcept {
+        if (dsv) {
+            auto dsv_arg = ShaderDispatchCommandBase::TextureArgument(dsv->handle(), 0);
+            _command->set_dsv_tex(dsv_arg);
+        } else {
+            _command->set_dsv_tex(ShaderDispatchCommandBase::TextureArgument{~0ull, 0});
+        }
+        if constexpr (sizeof...(Rtv) > 0) {
+            auto tex_args = {detail::PixelDst<std::remove_cvref_t<Rtv>>::get(rtv)...};
+            _command->set_rtv_texs(tex_args);
+#ifndef NDEBUG
+            auto rtv_formats = {rtv.format()...};
+            check_dst({rtv_formats.begin(), rtv_formats.size()}, dsv);
+#endif
+        }
+#ifndef NDEBUG
+        check_scene(scene);
+#endif
+        _command->scene = scene;
+        _command->viewport = viewport;
         return std::move(_command);
     }
 };
@@ -120,7 +137,20 @@ class RasterShader : public Resource {
     friend class Device;
     luisa::shared_ptr<const detail::FunctionBuilder> _vert;
     luisa::shared_ptr<const detail::FunctionBuilder> _pixel;
+#ifndef NDEBUG
+    MeshFormat _mesh_format;
+    RasterState _raster_state;
+    luisa::vector<PixelFormat> _rtv_format;
+    DepthFormat _dsv_format;
+    void check_rtv_format(){
+        if(_rtv_format.size() > 8){
+            LUISA_ERROR("Render target count must be less than 8!");
+        }
+    }
+#endif
     // JIT Shader
+    // clang-format off
+
     RasterShader(
         Device::Interface *device,
         const MeshFormat &mesh_format,
@@ -141,18 +171,28 @@ class RasterShader : public Resource {
                   Function(vert.get()),
                   Function(pixel.get()),
                   file_path.string<char, std::char_traits<char>, luisa::allocator<char>>())),
-          _vert(std::move(vert)),
-          _pixel(std::move(pixel)) {
-    }
-    RasterShader(
-        Device::Interface *device,
-        const MeshFormat &mesh_format,
-        const RasterState &raster_state,
-        luisa::span<PixelFormat const> rtv_format,
-        DepthFormat dsv_format,
-        luisa::shared_ptr<const detail::FunctionBuilder> vert,
-        luisa::shared_ptr<const detail::FunctionBuilder> pixel,
-        bool use_cache)
+        _vert(std::move(vert)),
+        _pixel(std::move(pixel))
+#ifndef NDEBUG
+        ,_mesh_format(mesh_format),
+        _raster_state(raster_state),
+        _dsv_format(dsv_format)
+#endif
+        {
+#ifndef NDEBUG
+            _rtv_format.resize(rtv_format.size());
+            memcpy(_rtv_format.data(), rtv_format.data(), rtv_format.size_bytes());
+#endif
+        }
+
+    RasterShader(Device::Interface *device,
+                 const MeshFormat &mesh_format,
+                 const RasterState &raster_state,
+                 luisa::span<PixelFormat const> rtv_format,
+                 DepthFormat dsv_format,
+                 luisa::shared_ptr<const detail::FunctionBuilder> vert,
+                 luisa::shared_ptr<const detail::FunctionBuilder> pixel,
+                 bool use_cache)
         : Resource(
               device,
               Tag::RASTER_SHADER,
@@ -165,20 +205,54 @@ class RasterShader : public Resource {
                   Function(pixel.get()),
                   use_cache)),
           _vert(std::move(vert)),
-          _pixel(std::move(pixel)) {
-    }
+          _pixel(std::move(pixel)) 
+#ifndef NDEBUG
+        ,_mesh_format(mesh_format),
+        _raster_state(raster_state),
+        _dsv_format(dsv_format)
+#endif
+        {
+#ifndef NDEBUG
+            _rtv_format.resize(rtv_format.size());
+            memcpy(_rtv_format.data(), rtv_format.data(), rtv_format.size_bytes());
+#endif
+        }
     // AOT Shader
     RasterShader(
         Device::Interface *device,
+        const MeshFormat &mesh_format,
+        const RasterState &raster_state,
+        luisa::span<PixelFormat const> rtv_format,
+        DepthFormat dsv_format,
         const std::filesystem::path &file_path)
         : Resource(
               device,
               Tag::RASTER_SHADER,
+              // TODO
               device->load_raster_shader(
-                  file_path.string<char, std::char_traits<char>, luisa::allocator<char>>())) {
-    }
+                  file_path.string<char, std::char_traits<char>, luisa::allocator<char>>()))
+#ifndef NDEBUG
+        ,_mesh_format(mesh_format),
+        _raster_state(raster_state),
+        _dsv_format(dsv_format)
+#endif
+        {
+#ifndef NDEBUG
+            _rtv_format.resize(rtv_format.size());
+            memcpy(_rtv_format.data(), rtv_format.data(), rtv_format.size_bytes());
+#endif
+        }
+    // clang-format on
+
+public:
     [[nodiscard]] auto operator()(detail::prototype_to_shader_invocation_t<Args>... args) const noexcept {
         RasterShaderInvoke invoke(handle(), Function(_vert.get()), Function(_pixel.get()));
+#ifndef NDEBUG
+        invoke._raster_state = &_raster_state;
+        invoke._mesh_format = &_mesh_format;
+        invoke._dsv_format = _dsv_format;
+        invoke._rtv_format = _rtv_format;
+#endif
         return std::move((invoke << ... << args));
     }
 };

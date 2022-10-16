@@ -62,25 +62,20 @@ vstd::vector<std::byte> ShaderSerializer::RasterSerialize(
     vstd::span<std::byte const> vertBin,
     vstd::span<std::byte const> pixelBin,
     vstd::MD5 const &checkMD5,
-    uint bindlessCount,
-    RasterHeaderData const &data,
-    InputElement const *inputElement) {
+    uint bindlessCount) {
     using namespace shader_ser;
     vstd::vector<std::byte> result;
-    size_t inputLayoutSize = data.inputLayoutCount * sizeof(InputElement);
-    result.reserve(sizeof(RasterHeader) + sizeof(RasterHeaderData) + inputLayoutSize + vertBin.size_bytes() + pixelBin.size_bytes() + properties.size_bytes() + kernelArgs.size_bytes() + kRootSigReserveSize);
-    result.resize(sizeof(RasterHeader) + sizeof(RasterHeaderData) + inputLayoutSize);
+    result.reserve(sizeof(RasterHeader) + vertBin.size_bytes() + pixelBin.size_bytes() + properties.size_bytes() + kernelArgs.size_bytes() + kRootSigReserveSize);
+    result.resize(sizeof(RasterHeader));
     RasterHeader header = {
         checkMD5,
-        (uint64)SerializeRootSig(properties, result, false),
+        (uint64)SerializeRootSig(properties, result, true),
         (uint64)vertBin.size(),
         (uint64)pixelBin.size(),
         static_cast<uint>(properties.size()),
         bindlessCount,
         static_cast<uint>(kernelArgs.size())};
     *reinterpret_cast<RasterHeader *>(result.data()) = std::move(header);
-    memcpy(result.data() + sizeof(RasterHeader), &data, sizeof(RasterHeaderData));
-    memcpy(result.data() + sizeof(RasterHeader) + sizeof(RasterHeaderData), inputElement, inputLayoutSize);
     result.push_back_all(vertBin);
     result.push_back_all(pixelBin);
     result.push_back_all(
@@ -97,12 +92,12 @@ bool ShaderSerializer::CheckMD5(
     BinaryIOVisitor &streamFunc) {
     using namespace shader_ser;
     auto binStream = streamFunc.read_bytecode(fileName);
-    if (binStream == nullptr || binStream->length() <= sizeof(Header)) return false;
-    Header header;
-    binStream->read({reinterpret_cast<std::byte *>(&header),
-                     sizeof(Header)});
+    if (binStream == nullptr) return false;
+    vstd::MD5 md5;
+    binStream->read({reinterpret_cast<std::byte *>(&md5),
+                     sizeof(vstd::MD5)});
 
-    return header.md5 == checkMD5;
+    return md5 == checkMD5;
 }
 ComputeShader *ShaderSerializer::DeSerialize(
     vstd::string_view name,
@@ -205,9 +200,13 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
     bool byteCodeIsCache,
     Device *device,
     BinaryIOVisitor &streamFunc,
-    vstd::optional<vstd::MD5> const &checkMD5,
-    bool &clearCache,
-    vstd::MD5 *lastMD5) {
+    vstd::optional<vstd::MD5> const &ilMd5,
+    vstd::optional<vstd::MD5> &psoMd5,
+    MeshFormat const &meshFormat,
+    RasterState const &state,
+    vstd::span<PixelFormat const> rtv,
+    DepthFormat dsv,
+    bool &clearCache) {
     using namespace shader_ser;
     auto binStream = [&] {
         if (byteCodeIsCache)
@@ -215,28 +214,20 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
         else
             return streamFunc.read_bytecode(name);
     }();
-    if (binStream == nullptr || binStream->length() <= sizeof(RasterHeaderData) + sizeof(RasterHeader)) return nullptr;
-    std::pair<RasterHeader, RasterHeaderData> h;
+    if (binStream == nullptr || binStream->length() <= sizeof(RasterHeader)) return nullptr;
+    RasterHeader header;
     binStream->read(
-        {reinterpret_cast<std::byte *>(&h.first),
+        {reinterpret_cast<std::byte *>(&header),
          sizeof(RasterHeader)});
-    if (lastMD5)
-        *lastMD5 = h.first.md5;
-
-    if (checkMD5 && h.first.md5 != *checkMD5) return nullptr;
-
-    binStream->read(
-        {reinterpret_cast<std::byte *>(&h.second),
-         sizeof(RasterHeaderData)});
+    if (ilMd5 && header.md5 != *ilMd5) return nullptr;
 
     size_t targetSize =
-        h.second.inputLayoutCount * sizeof(InputElement) +
-        h.first.rootSigBytes +
-        h.first.vertCodeBytes +
-        h.first.pixelCodeBytes +
-        h.first.propertyCount * sizeof(Property) +
-        h.first.kernelArgCount * sizeof(SavedArgument);
-    if (binStream->length() != targetSize + sizeof(RasterHeaderData) + sizeof(RasterHeader)) {
+        header.rootSigBytes +
+        header.vertCodeBytes +
+        header.pixelCodeBytes +
+        header.propertyCount * sizeof(Property) +
+        header.kernelArgCount * sizeof(SavedArgument);
+    if (binStream->length() != targetSize + sizeof(RasterHeader)) {
         return nullptr;
     }
     vstd::vector<std::byte> binCode;
@@ -244,43 +235,18 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
     binCode.resize(targetSize);
     binStream->read({binCode.data(), binCode.size()});
     auto binPtr = binCode.data();
-    auto vertAttr = reinterpret_cast<InputElement const *>(binPtr);
     vstd::vector<D3D12_INPUT_ELEMENT_DESC> elements;
-    static auto SemanticName = {
-        "POSITION",
-        "NORMAL",
-        "TANGENT",
-        "COLOR",
-        "UV",
-        "UV",
-        "UV",
-        "UV"};
-    elements.push_back_func(
-        h.second.inputLayoutCount,
-        [&](size_t i) {
-            auto &src = vertAttr[i];
-            return D3D12_INPUT_ELEMENT_DESC{
-                .InputSlot = src.inputSlot,
-                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-                .AlignedByteOffset = src.alignedByteOffset,
-                .Format = src.format,
-                .SemanticIndex = src.semanticIndex,
-                .SemanticName = SemanticName.begin()[src.semanticIndex]};
-        });
+    auto psoDesc = RasterShader::GetState(
+        elements,
+        meshFormat,
+        state,
+        rtv,
+        dsv);
+    if (!psoMd5) {
+        psoMd5.New(RasterShader::GenMD5(header.md5, meshFormat, state, rtv, dsv));
+    }
 
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{
-            .BlendState = h.second.blendState,
-            .RasterizerState = h.second.rasterizerState,
-            .DepthStencilState = h.second.depthStencilState,
-            .PrimitiveTopologyType = h.second.primitiveTopologyType,
-            .NumRenderTargets = h.second.numRtv,
-            .DSVFormat = h.second.DSVFormat,
-            .InputLayout = {
-                .pInputElementDescs = elements.data(),
-                .NumElements = h.second.inputLayoutCount},
-        };
-    binPtr += h.second.inputLayoutCount * sizeof(InputElement);
-    auto psoStream = streamFunc.read_cache(h.first.md5.ToString());
+    auto psoStream = streamFunc.read_cache(psoMd5->ToString());
     if (psoStream != nullptr && psoStream->length() > 0) {
         psoCode.resize(psoStream->length());
         psoStream->read({psoCode.data(), psoCode.size()});
@@ -288,20 +254,19 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
             .pCachedBlob = psoCode.data(),
             .CachedBlobSizeInBytes = psoCode.size()};
     }
-    memcpy(psoDesc.RTVFormats, h.second.RTVFormats, sizeof(DXGI_FORMAT) * 8);
     auto rootSig = DeSerializeRootSig(
         device->device.Get(),
-        {reinterpret_cast<std::byte const *>(binPtr), h.first.rootSigBytes});
-    binPtr += h.first.rootSigBytes;
+        {reinterpret_cast<std::byte const *>(binPtr), header.rootSigBytes});
+    binPtr += header.rootSigBytes;
     psoDesc.pRootSignature = rootSig.Get();
     psoDesc.VS = {
         .pShaderBytecode = binPtr,
-        .BytecodeLength = h.first.vertCodeBytes};
-    binPtr += h.first.vertCodeBytes;
+        .BytecodeLength = header.vertCodeBytes};
+    binPtr += header.vertCodeBytes;
     psoDesc.PS = {
         .pShaderBytecode = binPtr,
-        .BytecodeLength = h.first.pixelCodeBytes};
-    binPtr += h.first.pixelCodeBytes;
+        .BytecodeLength = header.pixelCodeBytes};
+    binPtr += header.pixelCodeBytes;
     ComPtr<ID3D12PipelineState> pso;
     auto createPipe = [&] {
         return device->device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(pso.GetAddressOf()));
@@ -326,8 +291,8 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
     }
     vstd::vector<Property> properties;
     vstd::vector<SavedArgument> kernelArgs;
-    properties.resize(h.first.propertyCount);
-    kernelArgs.resize(h.first.kernelArgCount);
+    properties.resize(header.propertyCount);
+    kernelArgs.resize(header.kernelArgCount);
     memcpy(properties.data(), binPtr, properties.byte_size());
     binPtr += properties.byte_size();
     memcpy(kernelArgs.data(), binPtr, kernelArgs.byte_size());
@@ -336,14 +301,15 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
         std::move(properties),
         std::move(kernelArgs),
         std::move(rootSig),
-        std::move(pso));
-    s->bindlessCount = h.first.bindlessCount;
+        std::move(pso),
+        state.topology);
+    s->bindlessCount = header.bindlessCount;
     return s;
 }
 ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
     vstd::span<Property const> properties, bool isRasterShader) {
     vstd::vector<CD3DX12_ROOT_PARAMETER, VEngine_AllocType::VEngine, 32> allParameter;
-    allParameter.reserve(properties.size());
+    allParameter.reserve(properties.size() + isRasterShader ? 1 : 0);
     vstd::vector<CD3DX12_DESCRIPTOR_RANGE, VEngine_AllocType::VEngine, 32> allRange;
     for (auto &&var : properties) {
         switch (var.type) {
@@ -392,9 +358,11 @@ ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
             case ShaderVariableType::RWStructuredBuffer:
                 allParameter.emplace_back().InitAsUnorderedAccessView(var.registerIndex, var.spaceIndex);
                 break;
-            default:
-                break;
+            default: assert(false); break;
         }
+    }
+    if (isRasterShader) {
+        allParameter.emplace_back().InitAsConstants(1, 0);
     }
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSigDesc(
         allParameter.size(), allParameter.data(),
