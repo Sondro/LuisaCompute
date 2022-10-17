@@ -184,38 +184,36 @@ void ShaderDispatchCommand::encode_accel(uint64_t handle) noexcept {
 }
 void DrawRasterSceneCommand::encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept {
     auto kernel = arg_kernel();
-    ++_arg_count;
     _encode_buffer(kernel, handle, offset, size);
     _encode_pending_bindings(kernel);
 }
 void DrawRasterSceneCommand::encode_texture(uint64_t handle, uint32_t level) noexcept {
     auto kernel = arg_kernel();
-    ++_arg_count;
     _encode_texture(kernel, handle, level);
     _encode_pending_bindings(kernel);
 }
 void DrawRasterSceneCommand::encode_uniform(const void *data, size_t size) noexcept {
     auto kernel = arg_kernel();
-    ++_arg_count;
     _encode_uniform(kernel, data, size);
     _encode_pending_bindings(kernel);
 }
 void DrawRasterSceneCommand::encode_bindless_array(uint64_t handle) noexcept {
     auto kernel = arg_kernel();
-    ++_arg_count;
     _encode_bindless_array(kernel, handle);
     _encode_pending_bindings(kernel);
 }
 void DrawRasterSceneCommand::encode_accel(uint64_t handle) noexcept {
     auto kernel = arg_kernel();
-    ++_arg_count;
     _encode_accel(kernel, handle);
     _encode_pending_bindings(kernel);
 }
 
-Function DrawRasterSceneCommand::arg_kernel() const {
-    if (_arg_count < _vertex_func.arguments().size()) return _vertex_func;
-    return _pixel_func;
+Function DrawRasterSceneCommand::arg_kernel() {
+    if (_argument_count >= _vertex_func.arguments().size()) {
+        _default_func = _pixel_func;
+        _argument_count = 1;
+    }
+    return _default_func;
 }
 
 namespace detail {

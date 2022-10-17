@@ -57,10 +57,3 @@ void VEngine_Log(std::type_info const &t) {
 void VEngine_Log(char const *chunk) {
     VEngine_Log(std::string_view(chunk));
 }
-
-void VEngine_Log_PureVirtual(vstd::Type tarType) {
-    vstd::string d;
-    d << "Try call pure virtual function in " << tarType.GetType().name() << '\n';
-    VEngine_Log(d);
-    VENGINE_EXIT;
-}

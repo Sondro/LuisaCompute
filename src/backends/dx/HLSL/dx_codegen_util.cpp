@@ -95,7 +95,7 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
                         vstd::to_string(id, str);
                     } else {
                         if (ite.Value() == 0) {
-                            str << 'p';
+                            str << "p.v0"sv;
                         } else {
                             str << "a.l"sv;
                             vstd::to_string(id, str);

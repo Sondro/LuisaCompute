@@ -22,7 +22,7 @@
 #include <Resource/DepthBuffer.h>
 using namespace toolhub::directx;
 namespace toolhub::directx {
-static constexpr uint kShaderModel = 63u;
+static constexpr uint kShaderModel = 65u;
 LCDevice::LCDevice(Context &&ctx, DeviceSettings const *settings)
     : LCDeviceInterface(std::move(ctx)),
       shaderPaths{},

@@ -502,12 +502,12 @@ private:
     uint64_t _handle{};
     Function _vertex_func{};
     Function _pixel_func{};
+    Function _default_func{};
     TextureArgument _rtv_texs[8];
     size_t _rtv_count{};
     TextureArgument _dsv_tex{};
-    size_t _arg_count{0};
 
-    Function arg_kernel() const;
+    Function arg_kernel();
 
 public:
     RasterScene *scene{};
@@ -520,7 +520,7 @@ public:
         : ShaderDispatchCommandBase(Command::Tag::EDrawRasterSceneCommand),
           _handle(handle),
           _vertex_func(vertex_func),
-          _pixel_func(pixel_func) {}
+          _pixel_func(pixel_func) { _default_func = _vertex_func; }
     DrawRasterSceneCommand(DrawRasterSceneCommand &&) noexcept = default;
     DrawRasterSceneCommand &operator=(DrawRasterSceneCommand &&) noexcept = default;
     [[nodiscard]] auto handle() const noexcept { return _handle; }
