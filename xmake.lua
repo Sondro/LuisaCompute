@@ -1,4 +1,19 @@
 add_rules("mode.release", "mode.debug")
+option("is_clang")
+add_csnippets("is_clang", "return (__clang__)?0:-1;", {
+	tryrun = true
+})
+option_end()
+option("is_msvc")
+add_csnippets("is_msvc", "return (_MSC_VER)?0:-1;", {
+	tryrun = true
+})
+option_end()
+option("is_gnu")
+add_csnippets("is_gnu", "return (__GNUC__)?0:-1;", {
+	tryrun = true
+})
+option_end()
 function GetValue(funcOrValue)
 	if type(funcOrValue) == 'function' then
 		return funcOrValue()
@@ -7,14 +22,6 @@ function GetValue(funcOrValue)
 	end
 end
 
-function SetException(enableException)
-	local value = GetValue(enableException)
-	if (value ~= nil) and value then
-		add_cxflags("/EHsc", "-fexceptions")
-	else
-		add_cxflags("-fno-exceptions")
-	end
-end
 --[[
     BuildProject({
         projectName = xxx,
@@ -53,14 +60,28 @@ function BuildProject(config)
 			batchsize = unityBuildBatch
 		})
 	end
-	SetException(config.exception)
+	local value = GetValue(config.exception)
+	if (value ~= nil) and value then
+		if has_config("is_msvc") then
+			add_cxflags("/EHsc")
+		else
+			add_cxflags("-fexceptions")
+		end
+	elseif not has_config("is_msvc") then
+		add_cxflags("-fno-exceptions")
+	end
 	set_warnings("none")
 	add_vectorexts("avx", "avx2")
 	if is_mode("debug") then
 		set_optimize("none")
 		if is_plat("windows") then
 			set_runtimes("MDd")
-			add_cxflags("/GS", "/Gd", "/Zc:preprocessor")
+		end
+		if has_config("is_msvc") then
+			add_cxflags("/GS", "/Gd");
+			if not has_config("is_clang") then
+				add_cxflags("/Zc:preprocessor")
+			end
 		end
 		local event = GetValue(config.debugEvent)
 		if (type(event) == "function") then
@@ -68,9 +89,11 @@ function BuildProject(config)
 		end
 	else
 		set_optimize("fastest")
-		if is_plat("windows") then
-			set_runtimes("MD")
-			add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT", "/Zc:preprocessor")
+		if has_config("is_msvc") then
+			add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT", "/Ob2");
+			if not has_config("is_clang") then
+				add_cxflags("/Zc:preprocessor")
+			end
 		end
 		local event = GetValue(config.releaseEvent)
 		if (type(event) == "function") then
