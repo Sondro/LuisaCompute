@@ -71,7 +71,6 @@ function BuildProject(config)
 		add_cxflags("-fno-exceptions")
 	end
 	set_warnings("none")
-	add_vectorexts("avx", "avx2")
 	if is_mode("debug") then
 		set_optimize("none")
 		if is_plat("windows") then
@@ -90,6 +89,9 @@ function BuildProject(config)
 		end
 	else
 		set_optimize("fastest")
+		if is_plat("windows") then
+			set_runtimes("MD")
+		end
 		if has_config("is_msvc") then
 			add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT", "/Ob2");
 			-- Not Clang-cl
