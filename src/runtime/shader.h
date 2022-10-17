@@ -53,7 +53,6 @@ public:
     ShaderInvokeBase(const ShaderInvokeBase &) noexcept = delete;
     ShaderInvokeBase &operator=(ShaderInvokeBase &&) noexcept = default;
     ShaderInvokeBase &operator=(const ShaderInvokeBase &) noexcept = delete;
-
     template<typename T>
     ShaderInvokeBase &operator<<(BufferView<T> buffer) noexcept {
         _command->encode_buffer(buffer.handle(), buffer.offset_bytes(), buffer.size_bytes());

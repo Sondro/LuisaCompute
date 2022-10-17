@@ -101,8 +101,7 @@ int main(int argc, char *argv[]) {
             .prim_op = BlendWeight::PrimAlpha,
             .img_op = BlendWeight::OneMinusPrimAlpha,
         },
-        .depth_state = {.enableDepth = true, .comparison = Comparison::Less, .write = true},
-
+        .depth_state = {.enableDepth = true, .comparison = Comparison::Less, .write = true}
     };
     auto depth = device.create_depth_buffer(DepthFormat::D32S8A24, uint2(width, height));
     auto tex = device.create_image<float>(PixelStorage::BYTE4, uint2(width, height));

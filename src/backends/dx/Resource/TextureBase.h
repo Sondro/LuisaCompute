@@ -26,9 +26,18 @@ public:
     virtual uint GetGlobalSRVIndex(uint mipOffset = 0) const = 0;
     virtual uint GetGlobalUAVIndex(uint mipLevel) const = 0;
     virtual D3D12_SHADER_RESOURCE_VIEW_DESC GetColorSrvDesc(uint mipOffset = 0) const = 0;
-    virtual D3D12_UNORDERED_ACCESS_VIEW_DESC GetColorUavDesc(uint targetMipLevel) const VENGINE_PURE_VIRTUAL_RET;
-    virtual D3D12_DEPTH_STENCIL_VIEW_DESC GetDepthDesc() const VENGINE_PURE_VIRTUAL_RET;
-    virtual D3D12_RENDER_TARGET_VIEW_DESC GetRenderTargetDesc(uint mipOffset = 0) const VENGINE_PURE_VIRTUAL_RET;
+    virtual D3D12_UNORDERED_ACCESS_VIEW_DESC GetColorUavDesc(uint targetMipLevel) const {
+        LUISA_ERROR("Texture type not support random write!");
+        return {};
+    }
+    virtual D3D12_DEPTH_STENCIL_VIEW_DESC GetDepthDesc() const {
+        LUISA_ERROR("Texture type not support depth!");
+        return {};
+    }
+    virtual D3D12_RENDER_TARGET_VIEW_DESC GetRenderTargetDesc(uint mipOffset = 0) const {
+        LUISA_ERROR("Texture type not support render target!");
+        return {};
+    }
     TextureBase(
         Device *device,
         uint width,
