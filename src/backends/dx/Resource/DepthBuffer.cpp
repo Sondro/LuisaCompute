@@ -83,13 +83,13 @@ D3D12_SHADER_RESOURCE_VIEW_DESC DepthBuffer::GetColorSrvDesc(uint mipOffset) con
             srvDesc.Format = DXGI_FORMAT_R16_UNORM;
             break;
         case GFXFormat_D24_UNorm_S8_UInt:
-            srvDesc.Format = DXGI_FORMAT_R32_UINT;
+            srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
             break;
         case GFXFormat_D32_Float:
             srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
             break;
         case GFXFormat_D32_Float_S8X24_UInt:
-            srvDesc.Format = DXGI_FORMAT_R32G32_UINT;
+            srvDesc.Format = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
             break;
     }
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;

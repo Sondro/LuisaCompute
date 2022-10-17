@@ -6,7 +6,7 @@ namespace toolhub::directx {
 class DepthBuffer final : public TextureBase {
 private:
     AllocHandle allocHandle;
-    mutable uint srvIdx;
+    mutable uint srvIdx{~0u};
     mutable std::mutex allocMtx;
 
 public:

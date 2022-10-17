@@ -136,24 +136,32 @@ void ResourceStateTracker::MarkWritable(Resource const *res, bool writable) {
 D3D12_RESOURCE_STATES ResourceStateTracker::BufferReadState() const {
     switch (listType) {
         case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-            return (D3D12_RESOURCE_STATES)(0x1 | 0x40 | 0x800);
+            return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
+                   D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+                   D3D12_RESOURCE_STATE_COPY_SOURCE;
         case D3D12_COMMAND_LIST_TYPE_COPY:
             return D3D12_RESOURCE_STATE_COPY_SOURCE;
         default:
-            return (D3D12_RESOURCE_STATES)(0x1 | 0x2 | 0x80 | 0x40 | 0x800);
+            return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
+                   D3D12_RESOURCE_STATE_INDEX_BUFFER |
+                   D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+                   D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+                   D3D12_RESOURCE_STATE_COPY_SOURCE;
     }
 }
 D3D12_RESOURCE_STATES ResourceStateTracker::TextureReadState(TextureBase const *tex) const {
     if (tex->GetTag() == Resource::Tag::DepthBuffer) {
-        return D3D12_RESOURCE_STATE_DEPTH_READ;
+        return D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_COPY_SOURCE;
     } else {
         switch (listType) {
             case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-                return (D3D12_RESOURCE_STATES)(0x40 | 0x800);
+                return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE;
             case D3D12_COMMAND_LIST_TYPE_COPY:
                 return D3D12_RESOURCE_STATE_COPY_SOURCE;
             default:
-                return (D3D12_RESOURCE_STATES)(0x80 | 0x40 | 0x800);
+                return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+                       D3D12_RESOURCE_STATE_COPY_SOURCE;
         }
     }
 }

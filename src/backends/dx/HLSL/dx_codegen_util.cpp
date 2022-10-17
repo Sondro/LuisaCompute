@@ -1167,7 +1167,6 @@ o0=pixel(p);
     } else if (retType->is_structure()) {
         size_t idx = 0;
         for (auto &&i : retType->members()) {
-            assert(i->is_scalar() || i->is_vector());
             result << ",out "sv;
             GetTypeName(*i, result, Usage::READ);
             auto num = vstd::to_string(idx);
@@ -1446,7 +1445,6 @@ CodegenResult CodegenUtility::RasterCodegen(
     Function vertFunc,
     Function pixelFunc,
     vstd::string_view internalDataPath) {
-    assert(vertFunc.tag() == Function::Tag::CALLABLE && pixelFunc.tag() == Function::Tag::CALLABLE);
     opt = CodegenStackData::Allocate();
     // CodegenStackData::ThreadLocalSpirv() = false;
     opt->kernel = vertFunc;
@@ -1463,7 +1461,6 @@ CodegenResult CodegenUtility::RasterCodegen(
     if (v2pType->is_structure()) {
         size_t memberIdx = 0;
         for (auto &&i : v2pType->members()) {
-            assert(i->is_scalar() || i->is_vector());
             GetTypeName(*i, codegenData, Usage::READ);
             codegenData << " v"sv << vstd::to_string(memberIdx);
             if (memberIdx == 0) {

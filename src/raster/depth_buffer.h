@@ -1,6 +1,6 @@
 #pragma once
 #include <raster/depth_format.h>
-#include <runtime/resource.h>
+#include <runtime/image.h>
 namespace luisa::compute {
 class LC_RUNTIME_API DepthBuffer : public Resource {
 private:
@@ -12,5 +12,6 @@ public:
     [[nodiscard]] auto size() const noexcept { return _size; }
     [[nodiscard]] auto format() const noexcept { return _format; }
     [[nodiscard]] luisa::unique_ptr<Command> clear(float value) const noexcept;
+    [[nodiscard]] ImageView<float> to_img();
 };
 }// namespace luisa::computep

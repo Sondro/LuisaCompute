@@ -131,7 +131,11 @@ public:
         return std::move(_command);
     }
 };
-
+namespace detail {
+LC_RUNTIME_API void rastershader_check_rtv_format(luisa::span<const PixelFormat> rtv_format);
+LC_RUNTIME_API void rastershader_check_vertex_func(Function func);
+LC_RUNTIME_API void rastershader_check_pixel_func(Function func);
+}// namespace detail
 template<typename... Args>
 class RasterShader : public Resource {
     friend class Device;
@@ -142,18 +146,6 @@ class RasterShader : public Resource {
     RasterState _raster_state;
     luisa::vector<PixelFormat> _rtv_format;
     DepthFormat _dsv_format;
-    void check_rtv_format() {
-        if (_rtv_format.size() > 8) {
-            LUISA_ERROR("Render target count must be less than 8!");
-        }
-    }
-    void check_func(Function func) {
-        for (auto &&i : func.arguments()) {
-            if ((static_cast<uint>(func.variable_usage(i.uid())) & static_cast<uint>(Usage::WRITE)) != 0) {
-                LUISA_ERROR("Rasterization may not support unordered access!");
-            }
-        }
-    }
 #endif
     // JIT Shader
     // clang-format off
@@ -189,8 +181,9 @@ class RasterShader : public Resource {
 #ifndef NDEBUG
             _rtv_format.resize(rtv_format.size());
             memcpy(_rtv_format.data(), rtv_format.data(), rtv_format.size_bytes());
-            check_func(Function{_vert.get()});
-            check_func(Function{_pixel.get()});
+            detail::rastershader_check_rtv_format(_rtv_format);
+            detail::rastershader_check_vertex_func(Function{_vert.get()});
+            detail::rastershader_check_pixel_func(Function{_pixel.get()});
 #endif
         }
 
@@ -224,8 +217,9 @@ class RasterShader : public Resource {
 #ifndef NDEBUG
             _rtv_format.resize(rtv_format.size());
             memcpy(_rtv_format.data(), rtv_format.data(), rtv_format.size_bytes());
-            check_func(Function{_vert.get()});
-            check_func(Function{_pixel.get()});
+            detail::rastershader_check_rtv_format(_rtv_format);
+            detail::rastershader_check_vertex_func(Function{_vert.get()});
+            detail::rastershader_check_pixel_func(Function{_pixel.get()});
 #endif
         }
     // AOT Shader
@@ -255,6 +249,7 @@ class RasterShader : public Resource {
 #ifndef NDEBUG
             _rtv_format.resize(rtv_format.size());
             memcpy(_rtv_format.data(), rtv_format.data(), rtv_format.size_bytes());
+            detail::rastershader_check_rtv_format(_rtv_format);
 #endif
         }
     // clang-format on

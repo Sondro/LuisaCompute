@@ -104,10 +104,10 @@ int main(int argc, char *argv[]) {
         .depth_state = {.enableDepth = true, .comparison = Comparison::Less, .write = true},
 
     };
-    auto depth = device.create_depth_buffer(DepthFormat::D32, uint2(width, height));
+    auto depth = device.create_depth_buffer(DepthFormat::D32S8A24, uint2(width, height));
     auto tex = device.create_image<float>(PixelStorage::BYTE4, uint2(width, height));
     auto dstFormat = tex.format();
-    auto shader = device.compile(kernel, meshFormat, rasterState, {&dstFormat, size_t(1)}, DepthFormat::D32);
+    auto shader = device.compile(kernel, meshFormat, rasterState, {&dstFormat, size_t(1)}, depth.format());
     auto printShader = device.compile(printRT);
     auto clearShader = device.compile(clearRT);
 
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
         << vb.copy_from(vertPoses) << ib.copy_from(indices)
         << clearShader(tex).dispatch(width, height) << depth.clear(0.5)
         << shader(float2(0.5, 0), 0.5).draw(&scene, viewport, &depth, tex)
-        << printShader(tex, resultBuffer).dispatch(width, height)
+        << printShader(depth.to_img(), resultBuffer).dispatch(width, height)
         << resultBuffer.copy_to(pixels.data())
         << synchronize();
     stbi_write_png("test_raster.png", width, height, 4, pixels.data(), 0);

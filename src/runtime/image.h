@@ -100,6 +100,7 @@ private:
 private:
     friend class Image<T>;
     friend class detail::MipmapView;
+    friend class DepthBuffer;
 
     constexpr ImageView(
         uint64_t handle,
