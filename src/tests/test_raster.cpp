@@ -106,7 +106,9 @@ int main(int argc, char *argv[]) {
     auto depth = device.create_depth_buffer(DepthFormat::D32S8A24, uint2(width, height));
     auto tex = device.create_image<float>(PixelStorage::BYTE4, uint2(width, height));
     auto dstFormat = tex.format();
-    auto shader = device.compile(kernel, meshFormat, rasterState, {&dstFormat, size_t(1)}, depth.format());
+    device.save_raster_shader(kernel, meshFormat, ".data/raster_test"sv);
+   auto shader = device.load_raster_shader<float2, float>(meshFormat, rasterState, {&dstFormat, 1}, depth.format(), ".data/raster_test"sv);
+//    auto shader = device.compile(kernel, meshFormat, rasterState, {&dstFormat, 1}, depth.format());
     auto printShader = device.compile(printRT);
     auto clearShader = device.compile(clearRT);
 

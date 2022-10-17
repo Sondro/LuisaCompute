@@ -95,7 +95,11 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
                         vstd::to_string(id, str);
                     } else {
                         if (ite.Value() == 0) {
-                            str << "p.v0"sv;
+                            if (opt->pixelFirstArgIsStruct) {
+                                str << 'p';
+                            } else {
+                                str << "p.v0"sv;
+                            }
                         } else {
                             str << "a.l"sv;
                             vstd::to_string(id, str);
@@ -1142,6 +1146,7 @@ void CodegenUtility::CodegenPixel(Function pixel, vstd::string &result) {
     GetTypeName(*retType, retName, Usage::READ);
     result << retName << " pixel(v2p p){\nArgs a = _Global[0];\n"sv;
     opt->funcType = CodegenStackData::FuncType::Pixel;
+    opt->pixelFirstArgIsStruct = pixel.arguments()[0].type()->is_structure();
     opt->arguments.Clear();
     opt->arguments.reserve(pixel.arguments().size());
     size_t idx = 0;

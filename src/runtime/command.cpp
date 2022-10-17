@@ -209,6 +209,7 @@ void DrawRasterSceneCommand::encode_accel(uint64_t handle) noexcept {
 }
 
 Function DrawRasterSceneCommand::arg_kernel() {
+    if(_vertex_func.builder() == nullptr) return Function{};
     if (_argument_count >= _vertex_func.arguments().size()) {
         _default_func = _pixel_func;
         _argument_count = 1;

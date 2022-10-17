@@ -20,6 +20,7 @@ struct CodegenStackData : public vstd::IOperatorNewBase {
         Callable
     };
     FuncType funcType;
+    bool pixelFirstArgIsStruct = false;
     vstd::vector<StructGenerator *> customStructVector;
     uint64 count = 0;
     uint64 constCount = 0;

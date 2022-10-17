@@ -315,6 +315,19 @@ public:
 #endif
         _impl->save_shader(Function(kernel.function().get()), shader_path);
     }
+    template<typename V, typename P>
+    void save_raster_shader(const RasterKernel<V, P> &kernel, const MeshFormat &format, luisa::string_view serialization_path) {
+        _impl->save_raster_shader(format, Function(kernel.vert().get()), Function(kernel.pixel().get()), serialization_path);
+    }
+    template<typename... Args>
+    RasterShader<Args...> load_raster_shader(
+        const MeshFormat &mesh_format,
+        const RasterState &raster_state,
+        luisa::span<PixelFormat const> rtv_format,
+        DepthFormat dsv_format,
+        luisa::string_view shader_path) {
+        return _create<typename RasterShader<Args...>>(mesh_format, raster_state, rtv_format, dsv_format, shader_path);
+    }
     template<size_t N, typename... Args>
     [[nodiscard]] auto load_shader(luisa::string_view shader_path) noexcept {
         return _create<Shader<N, Args...>>(shader_path);
