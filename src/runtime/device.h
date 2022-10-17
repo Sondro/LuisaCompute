@@ -326,7 +326,7 @@ public:
         luisa::span<PixelFormat const> rtv_format,
         DepthFormat dsv_format,
         luisa::string_view shader_path) {
-        return _create<typename RasterShader<Args...>>(mesh_format, raster_state, rtv_format, dsv_format, shader_path);
+        return _create<RasterShader<Args...>>(mesh_format, raster_state, rtv_format, dsv_format, shader_path);
     }
     template<size_t N, typename... Args>
     [[nodiscard]] auto load_shader(luisa::string_view shader_path) noexcept {
