@@ -25,7 +25,6 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdint.h>
-#include <vector>
 #include <algorithm>
 
 #if defined(VK_VERSION_1_0) && \

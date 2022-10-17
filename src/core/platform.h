@@ -17,12 +17,6 @@
 
 #ifdef __cplusplus
 
-#include <cstdint>
-#include <cstddef>
-#include <string>
-#include <vector>
-#include <memory>
-#include <string_view>
 #include <filesystem>
 
 #include <core/intrin.h>

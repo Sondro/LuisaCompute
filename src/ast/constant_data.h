@@ -3,14 +3,6 @@
 //
 
 #pragma once
-
-#include <variant>
-#include <memory>
-#include <span>
-#include <mutex>
-#include <vector>
-#include <array>
-
 #include <core/basic_types.h>
 #include <core/concepts.h>
 #include <core/stl/variant.h>

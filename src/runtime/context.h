@@ -4,9 +4,7 @@
 
 #pragma once
 
-#include <vector>
 #include <filesystem>
-#include <unordered_map>
 
 #include <core/stl/memory.h>
 #include <core/stl/string.h>

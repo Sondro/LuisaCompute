@@ -4,12 +4,6 @@
 
 #pragma once
 
-#include <cassert>
-#include <string>
-#include <vector>
-#include <string_view>
-#include <span>
-#include <memory>
 
 #include <core/dll_export.h>
 #include <core/concepts.h>

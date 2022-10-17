@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <vector>
-
 #include <core/spin_mutex.h>
 
 #include <ast/statement.h>
