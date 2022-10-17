@@ -59,16 +59,6 @@
 #define LC_DSL_API __declspec(dllimport)
 #endif
 
-#ifdef LC_RTX_EXPORT_DLL
-#define LC_RTX_API __declspec(dllexport)
-#else
-#define LC_RTX_API __declspec(dllimport)
-#endif
-#ifdef LC_RASTER_EXPORT_DLL
-#define LC_RASTER_API __declspec(dllexport)
-#else
-#define LC_RASTER_API __declspec(dllimport)
-#endif
 /*
 #ifdef LC_REMOTE_EXPORT_DLL
 #define LC_REMOTE_API __declspec(dllexport)
@@ -83,6 +73,5 @@
 #define LC_RUNTIME_API
 #define LC_CORE_API
 #define LC_DSL_API
-#define LC_RTX_API
 #define LC_REMOTE_API
 #endif

@@ -4,4 +4,4 @@ BuildProject({
 })
 add_includedirs("../ext/stb/")
 add_files("test_raster.cpp", "../ext/stb/stb.c")
-add_deps("luisa-compute-dsl", "luisa-compute-rtx", "luisa-compute-raster", "luisa-compute-vstl")
+add_deps("luisa-compute-dsl", "luisa-compute-runtime", "luisa-compute-vstl")

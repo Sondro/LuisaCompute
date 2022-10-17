@@ -37,19 +37,19 @@ LUISA_STRUCT(
 
 namespace luisa::compute {
 
-[[nodiscard]] LC_RTX_API Float3 offset_ray_origin(
+[[nodiscard]] LC_RUNTIME_API Float3 offset_ray_origin(
     Expr<float3> p, Expr<float3> n) noexcept;
 
-[[nodiscard]] LC_RTX_API Float3 offset_ray_origin(
+[[nodiscard]] LC_RUNTIME_API Float3 offset_ray_origin(
     Expr<float3> p, Expr<float3> n, Expr<float3> w) noexcept;
 
-[[nodiscard]] LC_RTX_API Var<Ray> make_ray(
+[[nodiscard]] LC_RUNTIME_API Var<Ray> make_ray(
     Expr<float3> origin,
     Expr<float3> direction,
     Expr<float> t_min,
     Expr<float> t_max) noexcept;
 
-[[nodiscard]] LC_RTX_API Var<Ray> make_ray(
+[[nodiscard]] LC_RUNTIME_API Var<Ray> make_ray(
     Expr<float3> origin,
     Expr<float3> direction) noexcept;
 

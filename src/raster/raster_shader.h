@@ -35,7 +35,7 @@ static constexpr bool LegalDst() {
     }
 }
 }// namespace detail
-class LC_RASTER_API RasterShaderInvoke {
+class LC_RUNTIME_API RasterShaderInvoke {
 private:
     luisa::unique_ptr<DrawRasterSceneCommand> _command;
     Function _vert;
