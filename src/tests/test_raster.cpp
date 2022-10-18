@@ -36,10 +36,11 @@ int main(int argc, char *argv[]) {
 
     Context context{argv[0]};
     auto device = context.create_device("dx");
-    Callable vert = [](Float2 v) noexcept {
+    Callable vert = []() noexcept {
         auto vert = get_vertex_data();
         Var<v2p> o;
         vert.position *= make_float3(0.5);
+        auto v = make_float2(0.5, 0);
         switch_(vert.instance_id)
             .case_(0, [&] {
                 vert.position -= make_float3(v, 0.1f);
@@ -58,13 +59,13 @@ int main(int argc, char *argv[]) {
         o.color = vert.color;
         return o;
     };
-    Callable pixel = [](Var<v2p> v2p, Float a) noexcept {
+    Callable pixel = [](Var<v2p> v2p) noexcept {
         switch_(object_id())
             .case_(0, [&] {
                 $return(v2p.color);
             })
             .case_(1, [&] {
-                $return(make_float4(make_float3(a) - v2p.color.xyz(), 0.5f));
+                $return(make_float4(make_float3(1) - v2p.color.xyz(), 0.5f));
             });
         return make_float4(0, 0, 0, 1);
     };
@@ -106,14 +107,12 @@ int main(int argc, char *argv[]) {
     auto depth = device.create_depth_buffer(DepthFormat::D32S8A24, uint2(width, height));
     auto tex = device.create_image<float>(PixelStorage::BYTE4, uint2(width, height));
     auto dstFormat = tex.format();
-    device.save_raster_shader(kernel, meshFormat, ".data/raster_test"sv);
-   auto shader = device.load_raster_shader<float2, float>(meshFormat, rasterState, {&dstFormat, 1}, depth.format(), ".data/raster_test"sv);
-//    auto shader = device.compile(kernel, meshFormat, rasterState, {&dstFormat, 1}, depth.format());
+    auto shader = device.compile(kernel, meshFormat, rasterState, {&dstFormat, 1}, depth.format());
     auto printShader = device.compile(printRT);
     auto clearShader = device.compile(clearRT);
 
     auto stream = device.create_stream(StreamTag::GRAPHICS);
-    auto resultBuffer = device.create_buffer<uint>(width * height);
+    auto resultBuffer = device.create_buffer<uint>(width * height * 2);
     auto vb = device.create_buffer<PackedFloat3>(3);
     auto ib = device.create_buffer<uint>(3);
     VertexBufferView vbv(vb);
@@ -132,15 +131,16 @@ int main(int argc, char *argv[]) {
     Viewport viewport{
         .start = {0, 0},
         .size = {1, 1}};
-    vstd::vector<uint> pixels(width * height);
+    vstd::vector<uint> pixels(width * height * 2);
     stream
         << vb.copy_from(vertPoses) << ib.copy_from(indices)
         << clearShader(tex).dispatch(width, height) << depth.clear(0.5)
-        << shader(float2(0.5, 0), 0.5).draw(&scene, viewport, &depth, tex)
+        << shader().draw(&scene, viewport, &depth, tex)
         << printShader(depth.to_img(), resultBuffer).dispatch(width, height)
+        << printShader(tex, resultBuffer.view(width * height, width * height)).dispatch(width, height)
         << resultBuffer.copy_to(pixels.data())
         << synchronize();
-    stbi_write_png("test_raster.png", width, height, 4, pixels.data(), 0);
+    stbi_write_png("test_raster.png", width, height * 2, 4, pixels.data(), 0);
 
     // auto &&ctx = device.context();
     // auto &&module = ctx.loaded_modules()[ctx.index()];

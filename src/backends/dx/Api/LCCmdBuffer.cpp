@@ -234,21 +234,8 @@ public:
     void visit(const DrawRasterSceneCommand *cmd) noexcept override {
         auto cs = reinterpret_cast<RasterShader *>(cmd->handle());
         size_t beforeSize = argBuffer.size();
-        uint2 size{0};
         auto rtvs = cmd->rtv_texs();
         auto dsv = cmd->dsv_tex();
-        if (!rtvs.empty()) {
-            auto tex = reinterpret_cast<TextureBase *>(rtvs[0].handle);
-            size = {tex->Width(), tex->Height()};
-            for (auto i : vstd::range(rtvs[0].level)) {
-                size /= uint2(2);
-            }
-            size = max(size, uint2(1));
-        } else if (dsv.handle != ~0ull) {
-            auto tex = reinterpret_cast<TextureBase *>(dsv.handle);
-            size = {tex->Width(), tex->Height()};
-        }
-        EmplaceData((vbyte const *)&size, 8);
         cmd->decode(Visitor{this, cs->Args().data()});
         UniformAlign(16);
         size_t afterSize = argBuffer.size();
@@ -586,7 +573,9 @@ public:
         auto &&tempBuffer = *bufferVec;
         bufferVec++;
         bindProps.emplace_back(DescriptorHeapView(device->samplerHeap.get()));
-        bindProps.emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
+        if (tempBuffer.second > 0) {
+            bindProps.emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
+        }
         DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
         bindProps.push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
         cmd->decode(Visitor{this, shader->Args().data()});
@@ -782,23 +771,27 @@ void LCCmdBuffer::Execute(
                 visitor.accelScratchBuffer = accelScratchBuffer;
             }
             // Upload CBuffers
-            auto uploadBuffer = allocator->GetTempDefaultBuffer(ppVisitor.argBuffer.size(), 16);
-            tracker.RecordState(
-                uploadBuffer.buffer,
-                D3D12_RESOURCE_STATE_COPY_DEST);
-            // Update recorded states
-            tracker.UpdateState(
-                cmdBuilder);
-            cmdBuilder.Upload(
-                uploadBuffer,
-                ppVisitor.argBuffer.data());
-            tracker.RecordState(
-                uploadBuffer.buffer,
-                tracker.BufferReadState());
+            if (ppVisitor.argBuffer.empty()) {
+                visitor.argBuffer = {};
+            } else {
+                auto uploadBuffer = allocator->GetTempDefaultBuffer(ppVisitor.argBuffer.size(), 16);
+                tracker.RecordState(
+                    uploadBuffer.buffer,
+                    D3D12_RESOURCE_STATE_COPY_DEST);
+                // Update recorded states
+                tracker.UpdateState(
+                    cmdBuilder);
+                cmdBuilder.Upload(
+                    uploadBuffer,
+                    ppVisitor.argBuffer.data());
+                tracker.RecordState(
+                    uploadBuffer.buffer,
+                    tracker.BufferReadState());
+                visitor.argBuffer = uploadBuffer;
+            }
             tracker.UpdateState(
                 cmdBuilder);
             visitor.bufferVec = ppVisitor.argVecs.data();
-            visitor.argBuffer = uploadBuffer;
             // Execute commands
             for (auto &&i : lst)
                 i->accept(visitor);

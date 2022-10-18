@@ -41,7 +41,6 @@ public:
         DISPATCH_ID,
         DISPATCH_SIZE,
         // raster builtins
-        TEXEL_SIZE,
         OBJECT_ID
     };
 

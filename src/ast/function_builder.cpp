@@ -154,7 +154,6 @@ const RefExpr *FunctionBuilder::thread_id() noexcept { return _builtin(Variable:
 const RefExpr *FunctionBuilder::block_id() noexcept { return _builtin(Variable::Tag::BLOCK_ID); }
 const RefExpr *FunctionBuilder::dispatch_id() noexcept { return _builtin(Variable::Tag::DISPATCH_ID); }
 const RefExpr *FunctionBuilder::dispatch_size() noexcept { return _builtin(Variable::Tag::DISPATCH_SIZE); }
-const RefExpr *FunctionBuilder::texel_size() noexcept { return _builtin(Variable::Tag::TEXEL_SIZE); }
 const RefExpr *FunctionBuilder::object_id() noexcept { return _builtin(Variable::Tag::OBJECT_ID); }
 
 const RefExpr *FunctionBuilder::_builtin(Variable::Tag tag) noexcept {

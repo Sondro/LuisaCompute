@@ -7,8 +7,17 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
-#include <luisa-compute.h>
-#include <nlohmann/json.hpp>
+#include <ast/function.h>
+#include <core/logging.h>
+#include <runtime/device.h>
+#include <runtime/context.h>
+#include <runtime/stream.h>
+#include <runtime/command.h>
+#include <runtime/image.h>
+#include <rtx/accel.h>
+#include <rtx/mesh.h>
+#include <rtx/hit.h>
+#include <rtx/ray.h>
 
 namespace py = pybind11;
 using namespace luisa::compute;
@@ -84,7 +93,7 @@ PYBIND11_MODULE(lcapi, m) {
 
     py::class_<Stream>(m, "Stream")
         .def("synchronize", &Stream::synchronize)
-        .def("add", [](Stream &self, Command *cmd) { self << cmd; })
+        .def("add", [](Stream &self, Command *cmd) { self << luisa::unique_ptr<Command>(cmd); })
         .def("add_callback", [](Stream &self, const std::function<void()> &callback) { self << callback; });
 
     // AST (FunctionBuilder)
@@ -254,9 +263,11 @@ PYBIND11_MODULE(lcapi, m) {
     // accel commands
     py::class_<MeshBuildCommand, Command>(m, "MeshBuildCommand")
         .def_static(
-            "create", [](uint64_t handle, AccelBuildRequest request, uint64_t vertex_buffer, size_t vertex_buffer_offset, size_t vertex_buffer_size, uint64_t triangle_buffer, size_t triangle_buffer_offset, size_t triangle_buffer_size) {
-                return MeshBuildCommand::create(handle, request, vertex_buffer, vertex_buffer_offset, vertex_buffer_size,
-                                                triangle_buffer, triangle_buffer_offset, triangle_buffer_size);
+            "create", [](uint64_t handle, AccelBuildRequest request, uint64_t vertex_buffer, size_t vertex_buffer_offset, size_t vertex_buffer_size, size_t vertex_stride, uint64_t triangle_buffer, size_t triangle_buffer_offset, size_t triangle_buffer_size) {
+                return MeshBuildCommand::create(
+                    handle, request, vertex_buffer, vertex_buffer_offset, vertex_buffer_size,
+                    vertex_stride,
+                    triangle_buffer, triangle_buffer_offset, triangle_buffer_size);
             },
             pyref);
     py::class_<AccelBuildCommand, Command>(m, "AccelBuildCommand")
@@ -272,7 +283,15 @@ PYBIND11_MODULE(lcapi, m) {
                 return BindlessArrayUpdateCommand::create(handle);
             },
             pyref);
-
+    py::class_<DrawRasterSceneCommand, Command>(m, "DrawRasterSceneCommand")
+        .def_static(
+            "create", [](
+                          uint64_t handle,
+                          Function vertex_func,
+                          Function pixel_func) {
+                return DrawRasterSceneCommand(handle, vertex_func, pixel_func);
+            },
+            pyref);
     // vector and matrix types
     export_vector2(m);
     export_vector3(m);
@@ -289,8 +308,8 @@ PYBIND11_MODULE(lcapi, m) {
     py::class_<Accel>(m, "Accel")
         .def("size", &Accel::size)
         .def("handle", [](Accel &self) { return self.handle(); })
-        .def("emplace_back", &Accel::emplace_back_mesh_with_handle)
-        .def("set", &Accel::set_mesh_with_handle)
+        .def("emplace_back", &Accel::emplace_back)
+        .def("set", &Accel::set)
         .def("pop_back", &Accel::pop_back)
         .def("set_transform_on_update", &Accel::set_transform_on_update)
         .def("set_visibility_on_update", &Accel::set_visibility_on_update)
@@ -298,7 +317,6 @@ PYBIND11_MODULE(lcapi, m) {
 
     py::enum_<AccelUsageHint>(m, "AccelUsageHint")
         .value("FAST_TRACE", AccelUsageHint::FAST_TRACE)
-        .value("FAST_UPDATE", AccelUsageHint::FAST_UPDATE)
         .value("FAST_BUILD", AccelUsageHint::FAST_BUILD);
 
     py::enum_<AccelBuildRequest>(m, "AccelBuildRequest")
@@ -363,7 +381,8 @@ PYBIND11_MODULE(lcapi, m) {
     m.def("pixel_storage_channel_count", pixel_storage_channel_count);
     m.def("pixel_storage_to_format_int", pixel_storage_to_format<int>);
     m.def("pixel_storage_to_format_float", pixel_storage_to_format<float>);
-    m.def("pixel_storage_size", pixel_storage_size);
+    auto _pixel_storage_size = [](PixelStorage storage) { return pixel_storage_size(storage); };
+    m.def("pixel_storage_size", _pixel_storage_size);
 
     // sampler
     auto m_sampler = py::class_<Sampler>(m, "Sampler")

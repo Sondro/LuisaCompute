@@ -68,6 +68,7 @@ LUISA_MAP(LUISA_MAKE_COMMAND_POOL_DECL, LUISA_COMPUTE_RUNTIME_COMMANDS)
 
 #define LUISA_MAKE_COMMAND_COMMON_CREATE(Cmd)                        \
     template<typename... Args>                                       \
+        requires(std::is_constructible_v<Cmd, Args &&...>)           \
     [[nodiscard]] static auto create(Args &&...args) noexcept {      \
         return luisa::make_unique<Cmd>(std::forward<Args>(args)...); \
     }

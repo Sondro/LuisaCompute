@@ -71,9 +71,6 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
         case Variable::Tag::DISPATCH_SIZE:
             str << "a.dsp_c"sv;
             break;
-        case Variable::Tag::TEXEL_SIZE:
-            str << "a.tex_c"sv;
-            break;
         case Variable::Tag::OBJECT_ID:
             str << "obj_id"sv;
             break;
@@ -1074,7 +1071,7 @@ if(any(dspId >= a.dsp_c)) return;
     };
     callable(callable, func);
 }
-void CodegenUtility::CodegenVertex(Function vert, vstd::string &result) {
+void CodegenUtility::CodegenVertex(Function vert, vstd::string &result, bool cBufferNonEmpty) {
     vstd::HashMap<void const *> callableMap;
     auto gen = [&](auto &callable, Function func) -> void {
         for (auto &&i : func.custom_callables()) {
@@ -1092,7 +1089,10 @@ void CodegenUtility::CodegenVertex(Function vert, vstd::string &result) {
     vstd::string retName;
     auto retType = vert.return_type();
     GetTypeName(*retType, retName, Usage::READ);
-    result << retName << " vert(vertex vt){\nArgs a = _Global[0];\n"sv;
+    result << retName << " vert(vertex vt){\n"sv;
+    if (cBufferNonEmpty) {
+        result << "Args a = _Global[0];\n"sv;
+    }
     opt->funcType = CodegenStackData::FuncType::Vert;
     opt->arguments.Clear();
     opt->arguments.reserve(vert.arguments().size());
@@ -1126,7 +1126,7 @@ v2p o;
 }
 )"sv;
 }
-void CodegenUtility::CodegenPixel(Function pixel, vstd::string &result) {
+void CodegenUtility::CodegenPixel(Function pixel, vstd::string &result, bool cBufferNonEmpty) {
     vstd::HashMap<void const *> callableMap;
     auto gen = [&](auto &callable, Function func) -> void {
         for (auto &&i : func.custom_callables()) {
@@ -1144,7 +1144,10 @@ void CodegenUtility::CodegenPixel(Function pixel, vstd::string &result) {
     vstd::string retName;
     auto retType = pixel.return_type();
     GetTypeName(*retType, retName, Usage::READ);
-    result << retName << " pixel(v2p p){\nArgs a = _Global[0];\n"sv;
+    result << retName << " pixel(v2p p){\n"sv;
+    if (cBufferNonEmpty) {
+        result << "Args a = _Global[0];\n"sv;
+    }
     opt->funcType = CodegenStackData::FuncType::Pixel;
     opt->pixelFirstArgIsStruct = pixel.arguments()[0].type()->is_structure();
     opt->arguments.Clear();
@@ -1196,30 +1199,42 @@ o0=pixel(p);
     // pixel return value
     // value assignment
 }
+namespace detail {
+static bool IsCBuffer(Variable::Tag t) {
+    switch (t) {
+        case Variable::Tag::BUFFER:
+        case Variable::Tag::TEXTURE:
+        case Variable::Tag::BINDLESS_ARRAY:
+        case Variable::Tag::ACCEL:
+        case Variable::Tag::THREAD_ID:
+        case Variable::Tag::BLOCK_ID:
+        case Variable::Tag::DISPATCH_ID:
+        case Variable::Tag::DISPATCH_SIZE:
+            return false;
+    }
+    return true;
+}
+}// namespace detail
+bool CodegenUtility::IsCBufferNonEmpty(std::initializer_list<vstd::IRange<Variable> *> fs) {
+    for (auto &&f : fs) {
+        for (auto &&i : *f) {
+            if (detail::IsCBuffer(i.tag())) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 void CodegenUtility::GenerateCBuffer(
     std::initializer_list<vstd::IRange<Variable> *> fs,
     vstd::string &result,
     vstd::string_view extraArgs) {
-
     result << "struct Args{\n"sv << extraArgs;
     size_t alignCount = 0;
-    auto isCBuffer = [&](Variable::Tag t) {
-        switch (t) {
-            case Variable::Tag::BUFFER:
-            case Variable::Tag::TEXTURE:
-            case Variable::Tag::BINDLESS_ARRAY:
-            case Variable::Tag::ACCEL:
-            case Variable::Tag::THREAD_ID:
-            case Variable::Tag::BLOCK_ID:
-            case Variable::Tag::DISPATCH_ID:
-            case Variable::Tag::DISPATCH_SIZE:
-                return false;
-        }
-        return true;
-    };
+
     for (auto &&f : fs) {
         for (auto &&i : *f) {
-            if (!isCBuffer(i.tag())) continue;
+            if (!detail::IsCBuffer(i.tag())) continue;
             GetTypeName(*i.type(), result, Usage::READ);
             result << ' ';
             GetVariableName(i, result);
@@ -1276,22 +1291,23 @@ void CodegenUtility::GenerateBindless(
     }
 }
 
-void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount) {
-    // Bindless Buffers;
-    registerCount = {0, 0, 1};
+void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty) {
+    registerCount = {0u, 0u, 0u};
     properties.emplace_back(
         Property{
             ShaderVariableType::SampDescriptorHeap,
             1u,
             0u,
             16u});
-
-    properties.emplace_back(
-        Property{
-            ShaderVariableType::StructuredBuffer,
-            0,
-            0,
-            0});
+    if (cbufferNonEmpty) {
+        registerCount[2] += 1;
+        properties.emplace_back(
+            Property{
+                ShaderVariableType::StructuredBuffer,
+                0,
+                0,
+                0});
+    }
     properties.emplace_back(
         Property{
             ShaderVariableType::SRVDescriptorHeap,
@@ -1308,7 +1324,6 @@ void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &prop
     GenerateBindless(properties, varData);
 }
 void CodegenUtility::PostprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult) {
-
     if (!opt->customStructVector.empty()) {
         vstd::vector<const StructGenerator *, VEngine_AllocType::VEngine, 8> structures(
             opt->customStructVector.begin(),
@@ -1332,7 +1347,13 @@ void CodegenUtility::PostprocessCodegenProperties(CodegenResult::Properties &pro
         finalResult << "];\n"sv;
     }
 }
-void CodegenUtility::CodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult, vstd::string &varData, Function kernel, vstd::array<uint, 3> &registerCount) {
+void CodegenUtility::CodegenProperties(
+    CodegenResult::Properties &properties,
+    vstd::string &finalResult,
+    vstd::string &varData,
+    Function kernel,
+    uint offset,
+    vstd::array<uint, 3> &registerCount) {
     enum class RegisterType : vbyte {
         CBV,
         UAV,
@@ -1341,7 +1362,8 @@ void CodegenUtility::CodegenProperties(CodegenResult::Properties &properties, vs
     auto Writable = [&](Variable const &v) {
         return (static_cast<uint>(kernel.variable_usage(v.uid())) & static_cast<uint>(Usage::WRITE)) != 0;
     };
-    for (auto &&i : kernel.arguments()) {
+    auto args = kernel.arguments();
+    for (auto &&i : vstd::ptr_range(args.data() + offset, args.size() - offset)) {
         auto print = [&] {
             GetTypeName(*i.type(), varData, kernel.variable_usage(i.uid()));
             varData << ' ';
@@ -1435,8 +1457,8 @@ CodegenResult CodegenUtility::Codegen(
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;
-    PreprocessCodegenProperties(properties, varData, registerCount);
-    CodegenProperties(properties, finalResult, varData, kernel, registerCount);
+    PreprocessCodegenProperties(properties, varData, registerCount, true);
+    CodegenProperties(properties, finalResult, varData, kernel, 0, registerCount);
     PostprocessCodegenProperties(properties, finalResult);
     finalResult << varData << codegenData;
     return {
@@ -1542,27 +1564,32 @@ uint obj_id:register(b0);
 uint iid:SV_INSTANCEID;
 };
 )"sv;
-    CodegenVertex(vertFunc, codegenData);
+    auto vertRange = vstd::RangeImpl(vstd::CacheEndRange(vertFunc.arguments()) | vstd::ValueRange{});
+    auto pixelRange = vstd::RangeImpl(vstd::ite_range(pixelFunc.arguments().begin() + 1, pixelFunc.arguments().end()) | vstd::ValueRange{});
+    std::initializer_list<vstd::IRange<Variable> *> funcs = {&vertRange, &pixelRange};
+
+    bool nonEmptyCbuffer = IsCBufferNonEmpty(funcs);
+
+    CodegenVertex(vertFunc, codegenData, nonEmptyCbuffer);
     // TODO: gen vertex data
     codegenData << "#elif defined(PS)\n"sv;
     // TODO: gen pixel data
-    CodegenPixel(pixelFunc, codegenData);
+    CodegenPixel(pixelFunc, codegenData, nonEmptyCbuffer);
     codegenData << "#endif\n"sv;
     finalResult << detail::HLSLHeader(internalDataPath);
     if (vertFunc.requires_raytracing() || pixelFunc.requires_raytracing()) {
         finalResult << detail::RayTracingHeader(internalDataPath);
     }
-    auto vertRange = vstd::RangeImpl(vstd::CacheEndRange(vertFunc.arguments()) | vstd::ValueRange{});
-    auto pixelRange = vstd::RangeImpl(vstd::ite_range(pixelFunc.arguments().begin() + 1, pixelFunc.arguments().end()) | vstd::ValueRange{});
-    std::initializer_list<vstd::IRange<Variable> *> funcs = {&vertRange, &pixelRange};
     opt->funcType = CodegenStackData::FuncType::Callable;
-    GenerateCBuffer(funcs, varData, "uint2 tex_c;\n"sv);
+    if (nonEmptyCbuffer) {
+        GenerateCBuffer(funcs, varData, {});
+    }
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;
-    PreprocessCodegenProperties(properties, varData, registerCount);
-    CodegenProperties(properties, finalResult, varData, vertFunc, registerCount);
-    CodegenProperties(properties, finalResult, varData, pixelFunc, registerCount);
+    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer);
+    CodegenProperties(properties, finalResult, varData, vertFunc, 0, registerCount);
+    CodegenProperties(properties, finalResult, varData, pixelFunc, 1, registerCount);
     PostprocessCodegenProperties(properties, finalResult);
     finalResult << varData << codegenData;
     return {

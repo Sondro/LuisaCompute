@@ -1,5 +1,15 @@
 #include <pybind11/pybind11.h>
-#include <luisa-compute.h>
+#include <ast/function.h>
+#include <core/logging.h>
+#include <runtime/device.h>
+#include <runtime/context.h>
+#include <runtime/stream.h>
+#include <runtime/command.h>
+#include <runtime/image.h>
+#include <rtx/accel.h>
+#include <rtx/mesh.h>
+#include <rtx/hit.h>
+#include <rtx/ray.h>
 
 namespace py = pybind11;
 using namespace luisa::compute;
