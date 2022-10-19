@@ -62,6 +62,10 @@ public:
 		uint propertyName,
 		CommandBufferBuilder* cmdList,
 		TopAccel const* bAccel) const;
+	void SetComputeResource(
+		uint propertyName,
+		CommandBufferBuilder* cmdList,
+		std::pair<uint, uint4> const& constValue) const;
 
 	void SetRasterResource(
 		uint propertyName,
@@ -75,6 +79,10 @@ public:
 		uint propertyName,
 		CommandBufferBuilder* cmdList,
 		TopAccel const* bAccel) const;
+	void SetRasterResource(
+		uint propertyName,
+		CommandBufferBuilder* cmdList,
+		std::pair<uint, uint4> const& constValue) const;
 
 	KILL_COPY_CONSTRUCT(Shader)
 	KILL_MOVE_CONSTRUCT(Shader)

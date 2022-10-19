@@ -1,10 +1,6 @@
 #pragma pack_matrix(row_major)
 #define INFINITY_f 3.40282347e+37
-#ifdef SPIRV
-SamplerState samplers[16] : register(s0, space4);
-#else
 SamplerState samplers[16] : register(s0, space1);
-#endif
 
 float determinant(float2x2 m) {
 return m[0][0] * m[1][1] - m[1][0] * m[0][1];
@@ -260,13 +256,8 @@ uint samp3D : 8;
 #define Smptx(tex, uv) (tex[uv])
 #define Writetx(tex, uv, value) (tex[uv] = value)
 #define BINDLESS_ARRAY StructuredBuffer<BdlsStruct>
-#ifdef SPIRV
-Texture2D<float4> _BindlessTex[] : register(t0, space2);
-Texture3D<float4> _BindlessTex3D[] : register(t0, space3);
-#else
 Texture2D<float4> _BindlessTex[] : register(t0, space1);
 Texture3D<float4> _BindlessTex3D[] : register(t0, space2);
-#endif
 template<typename T>
 T fract(T x) { return x - floor(x); }
 float4 SampleTex2D(BINDLESS_ARRAY arr, uint index, float2 uv, float level) {

@@ -352,6 +352,9 @@ ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
             case ShaderVariableType::ConstantBuffer:
                 allParameter.emplace_back().InitAsConstantBufferView(var.registerIndex, var.spaceIndex);
                 break;
+            case ShaderVariableType::ConstantValue:
+                allParameter.emplace_back().InitAsConstants(var.spaceIndex, var.registerIndex);
+                break;
             case ShaderVariableType::StructuredBuffer:
                 allParameter.emplace_back().InitAsShaderResourceView(var.registerIndex, var.spaceIndex);
                 break;
@@ -361,13 +364,9 @@ ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
             default: assert(false); break;
         }
     }
-    /*
     if (isRasterShader) {
         allParameter.emplace_back().InitAsConstants(1, 0);
-    } else {
-        allParameter.emplace_back().InitAsConstants(3, 0, 1);
     }
-    */
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSigDesc(
         allParameter.size(), allParameter.data(),
         0, nullptr,

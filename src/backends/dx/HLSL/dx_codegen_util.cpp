@@ -69,7 +69,7 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
             str << "grpId"sv;
             break;
         case Variable::Tag::DISPATCH_SIZE:
-            str << "dsp_c[0]"sv;
+            str << "dsp_c"sv;
             break;
         case Variable::Tag::OBJECT_ID:
             str << "obj_id"sv;
@@ -1038,7 +1038,7 @@ void CodegenUtility::CodegenFunction(Function func, vstd::string &result, bool c
                    << vstd::to_string(func.block_size().z)
                    << R"()]
 void main(uint3 thdId:SV_GroupThreadId,uint3 dspId:SV_DispatchThreadID,uint3 grpId:SV_GroupId){
-if(any(dspId >= dsp_c[0])) return;
+if(any(dspId >= dsp_c)) return;
 )"sv;
             if (cbufferNonEmpty) {
                 result << "Args a = _Global[0];\n"sv;
@@ -1251,7 +1251,7 @@ void CodegenUtility::GenerateCBuffer(
         }
     }
     result << R"(};
-StructuredBuffer<Args> _Global:register(t1);
+StructuredBuffer<Args> _Global:register(t0);
 )"sv;
 }
 #ifdef USE_SPIRV
@@ -1300,27 +1300,31 @@ void CodegenUtility::GenerateBindless(
     }
 }
 
-void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty) {
-    registerCount = {0u, 0u, 1u};
+void CodegenUtility::PreprocessCodegenProperties(
+    CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty,
+    bool isRaster) {
+    registerCount = {1u, 0u, 0u};
     properties.emplace_back(
         Property{
             ShaderVariableType::SampDescriptorHeap,
             1u,
             0u,
             16u});
-    properties.emplace_back(
-        Property{
-            ShaderVariableType::StructuredBuffer,
-            0,
-            0,
-            0});
+    if (!isRaster) {
+        properties.emplace_back(
+            Property{
+                ShaderVariableType::ConstantValue,
+                3,
+                0,
+                0});
+    }
     if (cbufferNonEmpty) {
         registerCount[2] += 1;
         properties.emplace_back(
             Property{
                 ShaderVariableType::StructuredBuffer,
                 0,
-                1,
+                0,
                 0});
     }
     properties.emplace_back(
@@ -1473,11 +1477,11 @@ CodegenResult CodegenUtility::Codegen(
     if (nonEmptyCbuffer) {
         GenerateCBuffer({static_cast<vstd::IRange<Variable> *>(&argRange)}, varData);
     }
-    varData << "StructuredBuffer<uint3> dsp_c:register(t0);\n"sv;
+    varData << "uint3 dsp_c:register(b0);\n"sv;
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;
-    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer);
+    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer, false);
     CodegenProperties(properties, finalResult, varData, kernel, 0, registerCount);
     PostprocessCodegenProperties(properties, finalResult);
     finalResult << varData << codegenData;
@@ -1607,7 +1611,7 @@ uint iid:SV_INSTANCEID;
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;
-    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer);
+    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer, true);
     CodegenProperties(properties, finalResult, varData, vertFunc, 0, registerCount);
     CodegenProperties(properties, finalResult, varData, pixelFunc, 1, registerCount);
     PostprocessCodegenProperties(properties, finalResult);

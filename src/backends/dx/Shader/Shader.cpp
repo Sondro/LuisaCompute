@@ -99,6 +99,15 @@ void Shader::SetComputeResource(
 }
 void Shader::SetComputeResource(
     uint propertyName,
+    CommandBufferBuilder *cb,
+    std::pair<uint, uint4> const &constValue) const {
+    auto cmdList = cb->CmdList();
+    auto &&var = properties[propertyName];
+    assert(var.type == ShaderVariableType::ConstantValue);
+    cmdList->SetComputeRoot32BitConstants(propertyName, constValue.first, &constValue.second, 0);
+}
+void Shader::SetComputeResource(
+    uint propertyName,
     CommandBufferBuilder *cmdList,
     TopAccel const *bAccel) const {
     return SetComputeResource(
@@ -156,5 +165,13 @@ void Shader::SetRasterResource(
         cmdList,
         BufferView(bAccel->GetAccelBuffer()));
 }
-
+void Shader::SetRasterResource(
+    uint propertyName,
+    CommandBufferBuilder *cb,
+    std::pair<uint, uint4> const &constValue) const {
+    auto cmdList = cb->CmdList();
+    auto &&var = properties[propertyName];
+    assert(var.type == ShaderVariableType::ConstantValue);
+    cmdList->SetGraphicsRoot32BitConstants(propertyName, constValue.first, &constValue.second, 0);
+}
 }// namespace toolhub::directx

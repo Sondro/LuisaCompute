@@ -13,12 +13,27 @@
 #include <dsl/syntax.h>
 #include <dsl/sugar.h>
 #include <rtx/accel.h>
+#include <raster/depth_buffer.h>
+#include <raster/raster_shader.h>
+#include <raster/dsl.h>
+#include <raster/raster_state.h>
+#include <raster/raster_scene.h>
 
 using namespace luisa;
 using namespace luisa::compute;
-
+struct PackedFloat3 {
+    float v[3];
+    float n[4];
+};
+LUISA_STRUCT(PackedFloat3, v, n){};
+struct v2p {
+    float4 pos;
+    float4 color;
+};
 int main(int argc, char *argv[]) {
 
+    static constexpr auto width = 512u;
+    static constexpr auto height = 512u;
     log_level_info();
 
     Context context{argv[0]};
@@ -65,12 +80,47 @@ int main(int argc, char *argv[]) {
         return make_float2(rx, ry);
     };
 
-    Kernel2D raytracing_kernel = [&](BufferFloat4 image, AccelVar accel, UInt frame_index) noexcept {
-        auto coord = dispatch_id().xy();
-        auto p = (make_float2(coord) + rand(frame_index, coord)) /
-                     make_float2(dispatch_size().xy()) * 2.0f -
+    Kernel2D colorspace_kernel = [&](ImageVar<float> img, BufferUInt ldrBuffer) noexcept {
+        auto i = dispatch_y() * dispatch_size_x() + dispatch_x();
+        auto hdr = img.read(dispatch_id().xy()).xyz();
+        auto ldr = make_uint3(round(saturate(linear_to_srgb(hdr)) * 255.0f));
+        ldrBuffer.write(i, ldr.x | (ldr.y << 8u) | (ldr.z << 16u) | (255u << 24u));
+    };
+    auto stream = device.create_stream(StreamTag::GRAPHICS);
+    auto vertex_buffer = device.create_buffer<float3>(3u);
+    auto triangle_buffer = device.create_buffer<Triangle>(1u);
+    stream << vertex_buffer.copy_from(vertices.data())
+           << triangle_buffer.copy_from(indices.data());
+
+    auto accel = device.create_accel();
+    auto mesh = device.create_mesh(vertex_buffer, triangle_buffer,
+                                   AccelUsageHint::FAST_BUILD);
+    auto vb = device.create_buffer<PackedFloat3>(3);
+
+    accel.emplace_back(mesh, scaling(1.5f));
+    accel.emplace_back(mesh, translation(float3(-0.25f, 0.0f, 0.1f)) *
+                                 rotation(float3(0.0f, 0.0f, 1.0f), 0.5f));
+    float vertPoses[sizeof(PackedFloat3) * 3] = {
+        -1, -1, 0.1,
+        1, 0, 0, 1,
+        0, 1, 1,
+        0, 1, 0, 1,
+        1, -1, 0.2,
+        0, 0, 1, 1};
+    Kernel2D clearRT = [&](ImageVar<float> img) {
+        img.write(dispatch_id().xy(), make_float4(0.1, 0.1, 0.1, 1));
+    };
+
+    Callable vert = []() noexcept {
+        auto vert = get_vertex_data();
+        return make_float4(vert.position, 1.0f);
+    };
+    Callable pixel = [&](Float4 pos, AccelVar accel, UInt frame_index) noexcept {
+        auto coord = make_uint2(pos.xy());
+        auto p = (make_float2(coord)) /
+                     make_float2(width, height) * 2.0f -
                  1.0f;
-        auto color = def<float3>(0.3f, 0.5f, 0.7f);
+        Var color = make_float3(0);
         auto ray = make_ray(
             make_float3(p * make_float2(1.0f, -1.0f), 1.0f),
             make_float3(0.0f, 0.0f, -1.0f));
@@ -81,48 +131,36 @@ int main(int argc, char *argv[]) {
             constexpr auto blue = float3(0.0f, 0.0f, 1.0f);
             color = hit->interpolate(red, green, blue);
         };
-        auto old = image.read(coord.y * dispatch_size_x() + coord.x).xyz();
-        auto t = 1.0f / (frame_index + 1.0f);
-        image.write(coord.y * dispatch_size_x() + coord.x, make_float4(lerp(old, color, t), 1.0f));
+        return make_float4(color / 1024.0f, 1.0f);
     };
+    RasterKernel<decltype(vert), decltype(pixel)> kernel(vert, pixel);
+    auto vertAttribs = {
+        VertexAttribute{
+            .type = VertexAttributeType::Position,
+            .format = VertexElementFormat::XYZ32Float},
+        VertexAttribute{
+            .type = VertexAttributeType::Color,
+            .format = VertexElementFormat::XYZW32Float}};
+    MeshFormat meshFormat;
+    meshFormat.emplace_vertex_stream(vertAttribs);
+    RasterState rasterState{
+        .cull_mode = CullMode::None,
+        .blend_state = {
+            .enableBlend = true,
+            .prim_op = BlendWeight::One}};
 
-    Kernel2D colorspace_kernel = [&](BufferFloat4 hdr_image, BufferUInt ldr_image) noexcept {
-        auto i = dispatch_y() * dispatch_size_x() + dispatch_x();
-        auto hdr = hdr_image.read(i).xyz();
-        auto ldr = make_uint3(round(saturate(linear_to_srgb(hdr)) * 255.0f));
-        ldr_image.write(i, ldr.x | (ldr.y << 8u) | (ldr.z << 16u) | (255u << 24u));
-    };
-    auto stream = device.create_stream();
-    auto vertex_buffer = device.create_buffer<float3>(3u);
-    auto triangle_buffer = device.create_buffer<Triangle>(1u);
-    stream << vertex_buffer.copy_from(vertices.data())
-           << triangle_buffer.copy_from(indices.data());
-    auto accel = device.create_accel();
-    auto mesh = device.create_mesh(vertex_buffer, triangle_buffer,
-                                   AccelUsageHint::FAST_BUILD);
-    accel.emplace_back(mesh, scaling(1.5f));
-    accel.emplace_back(mesh, translation(float3(-0.25f, 0.0f, 0.1f)) *
-                                 rotation(float3(0.0f, 0.0f, 1.0f), 0.5f));
-    stream << mesh.build()
-           << accel.build();
-    /*
-    device.save(raytracing_kernel, ".data/raytracing");
-    auto raytracing_shader = device.load_shader<2, Buffer<float4>, Accel, uint>(".data/raytracing");
-    
-    auto raytracing_shader = device.compile(raytracing_kernel, false);
+    auto tex = device.create_image<float>(PixelStorage::FLOAT4, uint2(width, height));
+    auto dstFormat = tex.format();
+    auto shader = device.compile(kernel, meshFormat, rasterState, {&dstFormat, 1}, DepthFormat::None, false);
 
-    auto raytracing_shader = device.compile_to(raytracing_kernel, ".data/raytracing"sv);
-
-    */
-
+    auto clearShader = device.compile(clearRT, false);
+    stream << mesh.build() << accel.build() << vb.copy_from(vertPoses) << clearShader(tex).dispatch(width, height);
     auto colorspace_shader = device.compile(colorspace_kernel, false);
-    auto raytracing_shader = device.compile(raytracing_kernel, false);
-    static constexpr auto width = 512u;
-    static constexpr auto height = 512u;
-    auto hdr_image = device.create_buffer<float4>(width * height);
     auto ldr_image = device.create_buffer<uint>(width * height);
     std::vector<uint8_t> pixels(width * height * 4u);
-
+    Viewport viewport{
+        .start = {0, 0},
+        .size = {1, 1}};
     Clock clock;
     clock.tic();
     static constexpr auto spp = 1024u;
@@ -132,10 +170,13 @@ int main(int argc, char *argv[]) {
         auto m = translation(float3(-0.25f + t * 0.15f, 0.0f, 0.1f)) *
                  rotation(float3(0.0f, 0.0f, 1.0f), 0.5f + t * 0.5f);
         accel.set_transform_on_update(1u, m);
+        luisa::vector<RasterMesh> scene;
+        VertexBufferView vbv(vb);
+        scene.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, 3, 2, 0);
         stream << vertex_buffer.copy_from(vertices.data())
                << mesh.build()
                << accel.build()
-               << raytracing_shader(hdr_image, accel, i).dispatch(width, height);
+               << shader(accel, i).draw(std::move(scene), viewport, nullptr, tex);
         if (i == 511u) {
             auto mm = translation(make_float3(0.0f, 0.0f, 0.3f)) *
                       rotation(make_float3(0.0f, 0.0f, 1.0f), radians(180.0f));
@@ -143,9 +184,10 @@ int main(int argc, char *argv[]) {
             stream << accel.build();
         }
     }
-    stream << colorspace_shader(hdr_image, ldr_image).dispatch(width, height)
-           << ldr_image.copy_to(pixels.data())
-           << synchronize();
+    stream
+        << colorspace_shader(tex, ldr_image).dispatch(width, height)
+        << ldr_image.copy_to(pixels.data())
+        << synchronize();
     auto time = clock.toc();
     LUISA_INFO("Time: {} ms", time);
     stbi_write_png("test_rtx.png", width, height, 4, pixels.data(), 0);

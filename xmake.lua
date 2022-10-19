@@ -94,6 +94,8 @@ function BuildProject(config)
 			set_runtimes("MD")
 		end
 		if has_config("is_msvc") then
+			add_cxflags("/GS", "/Gd");
+
 			add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT", "/Ob2");
 			-- Not Clang-cl
 			if not has_config("is_clang") then

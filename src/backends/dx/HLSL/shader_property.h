@@ -8,7 +8,8 @@ enum class ShaderVariableType : uint8_t {
     CBVDescriptorHeap,
     SampDescriptorHeap,
     StructuredBuffer,
-    RWStructuredBuffer
+    RWStructuredBuffer,
+    ConstantValue
 };
 struct Property {
     ShaderVariableType type;

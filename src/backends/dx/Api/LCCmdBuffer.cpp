@@ -379,11 +379,8 @@ public:
         auto &&tempBuffer = *bufferVec;
         bufferVec++;
         bindProps->emplace_back(DescriptorHeapView(device->samplerHeap.get()));
-        auto bfView = bd->GetCB()->GetAlloc()->GetTempUploadBuffer(16, 16);
-        auto dispatchId = cmd->dispatch_size();
-        static_cast<UploadBuffer const *>(bfView.buffer)->CopyData(bfView.offset, {reinterpret_cast<vbyte const *>(&dispatchId), sizeof(uint3)});
-        bindProps->emplace_back(bfView);
-
+        auto dispSize = cmd->dispatch_size();
+        bindProps->emplace_back(3, make_uint4(dispSize, 1));
         if (tempBuffer.second > 0) {
             bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
         }
@@ -395,7 +392,7 @@ public:
         auto cs = static_cast<ComputeShader const *>(shader);
         bd->DispatchCompute(
             cs,
-            dispatchId,
+            dispSize,
             *bindProps);
         /*switch (shader->GetTag()) {
             case Shader::Tag::ComputeShader: {
