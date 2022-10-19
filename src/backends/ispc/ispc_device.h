@@ -13,7 +13,7 @@ namespace luisa::compute::ispc {
  * @brief The device class of ISPC
  * 
  */
-class ISPCDevice final : public Device::Interface {
+class ISPCDevice final : public DeviceInterface {
 
 private:
     RTCDevice _rtc_device;

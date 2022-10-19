@@ -50,7 +50,7 @@ Stream &Stream::operator<<(CommandBuffer::Synchronize) noexcept {
     return *this;
 }
 
-Stream::Stream(Device::Interface *device, StreamTag stream_tag) noexcept
+Stream::Stream(DeviceInterface *device, StreamTag stream_tag) noexcept
     : Resource{device, Tag::STREAM, device->create_stream(stream_tag)}, _stream_tag(stream_tag) {}
 
 Stream::Delegate::Delegate(Stream *s) noexcept : _stream{s} {}

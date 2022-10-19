@@ -546,7 +546,7 @@ var hierarchy =
     [ "luisa::compute::Event::Wait", "d0/d06/classluisa_1_1compute_1_1_event.html#de/da7/structluisa_1_1compute_1_1_event_1_1_wait", null ],
     [ "enable_shared_from_this", null, [
       [ "luisa::Subject", "d2/da4/classluisa_1_1_subject.html", null ],
-      [ "luisa::compute::Device::Interface", "d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html", [
+      [ "luisa::compute::DeviceInterface", "d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html", [
         [ "luisa::compute::ispc::ISPCDevice", "d2/dda/classluisa_1_1compute_1_1ispc_1_1_i_s_p_c_device.html", null ]
       ] ],
       [ "luisa::compute::detail::FunctionBuilder", "d3/de6/classluisa_1_1compute_1_1detail_1_1_function_builder.html", null ]

@@ -5,7 +5,7 @@
 using namespace luisa::compute;
 namespace toolhub::directx {
 class LCUtil;
-using LCDeviceInterface = luisa::compute::Device::Interface;
+using LCDeviceInterface = luisa::compute::DeviceInterface;
 class LCDevice : public LCDeviceInterface, public vstd::IOperatorNewBase {
 public:
     ShaderPaths shaderPaths;

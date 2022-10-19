@@ -37,7 +37,7 @@ private:
 
 private:
     friend class Device;
-    Buffer(Device::Interface *device, size_t size) noexcept
+    Buffer(DeviceInterface *device, size_t size) noexcept
         : Resource{
               device, Tag::BUFFER,
               device->create_buffer(size * sizeof(T))},

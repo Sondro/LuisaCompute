@@ -30,7 +30,7 @@ private:
 
 private:
     friend class Device;
-    BindlessArray(Device::Interface *device, size_t size) noexcept;
+    BindlessArray(DeviceInterface *device, size_t size) noexcept;
 
     void _emplace_buffer(size_t index, uint64_t handle, size_t offset_bytes) noexcept;
     void _emplace_tex2d(size_t index, uint64_t handle, Sampler sampler) noexcept;

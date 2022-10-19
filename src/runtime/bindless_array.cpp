@@ -22,7 +22,7 @@ BindlessArray Device::create_bindless_array(size_t slots) noexcept {
     return _create<BindlessArray>(slots);
 }
 
-BindlessArray::BindlessArray(Device::Interface *device, size_t size) noexcept
+BindlessArray::BindlessArray(DeviceInterface *device, size_t size) noexcept
     : Resource{device, Tag::BINDLESS_ARRAY, device->create_bindless_array(size)},
       _size{size} {}
 

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.3"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>LuisaCompute: luisa::compute::Device::Interface Class Reference</title>
+<title>LuisaCompute: luisa::compute::DeviceInterface Class Reference</title>
 <link href="../../tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="../../jquery.js"></script>
 <script type="text/javascript" src="../../dynsections.js"></script>
@@ -88,13 +88,13 @@ $(document).ready(function(){initNavTree('d1/d9d/classluisa_1_1compute_1_1_devic
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="../../d0/dfa/classluisa_1_1compute_1_1_device_1_1_interface-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">luisa::compute::Device::Interface Class Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div></div>
+  <div class="headertitle"><div class="title">luisa::compute::DeviceInterface Class Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div></div>
 </div><!--header-->
 <div class="contents">
 
 <p><code>#include &lt;<a class="el" href="../../db/de9/device_8h_source.html">device.h</a>&gt;</code></p>
 <div class="dynheader">
-Inheritance diagram for luisa::compute::Device::Interface:</div>
+Inheritance diagram for luisa::compute::DeviceInterface:</div>
 <div class="dyncontent">
  <div class="center">
   <img src="../../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.png" usemap="#luisa::compute::Device::Interface_map" alt=""/>
@@ -208,7 +208,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">luisa::compute::Device::Interface::Interface </td>
+          <td class="memname">luisa::compute::DeviceInterface::Interface </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="../../d9/d3a/classluisa_1_1compute_1_1_context.html">Context</a>&#160;</td>
           <td class="paramname"><em>ctx</em></td><td>)</td>
@@ -236,7 +236,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual luisa::compute::Device::Interface::~Interface </td>
+          <td class="memname">virtual luisa::compute::DeviceInterface::~Interface </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -262,7 +262,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void * luisa::compute::Device::Interface::buffer_native_handle </td>
+          <td class="memname">virtual void * luisa::compute::DeviceInterface::buffer_native_handle </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -290,7 +290,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="../../d9/d3a/classluisa_1_1compute_1_1_context.html">Context</a> &amp; luisa::compute::Device::Interface::context </td>
+          <td class="memname">const <a class="el" href="../../d9/d3a/classluisa_1_1compute_1_1_context.html">Context</a> &amp; luisa::compute::DeviceInterface::context </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -317,7 +317,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_accel </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_accel </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#ab6205269570440af8831ce5496c902f0">AccelUpdateHint</a>&#160;</td>
           <td class="paramname"><em>hint</em></td><td>)</td>
@@ -345,7 +345,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_bindless_array </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_bindless_array </td>
           <td>(</td>
           <td class="paramtype">size_t&#160;</td>
           <td class="paramname"><em>size</em></td><td>)</td>
@@ -373,7 +373,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_buffer </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_buffer </td>
           <td>(</td>
           <td class="paramtype">size_t&#160;</td>
           <td class="paramname"><em>size_bytes</em></td><td>)</td>
@@ -401,7 +401,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_event </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_event </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -428,7 +428,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_mesh </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_mesh </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>v_buffer</em>, </td>
@@ -502,7 +502,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_shader </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_shader </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="../../d0/d9d/classluisa_1_1compute_1_1_function.html">Function</a>&#160;</td>
           <td class="paramname"><em>kernel</em>, </td>
@@ -540,7 +540,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_stream </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_stream </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -567,7 +567,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_swap_chain </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_swap_chain </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>window_handle</em>, </td>
@@ -629,7 +629,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual uint64_t luisa::compute::Device::Interface::create_texture </td>
+          <td class="memname">virtual uint64_t luisa::compute::DeviceInterface::create_texture </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#aab5274dd92301ae5b3d48cfea698f3ef">PixelFormat</a>&#160;</td>
           <td class="paramname"><em>format</em>, </td>
@@ -691,7 +691,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_accel </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_accel </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -719,7 +719,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_bindless_array </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -747,7 +747,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_buffer </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_buffer </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -775,7 +775,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_event </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_event </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -803,7 +803,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_mesh </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_mesh </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -831,7 +831,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_shader </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_shader </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -859,7 +859,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_stream </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_stream </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -887,7 +887,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_swap_chain </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_swap_chain </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -915,7 +915,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::destroy_texture </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::destroy_texture </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -943,7 +943,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::dispatch </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::dispatch </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>stream_handle</em>, </td>
@@ -981,7 +981,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::dispatch </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::dispatch </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>stream_handle</em>, </td>
@@ -1019,7 +1019,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::dispatch </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::dispatch </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>stream_handle</em>, </td>
@@ -1057,7 +1057,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::emplace_buffer_in_bindless_array </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::emplace_buffer_in_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>array</em>, </td>
@@ -1107,7 +1107,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::emplace_tex2d_in_bindless_array </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::emplace_tex2d_in_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>array</em>, </td>
@@ -1157,7 +1157,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::emplace_tex3d_in_bindless_array </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::emplace_tex3d_in_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>array</em>, </td>
@@ -1207,7 +1207,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual <a class="el" href="../../d1/dc0/sugar_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> luisa::compute::Device::Interface::is_buffer_in_bindless_array </td>
+          <td class="memname">virtual <a class="el" href="../../d1/dc0/sugar_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> luisa::compute::DeviceInterface::is_buffer_in_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>array</em>, </td>
@@ -1245,7 +1245,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual <a class="el" href="../../d1/dc0/sugar_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> luisa::compute::Device::Interface::is_texture_in_bindless_array </td>
+          <td class="memname">virtual <a class="el" href="../../d1/dc0/sugar_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> luisa::compute::DeviceInterface::is_texture_in_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>array</em>, </td>
@@ -1283,7 +1283,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void * luisa::compute::Device::Interface::native_handle </td>
+          <td class="memname">virtual void * luisa::compute::DeviceInterface::native_handle </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -1310,7 +1310,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::present_display_in_stream </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::present_display_in_stream </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>stream_handle</em>, </td>
@@ -1354,7 +1354,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual <a class="el" href="../../d0/d38/namespaceluisa.html#a789bee6b95081d89d062df88a0332760">luisa::string</a> luisa::compute::Device::Interface::query </td>
+          <td class="memname">virtual <a class="el" href="../../d0/d38/namespaceluisa.html#a789bee6b95081d89d062df88a0332760">luisa::string</a> luisa::compute::DeviceInterface::query </td>
           <td>(</td>
           <td class="paramtype">std::string_view&#160;</td>
           <td class="paramname"><em>meta_expr</em></td><td>)</td>
@@ -1382,7 +1382,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::remove_buffer_in_bindless_array </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::remove_buffer_in_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>array</em>, </td>
@@ -1420,7 +1420,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::remove_tex2d_in_bindless_array </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::remove_tex2d_in_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>array</em>, </td>
@@ -1458,7 +1458,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::remove_tex3d_in_bindless_array </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::remove_tex3d_in_bindless_array </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>array</em>, </td>
@@ -1496,7 +1496,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual <a class="el" href="../../d1/dc0/sugar_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> luisa::compute::Device::Interface::requires_command_reordering </td>
+          <td class="memname">virtual <a class="el" href="../../d1/dc0/sugar_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> luisa::compute::DeviceInterface::requires_command_reordering </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -1523,7 +1523,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::signal_event </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::signal_event </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em>, </td>
@@ -1561,7 +1561,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void * luisa::compute::Device::Interface::stream_native_handle </td>
+          <td class="memname">virtual void * luisa::compute::DeviceInterface::stream_native_handle </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -1589,7 +1589,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual <a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#abead6589815a16b8c622a5ac26b2715b">PixelStorage</a> luisa::compute::Device::Interface::swap_chain_pixel_storage </td>
+          <td class="memname">virtual <a class="el" href="../../d8/d37/namespaceluisa_1_1compute.html#abead6589815a16b8c622a5ac26b2715b">PixelStorage</a> luisa::compute::DeviceInterface::swap_chain_pixel_storage </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -1617,7 +1617,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::synchronize_event </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::synchronize_event </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -1645,7 +1645,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::synchronize_stream </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::synchronize_stream </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>stream_handle</em></td><td>)</td>
@@ -1673,7 +1673,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void * luisa::compute::Device::Interface::texture_native_handle </td>
+          <td class="memname">virtual void * luisa::compute::DeviceInterface::texture_native_handle </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em></td><td>)</td>
@@ -1701,7 +1701,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void luisa::compute::Device::Interface::wait_event </td>
+          <td class="memname">virtual void luisa::compute::DeviceInterface::wait_event </td>
           <td>(</td>
           <td class="paramtype">uint64_t&#160;</td>
           <td class="paramname"><em>handle</em>, </td>

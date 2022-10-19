@@ -258,7 +258,7 @@ RemoteStream* DeviceDeser::GetStream(uint64 handle) const {
 	return ite.Value();
 }
 
-RemoteStream::RemoteStream(Device::Interface* device, DeviceDeser* deserDevice, uint64 handle, uint64 nativeHandle)
+RemoteStream::RemoteStream(DeviceInterface* device, DeviceDeser* deserDevice, uint64 handle, uint64 nativeHandle)
 	: device(device), nativeHandle(nativeHandle), handle(handle) {
 	visitor.deserDevice = deserDevice;
 }

@@ -99,7 +99,7 @@ VkFormat LCDevice::GetNativeFormat(PixelFormat pixelFormat) {
 }
 
 LCDevice::LCDevice(Context const& ctx)
-	: luisa::compute::Device::Interface(ctx),
+	: luisa::compute::DeviceInterface(ctx),
 	  ctx(ctx) {
 	{
 		std::lock_guard lck(detail::vkInstMtx);

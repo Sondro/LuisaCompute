@@ -28,7 +28,7 @@ var dir_bf9f26469d00835ba20ff8d80ee5a804 =
       [ "luisa::compute::detail::is_dsl_kernel< Kernel2D< Args... > >", "dd/d1a/structluisa_1_1compute_1_1detail_1_1is__dsl__kernel_3_01_kernel2_d_3_01_args_8_8_8_01_4_01_4.html", null ],
       [ "luisa::compute::detail::is_dsl_kernel< Kernel3D< Args... > >", "de/dbc/structluisa_1_1compute_1_1detail_1_1is__dsl__kernel_3_01_kernel3_d_3_01_args_8_8_8_01_4_01_4.html", null ],
       [ "luisa::compute::Device", "d7/db3/classluisa_1_1compute_1_1_device.html", "d7/db3/classluisa_1_1compute_1_1_device" ],
-      [ "luisa::compute::Device::Interface", "d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html", "d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface" ]
+      [ "luisa::compute::DeviceInterface", "d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html", "d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface" ]
     ] ],
     [ "event.cpp", "df/d1b/event_8cpp.html", null ],
     [ "event.h", "dd/d20/event_8h.html", "dd/d20/event_8h" ],

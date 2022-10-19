@@ -3,8 +3,9 @@
 //
 
 #include <runtime/resource.h>
-
+#include <runtime/device.h>
 namespace luisa::compute {
+Resource::Resource(Resource &&) noexcept = default;
 
 void Resource::_destroy() noexcept {
     if (*this) {
@@ -19,7 +20,7 @@ void Resource::_destroy() noexcept {
             case Tag::SHADER: _device->destroy_shader(_handle); break;
             case Tag::RASTER_SHADER: _device->destroy_raster_shader(_handle); break;
             case Tag::SWAP_CHAIN: _device->destroy_swap_chain(_handle); break;
-            case Tag::DEPTH_BUFFER: _device->destroy_depth_buffer(_handle) ;break;
+            case Tag::DEPTH_BUFFER: _device->destroy_depth_buffer(_handle); break;
         }
     }
 }
@@ -34,7 +35,7 @@ Resource &Resource::operator=(Resource &&rhs) noexcept {
     return *this;
 }
 
-Resource::Resource(Device::Interface *device, Resource::Tag tag, uint64_t handle) noexcept
+Resource::Resource(DeviceInterface *device, Resource::Tag tag, uint64_t handle) noexcept
     : _device{device->shared_from_this()}, _handle{handle}, _tag{tag} {}
 
 void *Resource::native_handle() const noexcept {

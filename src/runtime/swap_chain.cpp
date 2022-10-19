@@ -14,7 +14,7 @@ SwapChain Device::create_swapchain(
                      resolution.x, resolution.y, allow_hdr, back_buffer_size);
 }
 
-SwapChain::SwapChain(Device::Interface *device, uint64_t window_handle, uint64_t stream_handle,
+SwapChain::SwapChain(DeviceInterface *device, uint64_t window_handle, uint64_t stream_handle,
                      uint width, uint height, bool allow_hdr, uint back_buffer_size) noexcept
     : Resource{device, Tag::SWAP_CHAIN,
                device->create_swap_chain(

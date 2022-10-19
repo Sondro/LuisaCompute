@@ -19,7 +19,7 @@ public:
     
 private:
     friend class Device;
-    explicit Event(Device::Interface *device) noexcept;
+    explicit Event(DeviceInterface *device) noexcept;
 
 public:
     Event() noexcept = default;

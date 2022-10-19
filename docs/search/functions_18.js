@@ -11,7 +11,7 @@ var searchData=
   ['_7eexpression_8',['~Expression',['../d5/d55/classluisa_1_1compute_1_1_expression.html#a0d43b3168e123bf268794144c1ad18c0',1,'luisa::compute::Expression']]],
   ['_7efirstfit_9',['~FirstFit',['../d9/d59/classluisa_1_1_first_fit.html#a8d71d614b3c6aedf6c7f6625e60fb483',1,'luisa::FirstFit']]],
   ['_7efunctionbuilder_10',['~FunctionBuilder',['../d3/de6/classluisa_1_1compute_1_1detail_1_1_function_builder.html#a0089b052ae6587ffe8770b2a2ac0c9b4',1,'luisa::compute::detail::FunctionBuilder']]],
-  ['_7einterface_11',['~Interface',['../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#a009ed19180a35b8b7ffc8b62536c83bb',1,'luisa::compute::Device::Interface']]],
+  ['_7einterface_11',['~Interface',['../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#a009ed19180a35b8b7ffc8b62536c83bb',1,'luisa::compute::DeviceInterface']]],
   ['_7eispcaccel_12',['~ISPCAccel',['../dd/d20/classluisa_1_1compute_1_1ispc_1_1_i_s_p_c_accel.html#ae12eff50c4f72822f0fe3384228f6f6a',1,'luisa::compute::ispc::ISPCAccel']]],
   ['_7eispcdevice_13',['~ISPCDevice',['../d2/dda/classluisa_1_1compute_1_1ispc_1_1_i_s_p_c_device.html#a41a0f54403f49d56d9871dd53387441f',1,'luisa::compute::ispc::ISPCDevice']]],
   ['_7eispcjitmodule_14',['~ISPCJITModule',['../d6/dff/classluisa_1_1compute_1_1ispc_1_1_i_s_p_c_j_i_t_module.html#ab9491586a4ecb01f4a1b3fcf234de167',1,'luisa::compute::ispc::ISPCJITModule']]],

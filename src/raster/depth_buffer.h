@@ -8,7 +8,7 @@ private:
     DepthFormat _format{};
 
 public:
-    DepthBuffer(Device::Interface *device, DepthFormat format, uint2 size);
+    DepthBuffer(DeviceInterface *device, DepthFormat format, uint2 size);
     [[nodiscard]] auto size() const noexcept { return _size; }
     [[nodiscard]] auto format() const noexcept { return _format; }
     [[nodiscard]] luisa::unique_ptr<Command> clear(float value) const noexcept;

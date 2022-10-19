@@ -265,7 +265,7 @@ void DeviceSer::destroy_accel(uint64_t handle) noexcept {
 	visitor->send_async(arr.steal());
 }
 DeviceSer::DeviceSer(Context&& ctx)
-	: Device::Interface(std::move(ctx)),
+	: DeviceInterface(std::move(ctx)),
 	  dispatchThread([this] { DispatchThread(); }) {
 }
 DeviceSer::~DeviceSer() {

@@ -38,7 +38,7 @@ private:
 
 private:
     friend class Device;
-    Image(Device::Interface *device, PixelStorage storage, uint2 size, uint mip_levels = 1u) noexcept
+    Image(DeviceInterface *device, PixelStorage storage, uint2 size, uint mip_levels = 1u) noexcept
         : Resource{
               device,
               Tag::TEXTURE,

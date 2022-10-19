@@ -13,7 +13,7 @@ class TargetMachine;
 
 namespace luisa::compute::llvm {
 
-class LLVMDevice : public Device::Interface {
+class LLVMDevice : public DeviceInterface {
 
 private:
     RTCDevice _rtc_device;

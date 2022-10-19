@@ -17,8 +17,8 @@
 
 namespace luisa::compute {
 class CmdDeser;
-class RasterScene;
 class CmdSer;
+class RasterMesh;
 #define LUISA_COMPUTE_RUNTIME_COMMANDS \
     BufferUploadCommand,               \
         BufferDownloadCommand,         \
@@ -503,19 +503,16 @@ private:
     Function arg_kernel();
 
 public:
-    RasterScene *scene{};
+    luisa::vector<RasterMesh> scene;
     Viewport viewport{};
 
     explicit DrawRasterSceneCommand(
         uint64_t handle,
         Function vertex_func,
-        Function pixel_func)
-        : ShaderDispatchCommandBase(Command::Tag::EDrawRasterSceneCommand),
-          _handle(handle),
-          _vertex_func(vertex_func),
-          _pixel_func(pixel_func) { _default_func = _vertex_func; }
-    DrawRasterSceneCommand(DrawRasterSceneCommand &&) noexcept = default;
-    DrawRasterSceneCommand &operator=(DrawRasterSceneCommand &&) noexcept = default;
+        Function pixel_func);
+    DrawRasterSceneCommand(DrawRasterSceneCommand const&) noexcept = delete;
+    DrawRasterSceneCommand(DrawRasterSceneCommand &&) noexcept;
+    DrawRasterSceneCommand &operator=(DrawRasterSceneCommand &&) noexcept;
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] auto vertex_func() const noexcept { return _vertex_func; }
     [[nodiscard]] auto pixel_func() const noexcept { return _pixel_func; }
@@ -535,6 +532,7 @@ public:
     void encode_uniform(const void *data, size_t size) noexcept;
     void encode_bindless_array(uint64_t handle) noexcept;
     void encode_accel(uint64_t handle) noexcept;
+    ~DrawRasterSceneCommand();
 
     LUISA_MAKE_COMMAND_COMMON(DrawRasterSceneCommand, StreamTag::GRAPHICS)
 };

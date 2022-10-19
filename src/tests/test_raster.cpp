@@ -116,10 +116,10 @@ int main(int argc, char *argv[]) {
     auto vb = device.create_buffer<PackedFloat3>(3);
     auto ib = device.create_buffer<uint>(3);
     VertexBufferView vbv(vb);
-    RasterScene scene;
+    luisa::vector<RasterMesh> scene;
     // Emplace two triangles
-    scene.meshes.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, ib, 2);
-    scene.meshes.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, ib, 2);
+    scene.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, ib, 2);
+    scene.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, ib, 2);
     float vertPoses[sizeof(PackedFloat3) * 3] = {
         -1, -1, 0.1,
         1, 0, 0, 1,
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
     stream
         << vb.copy_from(vertPoses) << ib.copy_from(indices)
         << clearShader(tex).dispatch(width, height) << depth.clear(0.5)
-        << shader().draw(&scene, viewport, &depth, tex)
+        << shader().draw(std::move(scene), viewport, &depth, tex)
         << printShader(depth.to_img(), resultBuffer).dispatch(width, height)
         << printShader(tex, resultBuffer.view(width * height, width * height)).dispatch(width, height)
         << resultBuffer.copy_to(pixels.data())

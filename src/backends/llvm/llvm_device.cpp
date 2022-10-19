@@ -228,10 +228,10 @@ LLVMDevice::~LLVMDevice() noexcept {
 
 }// namespace luisa::compute::llvm
 
-LUISA_EXPORT_API luisa::compute::Device::Interface *create(const luisa::compute::Context &ctx, std::string_view) noexcept {
+LUISA_EXPORT_API luisa::compute::DeviceInterface *create(const luisa::compute::Context &ctx, std::string_view) noexcept {
     return luisa::new_with_allocator<luisa::compute::llvm::LLVMDevice>(ctx);
 }
 
-LUISA_EXPORT_API void destroy(luisa::compute::Device::Interface *device) noexcept {
+LUISA_EXPORT_API void destroy(luisa::compute::DeviceInterface *device) noexcept {
     luisa::delete_with_allocator(device);
 }

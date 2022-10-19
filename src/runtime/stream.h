@@ -61,7 +61,7 @@ private:
     friend class Device;
     StreamTag _stream_tag;
     void _dispatch(CommandList &&command_buffer) noexcept;
-    explicit Stream(Device::Interface *device, StreamTag stream_tag) noexcept;
+    explicit Stream(DeviceInterface *device, StreamTag stream_tag) noexcept;
     void _synchronize() noexcept;
 
 public:

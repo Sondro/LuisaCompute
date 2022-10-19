@@ -15,11 +15,11 @@ struct RemoteStream {
 		uint64 GetResource(uint64 handle) override;
 		Function GetFunction(uint64 handle) override;
 	};
-	Device::Interface* device;
+	DeviceInterface* device;
 	uint64 handle;
 	uint64 nativeHandle;
 	DeviceSearchVisitor visitor;
-	RemoteStream(Device::Interface* device, DeviceDeser* deserDevice, uint64 handle, uint64 nativeHandle);
+	RemoteStream(DeviceInterface* device, DeviceDeser* deserDevice, uint64 handle, uint64 nativeHandle);
 	~RemoteStream();
 	RemoteStream(RemoteStream const&) = delete;
 	RemoteStream(RemoteStream&&) = delete;
@@ -31,7 +31,7 @@ class DeviceDeser : public vstd::IOperatorNewBase {
 	friend class RemoteStream;
 	SocketVisitor* socket;
 	luisa::vector<std::byte> dataArr;
-	Device::Interface* nativeDevice{nullptr};
+	DeviceInterface* nativeDevice{nullptr};
 	mutable std::shared_mutex handleMtx;
 	mutable std::mutex socketMtx;
 	vstd::HashMap<uint64, uint64> handleMap;
@@ -41,8 +41,8 @@ class DeviceDeser : public vstd::IOperatorNewBase {
 	RemoteStream* GetStream(uint64 handle) const;
 
 public:
-	vstd::function<Device::Interface*()> createDeviceFunc;
-	vstd::function<void(Device::Interface*)> destroyDeviceFunc;
+	vstd::function<DeviceInterface*()> createDeviceFunc;
+	vstd::function<void(DeviceInterface*)> destroyDeviceFunc;
 	void Receive(SocketVisitor* visitor);
 };
 }// namespace luisa::compute

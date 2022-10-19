@@ -5,7 +5,7 @@
 using namespace luisa;
 using namespace luisa::compute;
 namespace toolhub::vk {
-class LCDevice : public luisa::compute::Device::Interface {
+class LCDevice : public luisa::compute::DeviceInterface {
 	Device* device;
 	//spv::SpvCompiler compiler;
 	Context ctx;

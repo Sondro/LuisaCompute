@@ -37,12 +37,6 @@ int add(int i, int j) {
 PYBIND11_DECLARE_HOLDER_TYPE(T, eastl::shared_ptr<T>);
 
 const auto pyref = py::return_value_policy::reference;// object lifetime is managed on C++ side
-
-namespace pybind11 { namespace detail {
-template<typename... T>
-struct type_caster<eastl::variant<T...>> : variant_caster<eastl::variant<T...>> {};
-}}// namespace pybind11::detail
-
 // Note: declare pointer & base class;
 // use reference policy when python shouldn't destroy returned object
 
@@ -57,50 +51,50 @@ PYBIND11_MODULE(lcapi, m) {
 
     // Context, device, stream
     py::class_<std::filesystem::path>(m, "FsPath")
-        .def(py::init<std::string>());
+        .def(py::init<luisa::string>());
     py::class_<Context>(m, "Context")
         .def(py::init<const std::filesystem::path &>())
-        .def("create_device", [](Context &self, std::string_view backend_name) { return self.create_device(backend_name); })// TODO: support properties
+        .def("create_device", [](Context &self, luisa::string_view backend_name) { return self.create_device(backend_name); })// TODO: support properties
         .def("installed_backends", [](Context &self) {
-            std::vector<std::string> strs;
-            for (auto s : self.installed_backends()) strs.push_back(s.c_str());
+            luisa::vector<luisa::string> strs;
+            for (auto s : self.installed_backends()) strs.emplace_back(luisa::string_view(s.data(), s.size()));
             return strs;
         });
     py::class_<Device>(m, "Device")
         .def("create_stream", &Device::create_stream, py::arg("present") = false)
         .def("impl", &Device::impl, pyref)
         .def("create_accel", &Device::create_accel);
-    py::class_<Device::Interface, eastl::shared_ptr<Device::Interface>>(m, "DeviceInterface")
-        .def("create_shader", [](Device::Interface &self, Function kernel) { return self.create_shader(kernel, {}); })// TODO: support metaoptions
-        .def("destroy_shader", &Device::Interface::destroy_shader)
-        .def("create_buffer", &Device::Interface::create_buffer)
-        .def("destroy_buffer", &Device::Interface::destroy_buffer)
-        .def("create_texture", &Device::Interface::create_texture)
-        .def("destroy_texture", &Device::Interface::destroy_texture)
-        // .def("create_accel", &Device::Interface::create_accel) // (AccelUsageHint hint = AccelUsageHint::FAST_TRACE)
-        // .def("destroy_accel", &Device::Interface::destroy_accel)
-        .def("create_mesh", &Device::Interface::create_mesh)// (uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint)
-        .def("destroy_mesh", &Device::Interface::destroy_mesh)
-        .def("create_bindless_array", &Device::Interface::create_bindless_array)// size
-        .def("destroy_bindless_array", &Device::Interface::destroy_bindless_array)
-        .def("emplace_buffer_in_bindless_array", &Device::Interface::emplace_buffer_in_bindless_array)// arr, i, handle, offset_bytes
-        .def("emplace_tex2d_in_bindless_array", &Device::Interface::emplace_tex2d_in_bindless_array)  // arr, i, handle, sampler
-        .def("emplace_tex3d_in_bindless_array", &Device::Interface::emplace_tex3d_in_bindless_array)
-        // .def("is_resource_in_bindless_array", &Device::Interface::is_resource_in_bindless_array) // arr, handle -> bool
-        .def("remove_buffer_in_bindless_array", &Device::Interface::remove_buffer_in_bindless_array)
-        .def("remove_tex2d_in_bindless_array", &Device::Interface::remove_tex2d_in_bindless_array)
-        .def("remove_tex3d_in_bindless_array", &Device::Interface::remove_tex3d_in_bindless_array);
+    py::class_<DeviceInterface, eastl::shared_ptr<DeviceInterface>>(m, "DeviceInterface")
+        .def("create_shader", [](DeviceInterface &self, Function kernel) { return self.create_shader(kernel, {}); })// TODO: support metaoptions
+        .def("destroy_shader", &DeviceInterface::destroy_shader)
+        .def("create_buffer", &DeviceInterface::create_buffer)
+        .def("destroy_buffer", &DeviceInterface::destroy_buffer)
+        .def("create_texture", &DeviceInterface::create_texture)
+        .def("destroy_texture", &DeviceInterface::destroy_texture)
+        // .def("create_accel", &DeviceInterface::create_accel) // (AccelUsageHint hint = AccelUsageHint::FAST_TRACE)
+        // .def("destroy_accel", &DeviceInterface::destroy_accel)
+        .def("create_mesh", &DeviceInterface::create_mesh)// (uint64_t v_buffer, size_t v_offset, size_t v_stride, size_t v_count, uint64_t t_buffer, size_t t_offset, size_t t_count, AccelUsageHint hint)
+        .def("destroy_mesh", &DeviceInterface::destroy_mesh)
+        .def("create_bindless_array", &DeviceInterface::create_bindless_array)// size
+        .def("destroy_bindless_array", &DeviceInterface::destroy_bindless_array)
+        .def("emplace_buffer_in_bindless_array", &DeviceInterface::emplace_buffer_in_bindless_array)// arr, i, handle, offset_bytes
+        .def("emplace_tex2d_in_bindless_array", &DeviceInterface::emplace_tex2d_in_bindless_array)  // arr, i, handle, sampler
+        .def("emplace_tex3d_in_bindless_array", &DeviceInterface::emplace_tex3d_in_bindless_array)
+        // .def("is_resource_in_bindless_array", &DeviceInterface::is_resource_in_bindless_array) // arr, handle -> bool
+        .def("remove_buffer_in_bindless_array", &DeviceInterface::remove_buffer_in_bindless_array)
+        .def("remove_tex2d_in_bindless_array", &DeviceInterface::remove_tex2d_in_bindless_array)
+        .def("remove_tex3d_in_bindless_array", &DeviceInterface::remove_tex3d_in_bindless_array);
 
     py::class_<Stream>(m, "Stream")
         .def("synchronize", &Stream::synchronize)
         .def("add", [](Stream &self, Command *cmd) { self << luisa::unique_ptr<Command>(cmd); })
-        .def("add_callback", [](Stream &self, const std::function<void()> &callback) { self << callback; });
+        .def("add_callback", [](Stream &self, luisa::function<void()>&& callback) { self << [c = std::move(callback)] { c(); }; });
 
     // AST (FunctionBuilder)
     py::class_<Function>(m, "Function");
     py::class_<FunctionBuilder, eastl::shared_ptr<FunctionBuilder>>(m, "FunctionBuilder")
-        .def("define_kernel", &FunctionBuilder::define_kernel<const std::function<void()> &>)
-        .def("define_callable", &FunctionBuilder::define_callable<const std::function<void()> &>)
+        .def("define_kernel", &FunctionBuilder::define_kernel<const luisa::function<void()> &>)
+        .def("define_callable", &FunctionBuilder::define_callable<const luisa::function<void()> &>)
         .def("set_block_size", [](FunctionBuilder &self, uint sx, uint sy, uint sz) { self.set_block_size(uint3{sx, sy, sz}); })
 
         .def("thread_id", &FunctionBuilder::thread_id, pyref)
@@ -132,16 +126,16 @@ PYBIND11_MODULE(lcapi, m) {
         .def("cast", &FunctionBuilder::cast, pyref)
 
         .def(
-            "call", [](FunctionBuilder &self, const Type *type, CallOp call_op, std::vector<const Expression *> args) { return self.call(type, call_op, args); }, pyref)
+            "call", [](FunctionBuilder &self, const Type *type, CallOp call_op, luisa::vector<const Expression *>&& args) { return self.call(type, call_op, std::move(args)); }, pyref)
         .def(
-            "call", [](FunctionBuilder &self, const Type *type, Function custom, std::vector<const Expression *> args) { return self.call(type, custom, args); }, pyref)
-        .def("call", [](FunctionBuilder &self, CallOp call_op, std::vector<const Expression *> args) { self.call(call_op, args); })
-        .def("call", [](FunctionBuilder &self, Function custom, std::vector<const Expression *> args) { self.call(custom, args); })
+            "call", [](FunctionBuilder &self, const Type *type, Function custom, luisa::vector<const Expression *>&& args) { return self.call(type, custom, std::move(args)); }, pyref)
+        .def("call", [](FunctionBuilder &self, CallOp call_op, luisa::vector<const Expression *>&& args) { self.call(call_op, std::move(args)); })
+        .def("call", [](FunctionBuilder &self, Function custom, luisa::vector<const Expression *>&& args) { self.call(custom, std::move(args)); })
 
         .def("break_", &FunctionBuilder::break_)
         .def("continue_", &FunctionBuilder::continue_)
         .def("return_", &FunctionBuilder::return_)
-        .def("comment_", [](FunctionBuilder &self, std::string s) { self.comment_(s.c_str()); })
+        .def("comment_", [](FunctionBuilder &self, luisa::string s) { self.comment_(std::move(s)); })
         .def("assign", &FunctionBuilder::assign, pyref)
 
         .def("if_", &FunctionBuilder::if_, pyref)
@@ -202,7 +196,7 @@ PYBIND11_MODULE(lcapi, m) {
     py::class_<Command>(m, "Command");
     py::class_<ShaderDispatchCommand, Command>(m, "ShaderDispatchCommand")
         .def_static(
-            "create", [](uint64_t handle, Function func) { return ShaderDispatchCommand::create(handle, func); }, pyref)
+            "create", [](uint64_t handle, Function func) { return ShaderDispatchCommand::create(handle, func).release(); }, pyref)
         .def("set_dispatch_size", [](ShaderDispatchCommand &self, uint sx, uint sy, uint sz) { self.set_dispatch_size(uint3{sx, sy, sz}); })
         .def("encode_buffer", &ShaderDispatchCommand::encode_buffer)
         .def("encode_texture", &ShaderDispatchCommand::encode_texture)
@@ -214,50 +208,50 @@ PYBIND11_MODULE(lcapi, m) {
     py::class_<BufferUploadCommand, Command>(m, "BufferUploadCommand")
         .def_static(
             "create", [](uint64_t handle, size_t offset_bytes, size_t size_bytes, py::buffer buf) {
-                return BufferUploadCommand::create(handle, offset_bytes, size_bytes, buf.request().ptr);
+                return BufferUploadCommand::create(handle, offset_bytes, size_bytes, buf.request().ptr).release();
             },
             pyref);
     py::class_<BufferDownloadCommand, Command>(m, "BufferDownloadCommand")
         .def_static(
             "create", [](uint64_t handle, size_t offset_bytes, size_t size_bytes, py::buffer buf) {
-                return BufferDownloadCommand::create(handle, offset_bytes, size_bytes, buf.request().ptr);
+                return BufferDownloadCommand::create(handle, offset_bytes, size_bytes, buf.request().ptr).release();
             },
             pyref);
     py::class_<BufferCopyCommand, Command>(m, "BufferCopyCommand")
         .def_static(
             "create", [](uint64_t src, uint64_t dst, size_t src_offset, size_t dst_offset, size_t size) {
-                return BufferCopyCommand::create(src, dst, src_offset, dst_offset, size);
+                return BufferCopyCommand::create(src, dst, src_offset, dst_offset, size).release();
             },
             pyref);
     // texture operation commands
     py::class_<TextureUploadCommand, Command>(m, "TextureUploadCommand")
         .def_static(
             "create", [](uint64_t handle, PixelStorage storage, uint level, uint3 size, py::buffer buf) {
-                return TextureUploadCommand::create(handle, storage, level, size, buf.request().ptr);
+                return TextureUploadCommand::create(handle, storage, level, size, buf.request().ptr).release();
             },
             pyref);
     py::class_<TextureDownloadCommand, Command>(m, "TextureDownloadCommand")
         .def_static(
             "create", [](uint64_t handle, PixelStorage storage, uint level, uint3 size, py::buffer buf) {
-                return TextureDownloadCommand::create(handle, storage, level, size, buf.request().ptr);
+                return TextureDownloadCommand::create(handle, storage, level, size, buf.request().ptr).release();
             },
             pyref);
     py::class_<TextureCopyCommand, Command>(m, "TextureCopyCommand")
         .def_static(
             "create", [](PixelStorage storage, uint64_t src_handle, uint64_t dst_handle, uint src_level, uint dst_level, uint3 size) {
-                return TextureCopyCommand::create(storage, src_handle, dst_handle, src_level, dst_level, size);
+                return TextureCopyCommand::create(storage, src_handle, dst_handle, src_level, dst_level, size).release();
             },
             pyref);
     py::class_<BufferToTextureCopyCommand, Command>(m, "BufferToTextureCopyCommand")
         .def_static(
             "create", [](uint64_t buffer, size_t buffer_offset, uint64_t texture, PixelStorage storage, uint level, uint3 size) {
-                return BufferToTextureCopyCommand::create(buffer, buffer_offset, texture, storage, level, size);
+                return BufferToTextureCopyCommand::create(buffer, buffer_offset, texture, storage, level, size).release();
             },
             pyref);
     py::class_<TextureToBufferCopyCommand, Command>(m, "TextureToBufferCopyCommand")
         .def_static(
             "create", [](uint64_t buffer, size_t buffer_offset, uint64_t texture, PixelStorage storage, uint level, uint3 size) {
-                return TextureToBufferCopyCommand::create(buffer, buffer_offset, texture, storage, level, size);
+                return TextureToBufferCopyCommand::create(buffer, buffer_offset, texture, storage, level, size).release();
             },
             pyref);
     // accel commands
@@ -267,29 +261,26 @@ PYBIND11_MODULE(lcapi, m) {
                 return MeshBuildCommand::create(
                     handle, request, vertex_buffer, vertex_buffer_offset, vertex_buffer_size,
                     vertex_stride,
-                    triangle_buffer, triangle_buffer_offset, triangle_buffer_size);
+                    triangle_buffer, triangle_buffer_offset, triangle_buffer_size).release();
             },
             pyref);
     py::class_<AccelBuildCommand, Command>(m, "AccelBuildCommand")
         .def_static(
-            "create", [](uint64_t handle, uint32_t instance_count, AccelBuildRequest request, std::vector<AccelModification> modifications) {
-                return AccelBuildCommand::create(handle, instance_count, request, luisa::vector<AccelModification>(modifications.cbegin(), modifications.cend()));
+            "create", [](uint64_t handle, uint32_t instance_count, AccelBuildRequest request, luisa::vector<AccelModification>&& modifications) {
+                return AccelBuildCommand::create(handle, instance_count, request, std::move(modifications)).release();
             },
             pyref);
     // bindless
     py::class_<BindlessArrayUpdateCommand, Command>(m, "BindlessArrayUpdateCommand")
         .def_static(
             "create", [](uint64_t handle) {
-                return BindlessArrayUpdateCommand::create(handle);
+                return BindlessArrayUpdateCommand::create(handle).release();
             },
             pyref);
     py::class_<DrawRasterSceneCommand, Command>(m, "DrawRasterSceneCommand")
         .def_static(
-            "create", [](
-                          uint64_t handle,
-                          Function vertex_func,
-                          Function pixel_func) {
-                return DrawRasterSceneCommand(handle, vertex_func, pixel_func);
+            "create", [](uint64_t handle, Function vertex_func, Function pixel_func) {
+                return DrawRasterSceneCommand::create(handle, vertex_func, pixel_func).release();
             },
             pyref);
     // vector and matrix types

@@ -166,7 +166,7 @@ void ISPCDevice::destroy_accel(uint64_t handle) noexcept {
 }
 
 ISPCDevice::ISPCDevice(const Context &ctx) noexcept
-    : Device::Interface{ctx}, _rtc_device{rtcNewDevice(nullptr)} {
+    : DeviceInterface{ctx}, _rtc_device{rtcNewDevice(nullptr)} {
     auto library_path = ctx.runtime_directory() / "ispc_device_library.isph";
     std::ifstream library_file{library_path};
     luisa::string library_source{std::istreambuf_iterator<char>{library_file},
@@ -197,10 +197,10 @@ void ISPCDevice::present_display_in_stream(
 
 }// namespace luisa::compute::ispc
 
-LUISA_EXPORT_API luisa::compute::Device::Interface *create(const luisa::compute::Context &ctx, std::string_view /* properties */) noexcept {
+LUISA_EXPORT_API luisa::compute::DeviceInterface *create(const luisa::compute::Context &ctx, std::string_view /* properties */) noexcept {
     return luisa::new_with_allocator<luisa::compute::ispc::ISPCDevice>(ctx);
 }
 
-LUISA_EXPORT_API void destroy(luisa::compute::Device::Interface *device) noexcept {
+LUISA_EXPORT_API void destroy(luisa::compute::DeviceInterface *device) noexcept {
     luisa::delete_with_allocator(device);
 }

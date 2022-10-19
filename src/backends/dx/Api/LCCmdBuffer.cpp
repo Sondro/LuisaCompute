@@ -241,7 +241,7 @@ public:
         size_t afterSize = argBuffer.size();
         argVecs.emplace_back(beforeSize, afterSize - beforeSize);
 
-        for (auto &&mesh : cmd->scene->meshes) {
+        for (auto &&mesh : cmd->scene) {
             for (auto &&v : mesh.vertex_buffers()) {
                 stateTracker->RecordState(
                     reinterpret_cast<Buffer *>(v.handle()),
@@ -661,7 +661,7 @@ public:
                     return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
             }
         }());
-        auto &&meshes = cmd->scene->meshes;
+        auto &&meshes = cmd->scene;
         auto propCount = shader->Properties().size();
         for (auto idx : vstd::range(meshes.size())) {
             cmdList->SetGraphicsRoot32BitConstant(propCount, idx, 0);

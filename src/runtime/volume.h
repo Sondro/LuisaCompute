@@ -33,7 +33,7 @@ private:
 
 private:
     friend class Device;
-    Volume(Device::Interface *device, PixelStorage storage, uint3 size, uint mip_levels = 1u, Sampler sampler = {}) noexcept
+    Volume(DeviceInterface *device, PixelStorage storage, uint3 size, uint mip_levels = 1u, Sampler sampler = {}) noexcept
         : Resource{
               device, Tag::TEXTURE,
               device->create_texture(

@@ -7,7 +7,7 @@
 #include <vstl/LockFreeArrayQueue.h>
 #include <remote/DatabaseInclude.h>
 namespace luisa::compute {
-class DeviceSer : public vstd::IOperatorNewBase, public Device::Interface {
+class DeviceSer : public vstd::IOperatorNewBase, public DeviceInterface {
     struct StreamDispatch {
         SocketVisitor::WaitReceive waitFunc;
         luisa::vector<std::pair<void *, size_t>> vec;

@@ -31,8 +31,8 @@ void RasterShaderInvoke::check_dst(luisa::span<PixelFormat const> rt_formats, De
         LUISA_ERROR("Depth-buffer's format mismatch");
     }
 }
-void RasterShaderInvoke::check_scene(RasterScene *scene) {
-    for (auto &&mesh : scene->meshes) {
+void RasterShaderInvoke::check_scene(luisa::span<RasterMesh const> scene) {
+    for (auto &&mesh : scene) {
         auto vb = mesh.vertex_buffers();
         if (vb.size() != _mesh_format->vertex_stream_count()) {
             LUISA_ERROR("Vertex buffer count mismatch!");
@@ -81,20 +81,20 @@ void rastershader_check_vertex_func(Function func) {
 void rastershader_check_pixel_func(Function func) {
     rastershader_check_func(func);
     auto ret_type = func.return_type();
-    if (rastershader_rettype_is_float4(ret_type)){
+    if (rastershader_rettype_is_float4(ret_type)) {
         return;
     }
-    if(ret_type->is_structure() && ret_type->members().size() >= 1){
-        if(ret_type->members().size() > 8){
+    if (ret_type->is_structure() && ret_type->members().size() >= 1) {
+        if (ret_type->members().size() > 8) {
             LUISA_ERROR("Pixel shader return type's structure element count need less than 8!");
         }
-        for(auto&& i : ret_type->members()){
+        for (auto &&i : ret_type->members()) {
             if (!(i->is_vector() || i->is_scalar()))
                 LUISA_ERROR("Pixel shader return type can only contain scalar and vector type!");
         }
         return;
     }
-    
+
     LUISA_ERROR("Illegal pixel shader return type!");
 }
 void rastershader_check_rtv_format(luisa::span<const PixelFormat> rtv_format) {

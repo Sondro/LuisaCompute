@@ -5,7 +5,7 @@
 #include <raster/raster_state.h>
 #include <raster/depth_buffer.h>
 namespace luisa::compute {
-class RasterScene;
+class RasterMesh;
 class Accel;
 class BindlessArray;
 namespace detail {
@@ -104,11 +104,11 @@ public:
     luisa::span<PixelFormat const> _rtv_format;
     DepthFormat _dsv_format;
     void check_dst(luisa::span<PixelFormat const> rt_formats, DepthBuffer const *depth);
-    void check_scene(RasterScene *scene);
+    void check_scene(luisa::span<RasterMesh const> scene);
 #endif
     template<typename... Rtv>
         requires(sizeof...(Rtv) == 0 || detail::LegalDst<Rtv...>())
-    [[nodiscard]] auto draw(RasterScene *scene, Viewport viewport, DepthBuffer const *dsv, Rtv const &...rtv) &&noexcept {
+    [[nodiscard]] auto draw(luisa::vector<RasterMesh> &&scene, Viewport viewport, DepthBuffer const *dsv, Rtv const &...rtv) &&noexcept {
         if (dsv) {
             auto dsv_arg = ShaderDispatchCommandBase::TextureArgument(dsv->handle(), 0);
             _command->set_dsv_tex(dsv_arg);
@@ -126,7 +126,7 @@ public:
 #ifndef NDEBUG
         check_scene(scene);
 #endif
-        _command->scene = scene;
+        _command->scene = std::move(scene);
         _command->viewport = viewport;
         return std::move(_command);
     }
@@ -151,7 +151,7 @@ class RasterShader : public Resource {
     // clang-format off
 
     RasterShader(
-        Device::Interface *device,
+        DeviceInterface *device,
         const MeshFormat &mesh_format,
         const RasterState &raster_state,
         luisa::span<PixelFormat const> rtv_format,
@@ -187,7 +187,7 @@ class RasterShader : public Resource {
 #endif
         }
 
-    RasterShader(Device::Interface *device,
+    RasterShader(DeviceInterface *device,
                  const MeshFormat &mesh_format,
                  const RasterState &raster_state,
                  luisa::span<PixelFormat const> rtv_format,
@@ -224,7 +224,7 @@ class RasterShader : public Resource {
         }
     // AOT Shader
     RasterShader(
-        Device::Interface *device,
+        DeviceInterface *device,
         const MeshFormat &mesh_format,
         const RasterState &raster_state,
         luisa::span<PixelFormat const> rtv_format,

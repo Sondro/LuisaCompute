@@ -13,6 +13,7 @@
 #include <condition_variable>
 
 #include <core/basic_types.h>
+#include <core/stl/vector.h>
 #include <core/stl/queue.h>
 #include <core/stl/functional.h>
 

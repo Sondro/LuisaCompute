@@ -53,8 +53,4 @@ public:
           _index_buffer(vertex_count) {
     }
 };
-class RasterScene {
-public:
-    luisa::vector<RasterMesh> meshes;
-};
 }// namespace luisa::compute

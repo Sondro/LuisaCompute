@@ -4,7 +4,7 @@ namespace luisa::compute {
 DepthBuffer Device::create_depth_buffer(DepthFormat depth_format, uint2 size) noexcept {
     return _create<DepthBuffer>(depth_format, size);
 }
-DepthBuffer::DepthBuffer(Device::Interface *device, DepthFormat format, uint2 size)
+DepthBuffer::DepthBuffer(DeviceInterface *device, DepthFormat format, uint2 size)
     : _size(size), _format(format),
       Resource(
           device,

@@ -153,12 +153,12 @@ private:
 
 private:
     // JIT shader
-    Shader(Device::Interface *device,
+    Shader(DeviceInterface *device,
            luisa::shared_ptr<const detail::FunctionBuilder> kernel,
            const std::filesystem::path &file_path) noexcept
         : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), file_path.string<char, std::char_traits<char>, luisa::allocator<char>>())},
           _kernel{std::move(kernel)} {}
-    Shader(Device::Interface *device,
+    Shader(DeviceInterface *device,
            luisa::shared_ptr<const detail::FunctionBuilder> kernel,
            bool use_cache) noexcept
         : Resource{device, Tag::SHADER, device->create_shader(kernel->function(), use_cache)},
@@ -166,7 +166,7 @@ private:
 
 private:
     // AOT shader
-    Shader(Device::Interface *device,
+    Shader(DeviceInterface *device,
            const std::filesystem::path &file_path) noexcept
         : Resource{[device, &file_path]() noexcept {
               std::array arg_types{Type::of<Args>()...};

@@ -4,7 +4,7 @@
 
 #include <core/logging.h>
 #include <runtime/command.h>
-
+#include <raster/raster_scene.h>
 namespace luisa::compute {
 
 std::byte *ShaderDispatchCommandBase::_make_space(size_t size) noexcept {
@@ -209,7 +209,7 @@ void DrawRasterSceneCommand::encode_accel(uint64_t handle) noexcept {
 }
 
 Function DrawRasterSceneCommand::arg_kernel() {
-    if(_vertex_func.builder() == nullptr) return Function{};
+    if (_vertex_func.builder() == nullptr) return Function{};
     if (_argument_count >= _vertex_func.arguments().size()) {
         _default_func = _pixel_func;
         _argument_count = 1;
@@ -254,5 +254,15 @@ void AccelBuildCommand::Modification::set_mesh(uint64_t handle) noexcept {
     mesh = handle;
     flags |= flag_mesh;
 }
-
+DrawRasterSceneCommand::DrawRasterSceneCommand(
+    uint64_t handle,
+    Function vertex_func,
+    Function pixel_func)
+    : ShaderDispatchCommandBase(Command::Tag::EDrawRasterSceneCommand),
+      _handle(handle),
+      _vertex_func(vertex_func),
+      _pixel_func(pixel_func) { _default_func = _vertex_func; }
+DrawRasterSceneCommand::~DrawRasterSceneCommand() {}
+DrawRasterSceneCommand::DrawRasterSceneCommand(DrawRasterSceneCommand &&) noexcept = default;
+DrawRasterSceneCommand &DrawRasterSceneCommand::operator=(DrawRasterSceneCommand &&) noexcept = default;
 }// namespace luisa::compute

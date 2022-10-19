@@ -27,7 +27,7 @@ private:
 private:
     friend class Device;
     friend class Mesh;
-    explicit Accel(Device::Interface *device, UsageHint hint = UsageHint::FAST_TRACE, bool allow_compact = false, bool allow_update = true) noexcept;
+    explicit Accel(DeviceInterface *device, UsageHint hint = UsageHint::FAST_TRACE, bool allow_compact = false, bool allow_update = true) noexcept;
 
 public:
     Accel() noexcept = default;

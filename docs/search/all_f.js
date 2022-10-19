@@ -37,7 +37,7 @@ var searchData=
   ['prefer_5fupdate_34',['PREFER_UPDATE',['../d8/d37/namespaceluisa_1_1compute.html#a64463a2984ce24f41388a1cf382ead11a51c5ea1e50025d8780628e8894a6635f',1,'luisa::compute']]],
   ['present_35',['Present',['../d4/d21/classluisa_1_1compute_1_1_swap_chain.html#d1/d48/structluisa_1_1compute_1_1_swap_chain_1_1_present',1,'luisa::compute::SwapChain']]],
   ['present_36',['present',['../d4/d21/classluisa_1_1compute_1_1_swap_chain.html#ad09199cc9e31099235720a96e1bcbf19',1,'luisa::compute::SwapChain']]],
-  ['present_5fdisplay_5fin_5fstream_37',['present_display_in_stream',['../d2/dda/classluisa_1_1compute_1_1ispc_1_1_i_s_p_c_device.html#ad80182940d96beb58ea69d27ed45228e',1,'luisa::compute::ispc::ISPCDevice::present_display_in_stream()'],['../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#a080c885b53822f11af29fb0c2b0c89b1',1,'luisa::compute::Device::Interface::present_display_in_stream()']]],
+  ['present_5fdisplay_5fin_5fstream_37',['present_display_in_stream',['../d2/dda/classluisa_1_1compute_1_1ispc_1_1_i_s_p_c_device.html#ad80182940d96beb58ea69d27ed45228e',1,'luisa::compute::ispc::ISPCDevice::present_display_in_stream()'],['../d1/d9d/classluisa_1_1compute_1_1_device_1_1_interface.html#a080c885b53822f11af29fb0c2b0c89b1',1,'luisa::compute::DeviceInterface::present_display_in_stream()']]],
   ['printer_38',['Printer',['../d2/d48/classluisa_1_1compute_1_1_printer.html',1,'luisa::compute::Printer'],['../d2/d48/classluisa_1_1compute_1_1_printer.html#ac9edf455a1f7b5fba2cb24da5c7b5838',1,'luisa::compute::Printer::Printer()']]],
   ['printer_2ecpp_39',['printer.cpp',['../da/de9/printer_8cpp.html',1,'']]],
   ['printer_2eh_40',['printer.h',['../db/dab/printer_8h.html',1,'']]],

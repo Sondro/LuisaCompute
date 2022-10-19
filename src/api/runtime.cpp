@@ -9,13 +9,13 @@
 namespace luisa::compute {
 
 struct BufferResource final : public Resource {
-    BufferResource(Device::Interface *device, size_t size_bytes) noexcept
+    BufferResource(DeviceInterface *device, size_t size_bytes) noexcept
         : Resource{device, Tag::BUFFER, device->create_buffer(size_bytes)} {}
 };
 
 struct TextureResource final : public Resource {
     TextureResource(
-        Device::Interface *device,
+        DeviceInterface *device,
         PixelFormat format, uint dimension,
         uint width, uint height, uint depth,
         uint mipmap_levels) noexcept
@@ -23,7 +23,7 @@ struct TextureResource final : public Resource {
 };
 
 struct ShaderResource : public Resource {
-    ShaderResource(Device::Interface *device, Function f) noexcept
+    ShaderResource(DeviceInterface *device, Function f) noexcept
         : Resource{device, Tag::SHADER, device->create_shader(f)} {}
 };
 

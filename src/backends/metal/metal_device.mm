@@ -56,7 +56,7 @@ void MetalDevice::destroy_stream(uint64_t handle) noexcept {
 }
 
 MetalDevice::MetalDevice(const Context &ctx, uint32_t index) noexcept
-    : Device::Interface{ctx} {
+    : DeviceInterface{ctx} {
 
     auto devices = MTLCopyAllDevices();
     if (devices.count == 0u) {
@@ -575,12 +575,12 @@ void MetalDevice::present_display_in_stream(uint64_t stream_handle, uint64_t swa
 
 }
 
-LUISA_EXPORT_API luisa::compute::Device::Interface *create(const luisa::compute::Context &ctx, std::string_view properties) noexcept {
+LUISA_EXPORT_API luisa::compute::DeviceInterface *create(const luisa::compute::Context &ctx, std::string_view properties) noexcept {
     auto p = nlohmann::json::parse(properties);
     auto index = p.value("index", 0);
     return luisa::new_with_allocator<luisa::compute::metal::MetalDevice>(ctx, index);
 }
 
-LUISA_EXPORT_API void destroy(luisa::compute::Device::Interface *device) noexcept {
+LUISA_EXPORT_API void destroy(luisa::compute::DeviceInterface *device) noexcept {
     luisa::delete_with_allocator(device);
 }

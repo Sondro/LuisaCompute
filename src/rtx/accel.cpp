@@ -21,7 +21,7 @@ Accel Device::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_u
     return _create<Accel>(hint, allow_compact, allow_update);
 }
 
-Accel::Accel(Device::Interface *device, AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept
+Accel::Accel(DeviceInterface *device, AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept
     : Resource{device, Resource::Tag::ACCEL, device->create_accel(hint, allow_compact, allow_update)} {}
 
 luisa::unique_ptr<Command> Accel::build(Accel::BuildRequest request) noexcept {

@@ -572,8 +572,7 @@ public:
             if (dsv.handle != ~0ull) {
                 SetTexDst(dsv);
             }
-            auto scene = command->scene;
-            for (auto &&mesh : scene->meshes) {
+            for (auto &&mesh : command->scene) {
                 for (auto &&v : mesh.vertex_buffers()) {
                     AddDispatchHandle(
                         v.handle(),

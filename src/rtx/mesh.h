@@ -36,7 +36,7 @@ private:
             is_buffer_or_view_v<TBuffer> &&
             std::same_as<buffer_element_t<TBuffer>, Triangle>
     [[nodiscard]] static uint64_t _create_resource(
-        Device::Interface *device, AccelUsageHint hint,
+        DeviceInterface *device, AccelUsageHint hint,
         bool allow_compact,
         bool allow_update,
         const VBuffer &vertex_buffer, const TBuffer &triangle_buffer) noexcept {
@@ -54,7 +54,7 @@ private:
 
 private:
     template<typename VBuffer, typename TBuffer>
-    Mesh(Device::Interface *device, const VBuffer &vertex_buffer, const TBuffer &triangle_buffer,
+    Mesh(DeviceInterface *device, const VBuffer &vertex_buffer, const TBuffer &triangle_buffer,
          AccelUsageHint hint = AccelUsageHint::FAST_TRACE,
          bool allow_compact = true,
          bool allow_update = false) noexcept
