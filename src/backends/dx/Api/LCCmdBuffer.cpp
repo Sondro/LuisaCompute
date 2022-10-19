@@ -275,9 +275,9 @@ public:
     Buffer const *accelScratchBuffer;
     std::pair<size_t, size_t> *accelScratchOffsets;
     std::pair<size_t, size_t> *bufferVec;
-    vstd::vector<BindProperty> bindProps;
-    vstd::vector<ButtomCompactCmd> updateAccel;
-    vstd::vector<D3D12_VERTEX_BUFFER_VIEW> vbv;
+    vstd::vector<BindProperty> *bindProps;
+    vstd::vector<ButtomCompactCmd> *updateAccel;
+    vstd::vector<D3D12_VERTEX_BUFFER_VIEW> *vbv;
     BottomAccelData *bottomAccelData;
 
     void visit(const BufferUploadCommand *cmd) noexcept override {
@@ -331,7 +331,7 @@ public:
         void operator()(ShaderDispatchCommandBase::BufferArgument const &bf) {
             auto res = reinterpret_cast<Buffer const *>(bf.handle);
 
-            self->bindProps.emplace_back(
+            self->bindProps->emplace_back(
                 BufferView(res, bf.offset));
             ++arg;
         }
@@ -339,14 +339,14 @@ public:
             auto rt = reinterpret_cast<TextureBase *>(bf.handle);
             //UAV
             if (((uint)arg->varUsage & (uint)Usage::WRITE) != 0) {
-                self->bindProps.emplace_back(
+                self->bindProps->emplace_back(
                     DescriptorHeapView(
                         self->device->globalHeap.get(),
                         rt->GetGlobalUAVIndex(bf.level)));
             }
             // SRV
             else {
-                self->bindProps.emplace_back(
+                self->bindProps->emplace_back(
                     DescriptorHeapView(
                         self->device->globalHeap.get(),
                         rt->GetGlobalSRVIndex(bf.level)));
@@ -356,17 +356,17 @@ public:
         void operator()(ShaderDispatchCommandBase::BindlessArrayArgument const &bf) {
             auto arr = reinterpret_cast<BindlessArray *>(bf.handle);
             auto res = arr->Buffer();
-            self->bindProps.emplace_back(
+            self->bindProps->emplace_back(
                 BufferView(res, 0));
             ++arg;
         }
         void operator()(ShaderDispatchCommandBase::AccelArgument const &bf) {
             auto accel = reinterpret_cast<TopAccel *>(bf.handle);
             if ((static_cast<uint>(arg->varUsage) & static_cast<uint>(Usage::WRITE)) == 0) {
-                self->bindProps.emplace_back(
+                self->bindProps->emplace_back(
                     accel);
             }
-            self->bindProps.emplace_back(
+            self->bindProps->emplace_back(
                 BufferView(accel->GetInstBuffer()));
             ++arg;
         }
@@ -375,21 +375,21 @@ public:
         }
     };
     void visit(const ShaderDispatchCommand *cmd) noexcept override {
-        bindProps.clear();
+        bindProps->clear();
         auto shader = reinterpret_cast<ComputeShader const *>(cmd->handle());
         auto &&tempBuffer = *bufferVec;
         bufferVec++;
-        bindProps.emplace_back(DescriptorHeapView(device->samplerHeap.get()));
-        bindProps.emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
+        bindProps->emplace_back(DescriptorHeapView(device->samplerHeap.get()));
+        bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
         DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
-        bindProps.push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
+        bindProps->push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
         cmd->decode(Visitor{this, shader->Args().data()});
 
         auto cs = static_cast<ComputeShader const *>(shader);
         bd->DispatchCompute(
             cs,
             cmd->dispatch_size(),
-            bindProps);
+            *bindProps);
         /*switch (shader->GetTag()) {
             case Shader::Tag::ComputeShader: {
                 auto cs = static_cast<ComputeShader const *>(shader);
@@ -536,7 +536,7 @@ public:
             *bd,
             BufferView(accelScratchBuffer, accelScratchOffsets->first, accelScratchOffsets->second));
         if (accel->RequireCompact()) {
-            updateAccel.emplace_back(ButtomCompactCmd{
+            updateAccel->emplace_back(ButtomCompactCmd{
                 .accel = accel,
                 .offset = accelScratchOffsets->first,
                 .size = accelScratchOffsets->second});
@@ -550,7 +550,7 @@ public:
             BufferView(accelScratchBuffer, accelScratchOffsets->first, accelScratchOffsets->second),
             *bottomAccelData);
         if (accel->RequireCompact()) {
-            updateAccel.emplace_back(ButtomCompactCmd{
+            updateAccel->emplace_back(ButtomCompactCmd{
                 .accel = accel,
                 .offset = accelScratchOffsets->first,
                 .size = accelScratchOffsets->second});
@@ -568,23 +568,24 @@ public:
         //TODO
     }
     void visit(const DrawRasterSceneCommand *cmd) noexcept override {
-        bindProps.clear();
+        bindProps->clear();
         auto shader = reinterpret_cast<RasterShader const *>(cmd->handle());
         auto &&tempBuffer = *bufferVec;
         bufferVec++;
-        bindProps.emplace_back(DescriptorHeapView(device->samplerHeap.get()));
+        bindProps->emplace_back(DescriptorHeapView(device->samplerHeap.get()));
         if (tempBuffer.second > 0) {
-            bindProps.emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
+            bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
         }
         DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
-        bindProps.push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
+        bindProps->push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
         cmd->decode(Visitor{this, shader->Args().data()});
-        bd->SetRasterShader(shader, bindProps);
+        bd->SetRasterShader(shader, *bindProps);
         auto cmdList = bd->CmdList();
         auto rtvs = cmd->rtv_texs();
         auto dsv = cmd->dsv_tex();
         // TODO:Set render target
         // Set viewport
+        auto alloc = bd->GetCB()->GetAlloc();
         {
             D3D12_VIEWPORT view;
             uint2 size{0};
@@ -619,7 +620,6 @@ public:
             D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
             D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle;
             D3D12_CPU_DESCRIPTOR_HANDLE *dsvHandlePtr = nullptr;
-            auto alloc = bd->GetCB()->GetAlloc();
             if (!rtvs.empty()) {
                 auto chunk = alloc->rtvAllocator.Allocate(rtvs.size());
                 auto descHeap = reinterpret_cast<DescriptorHeap *>(chunk.handle);
@@ -664,11 +664,11 @@ public:
         auto &&meshes = cmd->scene;
         auto propCount = shader->Properties().size();
         for (auto idx : vstd::range(meshes.size())) {
-            cmdList->SetGraphicsRoot32BitConstant(propCount, idx, 0);
             auto &&mesh = meshes[idx];
-            vbv.clear();
+            cmdList->SetGraphicsRoot32BitConstant(propCount, mesh.object_id(), 0);
+            vbv->clear();
             auto src = mesh.vertex_buffers();
-            vbv.push_back_func(
+            vbv->push_back_func(
                 src.size(),
                 [&](size_t i) {
                     auto &e = src[i];
@@ -678,7 +678,7 @@ public:
                         .SizeInBytes = static_cast<uint>(e.size()),
                         .StrideInBytes = static_cast<uint>(e.stride())};
                 });
-            cmdList->IASetVertexBuffers(0, vbv.size(), vbv.data());
+            cmdList->IASetVertexBuffers(0, vbv->size(), vbv->data());
             auto const &i = mesh.index();
 
             luisa::visit(
@@ -697,6 +697,7 @@ public:
                 },
                 i);
         }
+
     }
 };
 inline bool ReorderFuncTable::is_res_in_bindless(uint64_t bindless_handle, uint64_t resource_handle) const noexcept {
@@ -728,6 +729,9 @@ void LCCmdBuffer::Execute(
         LCPreProcessVisitor ppVisitor;
         ppVisitor.stateTracker = &tracker;
         LCCmdVisitor visitor;
+        visitor.bindProps = &bindProps;
+        visitor.updateAccel = &updateAccel;
+        visitor.vbv = &vbv;
         visitor.device = device;
         visitor.stateTracker = &tracker;
         auto cmdBuffer = allocator->GetBuffer();
@@ -795,12 +799,12 @@ void LCCmdBuffer::Execute(
             // Execute commands
             for (auto &&i : lst)
                 i->accept(visitor);
-            if (!visitor.updateAccel.empty()) {
+            if (!visitor.updateAccel->empty()) {
                 tracker.RecordState(
                     accelScratchBuffer,
                     D3D12_RESOURCE_STATE_COPY_SOURCE);
                 tracker.UpdateState(cmdBuilder);
-                for (auto &&i : visitor.updateAccel) {
+                for (auto &&i : updateAccel) {
                     i.accel.visit([&](auto &&p) {
                         p->FinalCopy(
                             cmdBuilder,
@@ -815,12 +819,12 @@ void LCCmdBuffer::Execute(
                 queue.ForceSync(
                     allocator,
                     *cmdBuffer);
-                for (auto &&i : visitor.updateAccel) {
+                for (auto &&i : updateAccel) {
                     i.accel.visit([&](auto &&p) {
                         p->CheckAccel(cmdBuilder);
                     });
                 }
-                visitor.updateAccel.clear();
+                visitor.updateAccel->clear();
             }
             tracker.ClearFence();
         }

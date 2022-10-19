@@ -118,8 +118,8 @@ int main(int argc, char *argv[]) {
     VertexBufferView vbv(vb);
     luisa::vector<RasterMesh> scene;
     // Emplace two triangles
-    scene.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, ib, 2);
-    scene.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, ib, 2);
+    scene.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, ib, 2, 0);
+    scene.emplace_back(luisa::span<VertexBufferView const>{&vbv, 1ull}, ib, 2, 1);
     float vertPoses[sizeof(PackedFloat3) * 3] = {
         -1, -1, 0.1,
         1, 0, 0, 1,

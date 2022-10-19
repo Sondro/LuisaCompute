@@ -52,7 +52,6 @@ function BuildProject(config)
 	if projectType ~= nil then
 		set_kind(projectType)
 	end
-	--[[
 	local unityBuildBatch = GetValue(config.unityBuildBatch)
 	if (unityBuildBatch ~= nil) and (unityBuildBatch > 1) then
 		add_rules("c.unity_build", {
@@ -62,7 +61,6 @@ function BuildProject(config)
 			batchsize = unityBuildBatch
 		})
 	end
-	]]
 	local value = GetValue(config.exception)
 	if (value ~= nil) and value then
 		if has_config("is_msvc") then

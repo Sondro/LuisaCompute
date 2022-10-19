@@ -72,7 +72,7 @@ public:
     static void GenerateBindless(
         CodegenResult::Properties &properties,
         vstd::string &str);
-    static void PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty);
+    static void PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty, bool isRaster);
     static void PostprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult);
     static void CodegenProperties(
         CodegenResult::Properties &properties,

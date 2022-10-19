@@ -128,6 +128,7 @@ private:
                 return func(resMap, rangePool);
         }
     }
+    // Texture, Buffer
     size_t GetLastLayerWrite(RangeHandle *handle, Range range) {
         size_t layer = 0;
         IterateMap(
@@ -143,15 +144,16 @@ private:
                 }
             }
         }
+        if (handle->type == ResourceType::Buffer) {
+            layer = std::max<int64_t>(layer, maxBufferReadLevel + 1);
+        }
         return layer;
     }
+    // Mesh, Accel
     size_t GetLastLayerWrite(NoRangeHandle *handle) {
         size_t layer = std::max<int64_t>(handle->view.readLayer + 1, handle->view.writeLayer + 1);
 
         switch (handle->type) {
-            case ResourceType::Buffer: {
-                layer = std::max<int64_t>(layer, maxBufferReadLevel);
-            } break;
             case ResourceType::Mesh: {
                 auto maxAccelLevel = std::max(maxAccelReadLevel, maxAccelWriteLevel);
                 layer = std::max<int64_t>(layer, maxAccelLevel + 1);
@@ -165,6 +167,7 @@ private:
         }
         return layer;
     }
+    // Bindless
     size_t GetLastLayerWrite(BindlessHandle *handle) {
         return std::max<int64_t>(handle->view.readLayer + 1, handle->view.writeLayer + 1);
     }
@@ -608,7 +611,7 @@ public:
         auto binSize = pixel_storage_size(command->storage(), sz.x, sz.y, sz.z);
         AddCommand(command, SetRW(command->texture(), CopyRange(command->level(), 1), ResourceType::Texture, command->buffer(), CopyRange(command->buffer_offset(), binSize), ResourceType::Buffer));
     }
-    void visit(const ClearDepthCommand* command) noexcept override{
+    void visit(const ClearDepthCommand *command) noexcept override {
         AddCommand(command, SetWrite(command->handle(), Range{}, ResourceType::Texture));
     }
 
@@ -637,7 +640,7 @@ public:
                 Range(command->triangle_buffer_offset(),
                       command->triangle_buffer_size())));
     }
-    
+
     void visit(const CustomCommand *command) noexcept override {
         dispatchReadHandle.clear();
         dispatchWriteHandle.clear();

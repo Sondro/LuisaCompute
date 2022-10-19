@@ -29,6 +29,9 @@ protected:
     uint64 lastFence = 0;
     ReorderFuncTable reorderFuncTable;
     CommandReorderVisitor<ReorderFuncTable, false> reorder;
+    vstd::vector<BindProperty> bindProps;
+    vstd::vector<ButtomCompactCmd> updateAccel;
+    vstd::vector<D3D12_VERTEX_BUFFER_VIEW> vbv;
 
 public:
     CommandQueue queue;

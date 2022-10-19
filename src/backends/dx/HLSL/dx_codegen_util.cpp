@@ -1291,7 +1291,7 @@ void CodegenUtility::GenerateBindless(
     }
 }
 
-void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty) {
+void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty, bool isRaster) {
     registerCount = {0u, 0u, 0u};
     properties.emplace_back(
         Property{
@@ -1308,6 +1308,7 @@ void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &prop
                 0,
                 0});
     }
+    if (isRaster) { registerCount[0] += 1; }
     properties.emplace_back(
         Property{
             ShaderVariableType::SRVDescriptorHeap,
@@ -1457,7 +1458,7 @@ CodegenResult CodegenUtility::Codegen(
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;
-    PreprocessCodegenProperties(properties, varData, registerCount, true);
+    PreprocessCodegenProperties(properties, varData, registerCount, true, false);
     CodegenProperties(properties, finalResult, varData, kernel, 0, registerCount);
     PostprocessCodegenProperties(properties, finalResult);
     finalResult << varData << codegenData;
@@ -1587,7 +1588,7 @@ uint iid:SV_INSTANCEID;
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;
-    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer);
+    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer, true);
     CodegenProperties(properties, finalResult, varData, vertFunc, 0, registerCount);
     CodegenProperties(properties, finalResult, varData, pixelFunc, 1, registerCount);
     PostprocessCodegenProperties(properties, finalResult);
