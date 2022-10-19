@@ -130,5 +130,53 @@ void Accel::set_visibility_on_update(size_t index, bool visible) noexcept {
         iter->second.set_visibility(visible);
     }
 }
-
+Expr<Accel>::Expr(const RefExpr *expr) noexcept
+    : _expression{expr} {}
+Expr<Accel>::Expr(const Accel &accel) noexcept
+    : _expression{detail::FunctionBuilder::current()->accel_binding(
+          accel.handle())} {}
+Var<Hit> Expr<Accel>::trace_closest(Expr<Ray> ray) const noexcept {
+    return def<Hit>(
+        detail::FunctionBuilder::current()->call(
+            Type::of<Hit>(), CallOp::TRACE_CLOSEST,
+            {_expression, ray.expression()}));
+}
+Var<bool> Expr<Accel>::trace_any(Expr<Ray> ray) const noexcept {
+    return def<bool>(
+        detail::FunctionBuilder::current()->call(
+            Type::of<bool>(), CallOp::TRACE_ANY,
+            {_expression, ray.expression()}));
+}
+Var<float4x4> Expr<Accel>::instance_transform(Expr<uint> instance_id) const noexcept {
+    return def<float4x4>(
+        detail::FunctionBuilder::current()->call(
+            Type::of<float4x4>(), CallOp::INSTANCE_TO_WORLD_MATRIX,
+            {_expression, instance_id.expression()}));
+}
+Var<float4x4> Expr<Accel>::instance_transform(Expr<int> instance_id) const noexcept {
+    return def<float4x4>(
+        detail::FunctionBuilder::current()->call(
+            Type::of<float4x4>(), CallOp::INSTANCE_TO_WORLD_MATRIX,
+            {_expression, instance_id.expression()}));
+}
+void Expr<Accel>::set_instance_transform(Expr<int> instance_id, Expr<float4x4> mat) const noexcept {
+    detail::FunctionBuilder::current()->call(
+        CallOp::SET_INSTANCE_TRANSFORM,
+        {_expression, instance_id.expression(), mat.expression()});
+}
+void Expr<Accel>::set_instance_visibility(Expr<int> instance_id, Expr<bool> vis) const noexcept {
+    detail::FunctionBuilder::current()->call(
+        CallOp::SET_INSTANCE_VISIBILITY,
+        {_expression, instance_id.expression(), vis.expression()});
+}
+void Expr<Accel>::set_instance_transform(Expr<uint> instance_id, Expr<float4x4> mat) const noexcept {
+    detail::FunctionBuilder::current()->call(
+        CallOp::SET_INSTANCE_TRANSFORM,
+        {_expression, instance_id.expression(), mat.expression()});
+}
+void Expr<Accel>::set_instance_visibility(Expr<uint> instance_id, Expr<bool> vis) const noexcept {
+    detail::FunctionBuilder::current()->call(
+        CallOp::SET_INSTANCE_VISIBILITY,
+        {_expression, instance_id.expression(), vis.expression()});
+}
 }// namespace luisa::compute

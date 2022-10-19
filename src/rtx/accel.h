@@ -54,62 +54,23 @@ public:
 };
 
 template<>
-struct Expr<Accel> {
+struct LC_RUNTIME_API Expr<Accel> {
 
 private:
     const RefExpr *_expression{nullptr};
 
 public:
-    explicit Expr(const RefExpr *expr) noexcept
-        : _expression{expr} {}
-    Expr(const Accel &accel) noexcept
-        : _expression{detail::FunctionBuilder::current()->accel_binding(
-              accel.handle())} {}
+    explicit Expr(const RefExpr *expr) noexcept;
+    Expr(const Accel &accel) noexcept;
     [[nodiscard]] auto expression() const noexcept { return _expression; }
-    [[nodiscard]] auto trace_closest(Expr<Ray> ray) const noexcept {
-        return def<Hit>(
-            detail::FunctionBuilder::current()->call(
-                Type::of<Hit>(), CallOp::TRACE_CLOSEST,
-                {_expression, ray.expression()}));
-    }
-    [[nodiscard]] auto trace_any(Expr<Ray> ray) const noexcept {
-        return def<bool>(
-            detail::FunctionBuilder::current()->call(
-                Type::of<bool>(), CallOp::TRACE_ANY,
-                {_expression, ray.expression()}));
-    }
-    [[nodiscard]] auto instance_transform(Expr<uint> instance_id) const noexcept {
-        return def<float4x4>(
-            detail::FunctionBuilder::current()->call(
-                Type::of<float4x4>(), CallOp::INSTANCE_TO_WORLD_MATRIX,
-                {_expression, instance_id.expression()}));
-    }
-    [[nodiscard]] auto instance_transform(Expr<int> instance_id) const noexcept {
-        return def<float4x4>(
-            detail::FunctionBuilder::current()->call(
-                Type::of<float4x4>(), CallOp::INSTANCE_TO_WORLD_MATRIX,
-                {_expression, instance_id.expression()}));
-    }
-    void set_instance_transform(Expr<int> instance_id, Expr<float4x4> mat) const noexcept {
-        detail::FunctionBuilder::current()->call(
-            CallOp::SET_INSTANCE_TRANSFORM,
-            {_expression, instance_id.expression(), mat.expression()});
-    }
-    void set_instance_visibility(Expr<int> instance_id, Expr<bool> vis) const noexcept {
-        detail::FunctionBuilder::current()->call(
-            CallOp::SET_INSTANCE_VISIBILITY,
-            {_expression, instance_id.expression(), vis.expression()});
-    }
-    void set_instance_transform(Expr<uint> instance_id, Expr<float4x4> mat) const noexcept {
-        detail::FunctionBuilder::current()->call(
-            CallOp::SET_INSTANCE_TRANSFORM,
-            {_expression, instance_id.expression(), mat.expression()});
-    }
-    void set_instance_visibility(Expr<uint> instance_id, Expr<bool> vis) const noexcept {
-        detail::FunctionBuilder::current()->call(
-            CallOp::SET_INSTANCE_VISIBILITY,
-            {_expression, instance_id.expression(), vis.expression()});
-    }
+    [[nodiscard]] Var<Hit> trace_closest(Expr<Ray> ray) const noexcept;
+    [[nodiscard]] Var<bool> trace_any(Expr<Ray> ray) const noexcept;
+    [[nodiscard]] Var<float4x4> instance_transform(Expr<uint> instance_id) const noexcept;
+    [[nodiscard]] Var<float4x4> instance_transform(Expr<int> instance_id) const noexcept;
+    void set_instance_transform(Expr<int> instance_id, Expr<float4x4> mat) const noexcept;
+    void set_instance_visibility(Expr<int> instance_id, Expr<bool> vis) const noexcept;
+    void set_instance_transform(Expr<uint> instance_id, Expr<float4x4> mat) const noexcept;
+    void set_instance_visibility(Expr<uint> instance_id, Expr<bool> vis) const noexcept;
 };
 
 template<>

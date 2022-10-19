@@ -191,7 +191,6 @@ public:
     void visit(const ShaderDispatchCommand *cmd) noexcept override {
         auto cs = reinterpret_cast<ComputeShader *>(cmd->handle());
         size_t beforeSize = argBuffer.size();
-        EmplaceData((vbyte const *)vstd::get_rvalue_ptr(cmd->dispatch_size()), 12);
         cmd->decode(Visitor{this, cs->Args().data()});
         UniformAlign(16);
         size_t afterSize = argBuffer.size();
@@ -380,7 +379,15 @@ public:
         auto &&tempBuffer = *bufferVec;
         bufferVec++;
         bindProps->emplace_back(DescriptorHeapView(device->samplerHeap.get()));
-        bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
+        auto bfView = bd->GetCB()->GetAlloc()->GetTempUploadBuffer(16, 16);
+        auto dispatchId = cmd->dispatch_size();
+        static_cast<UploadBuffer const *>(bfView.buffer)->CopyData(bfView.offset, {reinterpret_cast<vbyte const *>(&dispatchId), sizeof(uint3)});
+        bindProps->emplace_back(bfView);
+
+        if (tempBuffer.second > 0) {
+            bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
+        }
+
         DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
         bindProps->push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
         cmd->decode(Visitor{this, shader->Args().data()});
@@ -388,7 +395,7 @@ public:
         auto cs = static_cast<ComputeShader const *>(shader);
         bd->DispatchCompute(
             cs,
-            cmd->dispatch_size(),
+            dispatchId,
             *bindProps);
         /*switch (shader->GetTag()) {
             case Shader::Tag::ComputeShader: {
@@ -697,7 +704,6 @@ public:
                 },
                 i);
         }
-
     }
 };
 inline bool ReorderFuncTable::is_res_in_bindless(uint64_t bindless_handle, uint64_t resource_handle) const noexcept {

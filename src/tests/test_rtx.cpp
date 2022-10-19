@@ -116,8 +116,8 @@ int main(int argc, char *argv[]) {
 
     */
         
-    auto colorspace_shader = device.compile_to(colorspace_kernel, ".data/colorspace");
-    auto raytracing_shader = device.compile_to(raytracing_kernel, ".data/raytracing"sv);
+    auto colorspace_shader = device.compile(colorspace_kernel, false);
+    auto raytracing_shader = device.compile(raytracing_kernel, false);
     
 
     static constexpr auto width = 512u;

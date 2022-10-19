@@ -81,7 +81,6 @@ Mesh Device::create_mesh(VBuffer &&vertices, TBuffer &&triangles, AccelUsageHint
     return this->_create<Mesh>(std::forward<VBuffer>(vertices), std::forward<TBuffer>(triangles), hint, allow_compact, allow_update);
 }
 
-
 }// namespace luisa::compute
 
 LUISA_STRUCT(luisa::compute::Triangle, i0, i1, i2){};

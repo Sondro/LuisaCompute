@@ -69,7 +69,7 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
             str << "grpId"sv;
             break;
         case Variable::Tag::DISPATCH_SIZE:
-            str << "a.dsp_c"sv;
+            str << "dsp_c[0]"sv;
             break;
         case Variable::Tag::OBJECT_ID:
             str << "obj_id"sv;
@@ -1002,7 +1002,7 @@ void CodegenUtility::GetBasicTypeName(uint64 typeIndex, vstd::string &str) {
         },
         typeIndex);
 }
-void CodegenUtility::CodegenFunction(Function func, vstd::string &result) {
+void CodegenUtility::CodegenFunction(Function func, vstd::string &result, bool cbufferNonEmpty) {
 
     auto codegenOneFunc = [&](Function func) {
         auto constants = func.constants();
@@ -1037,10 +1037,12 @@ void CodegenUtility::CodegenFunction(Function func, vstd::string &result) {
                    << ','
                    << vstd::to_string(func.block_size().z)
                    << R"()]
-void main(uint3 thdId : SV_GroupThreadId, uint3 dspId : SV_DispatchThreadID, uint3 grpId : SV_GroupId){
-Args a = _Global[0];
-if(any(dspId >= a.dsp_c)) return;
+void main(uint3 thdId:SV_GroupThreadId,uint3 dspId:SV_DispatchThreadID,uint3 grpId:SV_GroupId){
+if(any(dspId >= dsp_c[0])) return;
 )"sv;
+            if (cbufferNonEmpty) {
+                result << "Args a = _Global[0];\n"sv;
+            }
             opt->funcType = CodegenStackData::FuncType::Kernel;
             opt->arguments.Clear();
             opt->arguments.reserve(func.arguments().size());
@@ -1083,7 +1085,7 @@ void CodegenUtility::CodegenVertex(Function vert, vstd::string &result, bool cBu
     };
     auto callable = [&](auto &callable, Function func) -> void {
         gen(callable, func);
-        CodegenFunction(func, result);
+        CodegenFunction(func, result, cBufferNonEmpty);
     };
     gen(callable, vert);
     vstd::string retName;
@@ -1138,7 +1140,7 @@ void CodegenUtility::CodegenPixel(Function pixel, vstd::string &result, bool cBu
     };
     auto callable = [&](auto &callable, Function func) -> void {
         gen(callable, func);
-        CodegenFunction(func, result);
+        CodegenFunction(func, result, cBufferNonEmpty);
     };
     gen(callable, pixel);
     vstd::string retName;
@@ -1225,11 +1227,18 @@ bool CodegenUtility::IsCBufferNonEmpty(std::initializer_list<vstd::IRange<Variab
     }
     return false;
 }
+bool CodegenUtility::IsCBufferNonEmpty(Function f) {
+    for (auto &&i : f.arguments()) {
+        if (detail::IsCBuffer(i.tag())) {
+            return true;
+        }
+    }
+    return false;
+}
 void CodegenUtility::GenerateCBuffer(
     std::initializer_list<vstd::IRange<Variable> *> fs,
-    vstd::string &result,
-    vstd::string_view extraArgs) {
-    result << "struct Args{\n"sv << extraArgs;
+    vstd::string &result) {
+    result << "struct Args{\n"sv;
     size_t alignCount = 0;
 
     for (auto &&f : fs) {
@@ -1242,7 +1251,7 @@ void CodegenUtility::GenerateCBuffer(
         }
     }
     result << R"(};
-StructuredBuffer<Args> _Global:register(t0);
+StructuredBuffer<Args> _Global:register(t1);
 )"sv;
 }
 #ifdef USE_SPIRV
@@ -1291,24 +1300,29 @@ void CodegenUtility::GenerateBindless(
     }
 }
 
-void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty, bool isRaster) {
-    registerCount = {0u, 0u, 0u};
+void CodegenUtility::PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty) {
+    registerCount = {0u, 0u, 1u};
     properties.emplace_back(
         Property{
             ShaderVariableType::SampDescriptorHeap,
             1u,
             0u,
             16u});
+    properties.emplace_back(
+        Property{
+            ShaderVariableType::StructuredBuffer,
+            0,
+            0,
+            0});
     if (cbufferNonEmpty) {
         registerCount[2] += 1;
         properties.emplace_back(
             Property{
                 ShaderVariableType::StructuredBuffer,
                 0,
-                0,
+                1,
                 0});
     }
-    if (isRaster) { registerCount[0] += 1; }
     properties.emplace_back(
         Property{
             ShaderVariableType::SRVDescriptorHeap,
@@ -1442,9 +1456,11 @@ CodegenResult CodegenUtility::Codegen(
     auto disposeOpt = vstd::scope_exit([&] {
         CodegenStackData::DeAllocate(std::move(opt));
     });
+    bool nonEmptyCbuffer = IsCBufferNonEmpty(kernel);
+
     vstd::string codegenData;
     vstd::string varData;
-    CodegenFunction(kernel, codegenData);
+    CodegenFunction(kernel, codegenData, nonEmptyCbuffer);
     vstd::string finalResult;
     finalResult.reserve(65500);
 
@@ -1454,11 +1470,14 @@ CodegenResult CodegenUtility::Codegen(
     }
     opt->funcType = CodegenStackData::FuncType::Callable;
     auto argRange = vstd::RangeImpl(vstd::CacheEndRange(kernel.arguments()) | vstd::ValueRange{});
-    GenerateCBuffer({static_cast<vstd::IRange<Variable> *>(&argRange)}, varData, "uint3 dsp_c;\n"sv);
+    if (nonEmptyCbuffer) {
+        GenerateCBuffer({static_cast<vstd::IRange<Variable> *>(&argRange)}, varData);
+    }
+    varData << "StructuredBuffer<uint3> dsp_c:register(t0);\n"sv;
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;
-    PreprocessCodegenProperties(properties, varData, registerCount, true, false);
+    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer);
     CodegenProperties(properties, finalResult, varData, kernel, 0, registerCount);
     PostprocessCodegenProperties(properties, finalResult);
     finalResult << varData << codegenData;
@@ -1583,12 +1602,12 @@ uint iid:SV_INSTANCEID;
     }
     opt->funcType = CodegenStackData::FuncType::Callable;
     if (nonEmptyCbuffer) {
-        GenerateCBuffer(funcs, varData, {});
+        GenerateCBuffer(funcs, varData);
     }
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;
-    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer, true);
+    PreprocessCodegenProperties(properties, varData, registerCount, nonEmptyCbuffer);
     CodegenProperties(properties, finalResult, varData, vertFunc, 0, registerCount);
     CodegenProperties(properties, finalResult, varData, pixelFunc, 1, registerCount);
     PostprocessCodegenProperties(properties, finalResult);

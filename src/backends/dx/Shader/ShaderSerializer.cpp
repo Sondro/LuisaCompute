@@ -361,9 +361,13 @@ ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
             default: assert(false); break;
         }
     }
+    /*
     if (isRasterShader) {
         allParameter.emplace_back().InitAsConstants(1, 0);
+    } else {
+        allParameter.emplace_back().InitAsConstants(3, 0, 1);
     }
+    */
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSigDesc(
         allParameter.size(), allParameter.data(),
         0, nullptr,

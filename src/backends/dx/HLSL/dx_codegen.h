@@ -59,20 +59,21 @@ public:
 
     static void CodegenFunction(
         Function func,
-        vstd::string &result);
+        vstd::string &result,
+        bool cBufferNonEmpty);
     static void CodegenVertex(Function vert, vstd::string &result, bool cBufferNonEmpty);
     static void CodegenPixel(Function pixel, vstd::string &result, bool cBufferNonEmpty);
     static StructGenerator const *GetStruct(
         Type const *type);
     static bool IsCBufferNonEmpty(std::initializer_list<vstd::IRange<Variable> *> f);
+    static bool IsCBufferNonEmpty(Function func);
     static void GenerateCBuffer(
         std::initializer_list<vstd::IRange<Variable> *> f,
-        vstd::string &result,
-        vstd::string_view extraArgs);
+        vstd::string &result);
     static void GenerateBindless(
         CodegenResult::Properties &properties,
         vstd::string &str);
-    static void PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty, bool isRaster);
+    static void PreprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &varData, vstd::array<uint, 3> &registerCount, bool cbufferNonEmpty);
     static void PostprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult);
     static void CodegenProperties(
         CodegenResult::Properties &properties,
