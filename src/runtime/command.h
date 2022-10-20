@@ -14,7 +14,7 @@
 #include <ast/function_builder.h>
 #include <runtime/stream_tag.h>
 #include <raster/viewport.h>
-struct DispatchIndirectArgs;
+#include <dsl/custom_struct.h>
 
 namespace luisa::compute {
 class CmdDeser;

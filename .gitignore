@@ -346,3 +346,4 @@ doxygen_output
 
 # XMake
 .xmake/**
+src/ext/python/**

@@ -3,6 +3,8 @@
 #include <raster/raster_state.h>
 #include <runtime/pixel.h>
 #include <core/binary_io_visitor.h>
+#include <core/stl/unordered_map.h>
+#include <vstl/Hash.h>
 namespace toolhub::directx {
 struct CodegenResult;
 class ShaderSerializer;
@@ -20,8 +22,22 @@ private:
         ComPtr<ID3D12RootSignature> &&rootSig,
         ComPtr<ID3D12PipelineState> &&pso,
         TopologyType type);
+    struct PairEqual {
+        using type = std::pair<size_t, bool>;
+        bool operator()(type const &a, type const &b) const {
+            return a.first == b.first && a.second == b.second;
+        }
+    };
+    mutable luisa::unordered_map<
+        std::pair<size_t, bool>,
+        ComPtr<ID3D12CommandSignature>,
+        vstd::hash<std::pair<size_t, bool>>,
+        PairEqual>
+        cmdSigs;
+    mutable std::mutex cmdSigMtx;
 
 public:
+    ID3D12CommandSignature *CmdSig(size_t vertexCount, bool index);
     TopologyType TopoType() const { return type; }
     ID3D12PipelineState *Pso() const { return pso.Get(); }
     Tag GetTag() const noexcept override { return Tag::RasterShader; }

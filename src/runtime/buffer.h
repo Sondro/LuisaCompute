@@ -8,7 +8,7 @@
 #include <core/mathematics.h>
 #include <runtime/command.h>
 #include <runtime/resource.h>
-
+#include <runtime/device.h>
 namespace luisa::compute {
 
 template<typename T>

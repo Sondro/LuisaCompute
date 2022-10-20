@@ -2,7 +2,7 @@
 #include <dsl/expr.h>
 #include <dsl/var.h>
 #include <dsl/struct.h>
-#include <dsl/dispatch_indirect_decl.h>
+#include <dsl/custom_struct.h>
 LUISA_CUSTOM_STRUCT(DispatchIndirectArgs);
 namespace luisa::compute {
 inline void clear_dispatch_indirect_buffer(BufferVar<DispatchIndirectArgs> const &buffer) {

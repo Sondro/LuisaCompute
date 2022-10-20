@@ -177,13 +177,9 @@ int main(int argc, char *argv[]) {
     LUISA_INFO("Recorded AST in {} ms.", clock.toc());
 
     Context context{argv[0]};
-    if (argc <= 1) {
-        LUISA_INFO("Usage: {} <backend>. <backend>: cuda, dx, ispc, metal", argv[0]);
-        exit(1);
-    }
-    auto device = context.create_device(argv[1]);
+    auto device = context.create_device("dx");
     auto render = device.compile(render_kernel);
-//    exit(0);
+    //    exit(0);
 
     static constexpr auto width = 1280u;
     static constexpr auto height = 720u;
@@ -201,47 +197,51 @@ int main(int argc, char *argv[]) {
 #else
     static constexpr auto total_spp = 1024u;
 #endif
-
-    auto t0 = clock.toc();
-    auto last_t = t0;
-    auto spp_count = 0u;
-    for (auto spp = 0u; spp < total_spp; spp += interval) {
+    for (size_t idx = 0; idx < 10; ++idx) {
+        auto t0 = clock.toc();
+        auto last_t = t0;
+        auto spp_count = 0u;
+        for (auto spp = 0u; spp < total_spp; spp += interval) {
 
 #ifdef ENABLE_DISPLAY
-        // swap buffers
-        copy_event.synchronize();
-        std::swap(cv_image, cv_back_image);
+            // swap buffers
+            copy_event.synchronize();
+            std::swap(cv_image, cv_back_image);
 #endif
 
-        // render
-        auto command_buffer = stream.command_buffer();
-        for (auto frame = spp; frame < spp + interval && frame < total_spp; frame++) {
-            command_buffer << render(seed_image, accum_image, frame).dispatch(width, height);
-            spp_count++;
+            // render
+            auto command_buffer = stream.command_buffer();
+            for (auto frame = spp; frame < spp + interval && frame < total_spp; frame++) {
+                command_buffer << render(seed_image, accum_image, frame).dispatch(width, height);
+                spp_count++;
+            }
+            command_buffer << commit();
+
+#ifdef ENABLE_DISPLAY
+            command_buffer << accum_image.copy_to(cv_back_image.data)
+                           << copy_event.signal();
+
+            // display
+            cv_image *= 1.0 / std::max(spp, 1u);
+            auto mean = std::max(cv::mean(cv::mean(cv_image))[0], 1e-3);
+            cv::sqrt(cv_image * (0.24 / mean), cv_image);
+            cv::imshow("Display", cv_image);
+            if (auto key = cv::waitKey(1); key == 'q' || key == 27) { break; }
+            auto t = clock.toc();
+            LUISA_INFO(
+                "{:.2f} samples/s [{}/{}]",
+                interval * 1000.0 / (t - last_t),
+                spp + interval, total_spp);
+            last_t = t;
+#endif
         }
-        command_buffer << commit();
-
 #ifdef ENABLE_DISPLAY
-        command_buffer << accum_image.copy_to(cv_back_image.data)
-                       << copy_event.signal();
-
-        // display
-        cv_image *= 1.0 / std::max(spp, 1u);
-        auto mean = std::max(cv::mean(cv::mean(cv_image))[0], 1e-3);
-        cv::sqrt(cv_image * (0.24 / mean), cv_image);
-        cv::imshow("Display", cv_image);
-        if (auto key = cv::waitKey(1); key == 'q' || key == 27) { break; }
-        auto t = clock.toc();
-        LUISA_INFO(
-            "{:.2f} samples/s [{}/{}]",
-            interval * 1000.0 / (t - last_t),
-            spp + interval, total_spp);
-        last_t = t;
+        stream << accum_image.copy_to(cv_back_image.data);
 #endif
+        stream << synchronize();
+        
+        LUISA_INFO("{} samples/s", spp_count / (clock.toc() - t0) * 1000);
     }
-#ifdef ENABLE_DISPLAY
-    stream << accum_image.copy_to(cv_back_image.data);
-#endif
-    stream << synchronize();
-    LUISA_INFO("{} samples/s", spp_count / (clock.toc() - t0) * 1000);
+
+    system("pause");
 }

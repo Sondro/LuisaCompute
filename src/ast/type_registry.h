@@ -354,20 +354,20 @@ constexpr auto is_valid_reflection_v = is_valid_reflection<S, M, O>::value;
 #define LUISA_STRUCT_REFLECT(S, ...) \
     LUISA_MAKE_STRUCTURE_TYPE_DESC_SPECIALIZATION(S, __VA_ARGS__)
 
-#define LUISA_CUSTOM_STRUCT_REFLECT(S, desc)                 \
-    template<>                                               \
-    struct luisa::compute::is_struct<S> : std::true_type {}; \
-    template<>                                               \
-    struct luisa::compute::struct_member_tuple<S> {          \
-        using this_type = S;                                 \
-        using type = std::tuple<>;                           \
-    };                                                       \
-    template<>                                               \
-    struct luisa::compute::detail::TypeDesc<S> {             \
-        using this_type = S;                                 \
-        static luisa::string_view description() noexcept {   \
-            return desc;                                     \
-        }                                                    \
+#define LUISA_CUSTOM_STRUCT_REFLECT(S, desc)                                 \
+    template<>                                                               \
+    struct luisa::compute::is_struct<luisa::compute::S> : std::true_type {}; \
+    template<>                                                               \
+    struct luisa::compute::struct_member_tuple<luisa::compute::S> {          \
+        using this_type = luisa::compute::S;                                 \
+        using type = std::tuple<>;                                           \
+    };                                                                       \
+    template<>                                                               \
+    struct luisa::compute::detail::TypeDesc<luisa::compute::S> {             \
+        using this_type = luisa::compute::S;                                 \
+        static luisa::string_view description() noexcept {                   \
+            return desc;                                                     \
+        }                                                                    \
     };
 
 static constexpr size_t custom_struct_size = 4;

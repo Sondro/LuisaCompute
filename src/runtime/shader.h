@@ -9,7 +9,7 @@
 #include <runtime/resource.h>
 #include <runtime/device.h>
 #include <runtime/bindless_array.h>
-#include <dsl/dispatch_indirect_decl.h>
+#include <dsl/custom_struct.h>
 
 namespace luisa::compute {
 
@@ -106,7 +106,7 @@ protected:
         return std::move(_command);
     }
     [[nodiscard]] auto _parallelize(Buffer<DispatchIndirectArgs> const& indirect_buffer) &&noexcept {
-        _command->set_dispatch_size({indirect_buffer.handle()});
+        _command->set_dispatch_size(ShaderDispatchCommand::IndirectArg{indirect_buffer.handle()});
         return std::move(_command);
     }
 };

@@ -13,7 +13,7 @@
 #include <Shader/RasterShader.h>
 #include <core/stl/variant.h>
 #include <runtime/buffer.h>
-#include <dsl/dispatch_indirect_decl.h>
+#include <dsl/custom_struct.h>
 namespace toolhub::directx {
 class LCPreProcessVisitor : public CommandVisitor {
 public:

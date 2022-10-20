@@ -458,4 +458,40 @@ RasterShader *RasterShader::LoadRaster(
     }
     return ptr;
 }
+ID3D12CommandSignature *RasterShader::CmdSig(size_t vertexCount, bool index) {
+    std::lock_guard lck(cmdSigMtx);
+    auto ite = cmdSigs.try_emplace(std::pair<size_t, bool>(vertexCount, index));
+    auto &cmd = ite.first->second;
+    if (!ite.second) return cmd.Get();
+    vstd::vector<D3D12_INDIRECT_ARGUMENT_DESC> indDesc;
+    indDesc.reserve(vertexCount + (index ? 1 : 0) + 2);
+    size_t byteSize = 4 + vertexCount * sizeof(D3D12_VERTEX_BUFFER_VIEW) + (index ? (sizeof(D3D12_DRAW_INDEXED_ARGUMENTS) + sizeof(D3D12_INDEX_BUFFER_VIEW)) : sizeof(D3D12_DRAW_ARGUMENTS));
+    {
+        auto &cst = indDesc.emplace_back();
+        cst.Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+        cst.Constant.RootParameterIndex = properties.size();
+        cst.Constant.DestOffsetIn32BitValues = 0;
+        cst.Constant.Num32BitValuesToSet = 1;
+    }
+    for (auto &&i : vstd::range(vertexCount)) {
+        auto &vbv = indDesc.emplace_back();
+        vbv.Type = D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
+        vbv.VertexBuffer.Slot = i;
+    }
+    if (index) {
+        auto &idv = indDesc.emplace_back();
+        idv.Type = D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW;
+        auto &draw = indDesc.emplace_back();
+        draw.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+    } else {
+        auto &draw = indDesc.emplace_back();
+        draw.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+    }
+    D3D12_COMMAND_SIGNATURE_DESC desc{
+        .ByteStride = static_cast<uint>(byteSize),
+        .NumArgumentDescs = static_cast<uint>(indDesc.size()),
+        .pArgumentDescs = indDesc.data()};
+    ThrowIfFailed(device->device->CreateCommandSignature(&desc, rootSig.Get(), IID_PPV_ARGS(&cmd)));
+    return cmd.Get();
+}
 }// namespace toolhub::directx

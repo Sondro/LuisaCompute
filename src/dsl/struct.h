@@ -156,57 +156,57 @@ using c_array_to_std_array_t = typename c_array_to_std_array<T>::type;
     template<>                                                                                \
     struct luisa_compute_extension<S> final : luisa::compute::detail::Ref<S>
 
-#define LUISA_CUSTOM_STRUCT(S)                                                              \
-    LUISA_CUSTOM_STRUCT_REFLECT(S, #S)                                                      \
-    template<>                                                                              \
-    struct luisa_compute_extension<S>;                                                      \
-    template<>                                                                              \
-    struct luisa::compute::is_custom_struct<S> : public std::true_type {};                  \
-    namespace luisa::compute {                                                              \
-    template<>                                                                              \
-    struct Expr<S> {                                                                        \
-    private:                                                                                \
-        using this_type = S;                                                                \
-        const Expression *_expression;                                                      \
-                                                                                            \
-    public:                                                                                 \
-        explicit Expr(const Expression *e) noexcept                                         \
-            : _expression{e} {}                                                             \
-        [[nodiscard]] auto expression() const noexcept { return this->_expression; }        \
-        Expr(Expr &&another) noexcept = default;                                            \
-        Expr(const Expr &another) noexcept = default;                                       \
-        Expr &operator=(Expr) noexcept = delete;                                            \
-    };                                                                                      \
-    namespace detail {                                                                      \
-    template<>                                                                              \
-    struct Ref<S> {                                                                         \
-    private:                                                                                \
-        using this_type = S;                                                                \
-        const Expression *_expression;                                                      \
-                                                                                            \
-    public:                                                                                 \
-        explicit Ref(const Expression *e) noexcept                                          \
-            : _expression{e} {}                                                             \
-        [[nodiscard]] auto expression() const noexcept { return this->_expression; }        \
-        Ref(Ref &&another) noexcept = default;                                              \
-        Ref(const Ref &another) noexcept = default;                                         \
-        [[nodiscard]] operator Expr<S>() const noexcept {                                   \
-            return Expr<S>{this->expression()};                                             \
-        }                                                                                   \
-        template<typename Rhs>                                                              \
-        void operator=(Rhs &&rhs) &noexcept { dsl::assign(*this, std::forward<Rhs>(rhs)); } \
-        void operator=(Ref rhs) &noexcept { (*this) = Expr{rhs}; }                          \
-        [[nodiscard]] auto operator->() noexcept {                                          \
-            return reinterpret_cast<luisa_compute_extension<S> *>(this);                    \
-        }                                                                                   \
-        [[nodiscard]] auto operator->() const noexcept {                                    \
-            return reinterpret_cast<const luisa_compute_extension<S> *>(this);              \
-        }                                                                                   \
-    };                                                                                      \
-    }                                                                                       \
-    }                                                                                       \
-    template<>                                                                              \
-    struct luisa_compute_extension<S> final : luisa::compute::detail::Ref<S> {}
+#define LUISA_CUSTOM_STRUCT(S)                                                                 \
+    LUISA_CUSTOM_STRUCT_REFLECT(S, #S)                                                         \
+    template<>                                                                                 \
+    struct luisa_compute_extension<luisa::compute::S>;                                         \
+    template<>                                                                                 \
+    struct luisa::compute::is_custom_struct<luisa::compute::S> : public std::true_type {};     \
+    namespace luisa::compute {                                                                 \
+    template<>                                                                                 \
+    struct Expr<luisa::compute::S> {                                                           \
+    private:                                                                                   \
+        using this_type = luisa::compute::S;                                                   \
+        const Expression *_expression;                                                         \
+                                                                                               \
+    public:                                                                                    \
+        explicit Expr(const Expression *e) noexcept                                            \
+            : _expression{e} {}                                                                \
+        [[nodiscard]] auto expression() const noexcept { return this->_expression; }           \
+        Expr(Expr &&another) noexcept = default;                                               \
+        Expr(const Expr &another) noexcept = default;                                          \
+        Expr &operator=(Expr) noexcept = delete;                                               \
+    };                                                                                         \
+    namespace detail {                                                                         \
+    template<>                                                                                 \
+    struct Ref<luisa::compute::S> {                                                            \
+    private:                                                                                   \
+        using this_type = luisa::compute::S;                                                   \
+        const Expression *_expression;                                                         \
+                                                                                               \
+    public:                                                                                    \
+        explicit Ref(const Expression *e) noexcept                                             \
+            : _expression{e} {}                                                                \
+        [[nodiscard]] auto expression() const noexcept { return this->_expression; }           \
+        Ref(Ref &&another) noexcept = default;                                                 \
+        Ref(const Ref &another) noexcept = default;                                            \
+        [[nodiscard]] operator Expr<this_type>() const noexcept {                      \
+            return Expr<this_type>{this->expression()};                                \
+        }                                                                                      \
+        template<typename Rhs>                                                                 \
+        void operator=(Rhs &&rhs) &noexcept { dsl::assign(*this, std::forward<Rhs>(rhs)); }    \
+        void operator=(Ref rhs) &noexcept { (*this) = Expr{rhs}; }                             \
+        [[nodiscard]] auto operator->() noexcept {                                             \
+            return reinterpret_cast<luisa_compute_extension<this_type> *>(this);       \
+        }                                                                                      \
+        [[nodiscard]] auto operator->() const noexcept {                                       \
+            return reinterpret_cast<const luisa_compute_extension<this_type> *>(this); \
+        }                                                                                      \
+    };                                                                                         \
+    }                                                                                          \
+    }                                                                                          \
+    template<>                                                                                 \
+    struct luisa_compute_extension<luisa::compute::S> final : luisa::compute::detail::Ref<luisa::compute::S> {}
 
 #define LUISA_BINDING_GROUP_MAKE_MEMBER_VAR_DECL(m) \
     Var<member_type_##m> m;

@@ -20,7 +20,7 @@ private:
         ComPtr<ID3D12PipelineState> &&pso);
 
     mutable ComPtr<ID3D12CommandSignature> cmdSig;
-    mutable vstd::spin_mutex cmdSigMtx;
+    mutable std::mutex cmdSigMtx;
 
 public:
     ID3D12CommandSignature* CmdSig() const;
