@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <vstl/Common.h>
 #include <runtime/command.h>
+#include <runtime/buffer.h>
 #include <raster/raster_scene.h>
-
 namespace luisa::compute {
 /*
 struct FuncTable{
@@ -556,7 +556,19 @@ public:
 
     // Shader : function, read/write multi resources
     void visit(const ShaderDispatchCommand *command) noexcept override {
-        visit(command, command->handle());
+        visit(command, command->handle(), [&] {
+            luisa::visit(
+                [&]<typename T>(T const &t) {
+                    if constexpr (std::is_same_v<T, ShaderDispatchCommand::IndirectArg>) {
+                        AddDispatchHandle(
+                            t.handle,
+                            ResourceType::Buffer,
+                            Range(),
+                            false);
+                    }
+                },
+                command->dispatch_size());
+        });
     }
     void visit(const DrawRasterSceneCommand *command) noexcept override {
         auto SetTexDst = [&](ShaderDispatchCommandBase::TextureArgument const &a) {

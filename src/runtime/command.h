@@ -14,6 +14,7 @@
 #include <ast/function_builder.h>
 #include <runtime/stream_tag.h>
 #include <raster/viewport.h>
+struct DispatchIndirectArgs;
 
 namespace luisa::compute {
 class CmdDeser;
@@ -464,11 +465,17 @@ public:
 };
 
 class LC_RUNTIME_API ShaderDispatchCommand final : public ShaderDispatchCommandBase {
-
+public:
+    struct IndirectArg{
+        uint64_t handle;
+    };
 private:
     uint64_t _handle{};
     Function _kernel{};
-    uint _dispatch_size[3]{};
+    luisa::variant<
+        uint3,
+        IndirectArg>
+        _dispatch_size;
 
 private:
     ShaderDispatchCommand() noexcept
@@ -476,12 +483,15 @@ private:
 
 public:
     explicit ShaderDispatchCommand(uint64_t handle, Function kernel) noexcept;
-    ShaderDispatchCommand(ShaderDispatchCommand &&) noexcept = default;
-    ShaderDispatchCommand &operator=(ShaderDispatchCommand &&) noexcept = default;
+    ShaderDispatchCommand(ShaderDispatchCommand &&) noexcept;
+    ShaderDispatchCommand &operator=(ShaderDispatchCommand &&) noexcept;
+    ~ShaderDispatchCommand();
     void set_dispatch_size(uint3 launch_size) noexcept;
+    void set_dispatch_size(IndirectArg indirect_arg) noexcept;
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] auto kernel() const noexcept { return _kernel; }
-    [[nodiscard]] auto dispatch_size() const noexcept { return uint3(_dispatch_size[0], _dispatch_size[1], _dispatch_size[2]); }
+    [[nodiscard]] auto const &dispatch_size() const noexcept { return _dispatch_size; }
+
     void encode_buffer(uint64_t handle, size_t offset, size_t size) noexcept;
     void encode_texture(uint64_t handle, uint32_t level) noexcept;
     void encode_uniform(const void *data, size_t size) noexcept;
@@ -510,7 +520,7 @@ public:
         uint64_t handle,
         Function vertex_func,
         Function pixel_func);
-    DrawRasterSceneCommand(DrawRasterSceneCommand const&) noexcept = delete;
+    DrawRasterSceneCommand(DrawRasterSceneCommand const &) noexcept = delete;
     DrawRasterSceneCommand(DrawRasterSceneCommand &&) noexcept;
     DrawRasterSceneCommand &operator=(DrawRasterSceneCommand &&) noexcept;
     [[nodiscard]] auto handle() const noexcept { return _handle; }

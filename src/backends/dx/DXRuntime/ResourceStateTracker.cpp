@@ -138,15 +138,12 @@ D3D12_RESOURCE_STATES ResourceStateTracker::BufferReadState() const {
         case D3D12_COMMAND_LIST_TYPE_COMPUTE:
             return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+                   D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT |
                    D3D12_RESOURCE_STATE_COPY_SOURCE;
         case D3D12_COMMAND_LIST_TYPE_COPY:
             return D3D12_RESOURCE_STATE_COPY_SOURCE;
         default:
-            return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
-                   D3D12_RESOURCE_STATE_INDEX_BUFFER |
-                   D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
-                   D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
-                   D3D12_RESOURCE_STATE_COPY_SOURCE;
+            return D3D12_RESOURCE_STATE_GENERIC_READ;
     }
 }
 D3D12_RESOURCE_STATES ResourceStateTracker::TextureReadState(TextureBase const *tex) const {

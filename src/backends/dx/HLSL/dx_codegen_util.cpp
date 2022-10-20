@@ -69,7 +69,10 @@ void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &
             str << "grpId"sv;
             break;
         case Variable::Tag::DISPATCH_SIZE:
-            str << "dsp_c"sv;
+            str << "dsp_c.xyz"sv;
+            break;
+        case Variable::Tag::KERNEL_ID:
+            str << "dsp_c.w"sv;
             break;
         case Variable::Tag::OBJECT_ID:
             str << "obj_id"sv;
@@ -277,6 +280,9 @@ void CodegenUtility::GetTypeName(Type const &type, vstd::string &str, Usage usag
         } break;
         case Type::Tag::ACCEL: {
             str << "RaytracingAccelerationStructure"sv;
+        } break;
+        case Type::Tag::CUSTOM: {
+            str << type.description();
         } break;
         default:
             LUISA_ERROR_WITH_LOCATION("Bad.");
@@ -868,6 +874,20 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
         case CallOp::GET_VERTEX_DATA:
             str << "get_vert"sv;
             break;
+        case CallOp::CLEAR_DISPATCH_INDIRECT_BUFFER:
+            str << "ClearDispInd"sv;
+            break;
+        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL: {
+            str << "EmplaceDispInd"sv;
+            auto type = args[2]->type();
+            if (type->is_scalar()) {
+                str << "1D"sv;
+            } else if (type->dimension() == 2) {
+                str << "2D"sv;
+            } else {
+                str << "3D"sv;
+            }
+        } break;
         default: {
             auto errorType = expr->op();
             VEngine_Log("Function Not Implemented"sv);
@@ -1038,7 +1058,7 @@ void CodegenUtility::CodegenFunction(Function func, vstd::string &result, bool c
                    << vstd::to_string(func.block_size().z)
                    << R"()]
 void main(uint3 thdId:SV_GroupThreadId,uint3 dspId:SV_DispatchThreadID,uint3 grpId:SV_GroupId){
-if(any(dspId >= dsp_c)) return;
+if(any(dspId >= dsp_c.xyz)) return;
 )"sv;
             if (cbufferNonEmpty) {
                 result << "Args a = _Global[0];\n"sv;
@@ -1212,6 +1232,8 @@ static bool IsCBuffer(Variable::Tag t) {
         case Variable::Tag::BLOCK_ID:
         case Variable::Tag::DISPATCH_ID:
         case Variable::Tag::DISPATCH_SIZE:
+        case Variable::Tag::KERNEL_ID:
+        case Variable::Tag::OBJECT_ID:
             return false;
     }
     return true;
@@ -1314,7 +1336,7 @@ void CodegenUtility::PreprocessCodegenProperties(
         properties.emplace_back(
             Property{
                 ShaderVariableType::ConstantValue,
-                3,
+                4,
                 0,
                 0});
     }
@@ -1477,7 +1499,7 @@ CodegenResult CodegenUtility::Codegen(
     if (nonEmptyCbuffer) {
         GenerateCBuffer({static_cast<vstd::IRange<Variable> *>(&argRange)}, varData);
     }
-    varData << "uint3 dsp_c:register(b0);\n"sv;
+    varData << "uint4 dsp_c:register(b0);\n"sv;
     CodegenResult::Properties properties;
     uint64 immutableHeaderSize = finalResult.size();
     vstd::array<uint, 3> registerCount;

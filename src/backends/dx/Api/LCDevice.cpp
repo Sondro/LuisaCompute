@@ -410,7 +410,17 @@ uint64_t LCDevice::create_depth_buffer(DepthFormat format, uint width, uint heig
                 width, height,
                 format, nativeDevice.defaultAllocator.get())));
 }
-
+uint64_t LCDevice::create_dispatch_indirect_buffer(size_t capacity) noexcept {
+     return reinterpret_cast<uint64>(
+        static_cast<Buffer *>(
+            new DefaultBuffer(
+                &nativeDevice,
+                4 + 28 * capacity,
+                nativeDevice.defaultAllocator.get())));
+}
+size_t LCDevice::dispatch_indirect_size(size_t indirect_capacity)  noexcept{
+    return 28 * indirect_capacity + 4;
+}
 void LCDevice::destroy_depth_buffer(uint64_t handle) noexcept {
     delete reinterpret_cast<TextureBase *>(handle);
 }

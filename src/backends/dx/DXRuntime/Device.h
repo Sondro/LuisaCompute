@@ -6,7 +6,6 @@
 #include <dxgi1_4.h>
 #include <DXRuntime/ShaderPaths.h>
 #include <core/binary_io_visitor.h>
-#include <Shader/CommandSignature.h>
 #include <vstl/BinaryReader.h>
 namespace luisa::compute {
 class BinaryIOVisitor;
@@ -67,7 +66,6 @@ public:
 	vstd::unique_ptr<IGpuAllocator> defaultAllocator;
 	vstd::unique_ptr<DescriptorHeap> globalHeap;
 	vstd::unique_ptr<DescriptorHeap> samplerHeap;
-	//vstd::StackObject<CommandSignature> cmdSig;
 
 	LazyLoadShader setAccelKernel;
 
@@ -79,6 +77,7 @@ public:
 	LazyLoadShader bc7TryMode137;
 	LazyLoadShader bc7TryMode02;
 	LazyLoadShader bc7EncodeBlock;
+	
 	/*vstd::unique_ptr<ComputeShader> bc6_0;
     vstd::unique_ptr<ComputeShader> bc6_1;
     vstd::unique_ptr<ComputeShader> bc6_2;

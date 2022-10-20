@@ -16,28 +16,33 @@ void RefExpr::_mark(Usage usage) const noexcept {
 
 void CallExpr::_mark() const noexcept {
     if (is_builtin()) {
-        if (_op == CallOp::BUFFER_WRITE ||
-            _op == CallOp::TEXTURE_WRITE ||
-            _op == CallOp::SET_INSTANCE_TRANSFORM ||
-            _op == CallOp::SET_INSTANCE_VISIBILITY ||
-            _op == CallOp::ATOMIC_EXCHANGE ||
-            _op == CallOp::ATOMIC_COMPARE_EXCHANGE ||
-            _op == CallOp::ATOMIC_FETCH_ADD ||
-            _op == CallOp::ATOMIC_FETCH_SUB ||
-            _op == CallOp::ATOMIC_FETCH_AND ||
-            _op == CallOp::ATOMIC_FETCH_OR ||
-            _op == CallOp::ATOMIC_FETCH_XOR ||
-            _op == CallOp::ATOMIC_FETCH_MIN ||
-            _op == CallOp::ATOMIC_FETCH_MAX) {
-            _arguments[0]->mark(Usage::WRITE);
-            for (auto i = 1u; i < _arguments.size(); i++) {
-                _arguments[i]->mark(Usage::READ);
-            }
-        } else {
-            for (auto arg : _arguments) {
-                arg->mark(Usage::READ);
-            }
-        }
+        switch (_op) {
+            case CallOp::BUFFER_WRITE:
+            case CallOp::TEXTURE_WRITE:
+            case CallOp::SET_INSTANCE_TRANSFORM:
+            case CallOp::SET_INSTANCE_VISIBILITY:
+            case CallOp::ATOMIC_EXCHANGE:
+            case CallOp::ATOMIC_COMPARE_EXCHANGE:
+            case CallOp::ATOMIC_FETCH_ADD:
+            case CallOp::ATOMIC_FETCH_SUB:
+            case CallOp::ATOMIC_FETCH_AND:
+            case CallOp::ATOMIC_FETCH_OR:
+            case CallOp::ATOMIC_FETCH_XOR:
+            case CallOp::ATOMIC_FETCH_MIN:
+            case CallOp::ATOMIC_FETCH_MAX:
+            case CallOp::CLEAR_DISPATCH_INDIRECT_BUFFER:
+            case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL: {
+                _arguments[0]->mark(Usage::WRITE);
+                for (auto i = 1u; i < _arguments.size(); i++) {
+                    _arguments[i]->mark(Usage::READ);
+                }
+            } break;
+            default:
+                for (auto arg : _arguments) {
+                    arg->mark(Usage::READ);
+                }
+                break;
+        };
     } else {
         auto args = _custom.arguments();
         for (auto i = 0u; i < args.size(); i++) {

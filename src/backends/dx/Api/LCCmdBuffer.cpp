@@ -11,6 +11,9 @@
 #include <Api/LCSwapChain.h>
 #include <backends/common/command_reorder_visitor.h>
 #include <Shader/RasterShader.h>
+#include <core/stl/variant.h>
+#include <runtime/buffer.h>
+#include <dsl/dispatch_indirect_decl.h>
 namespace toolhub::directx {
 class LCPreProcessVisitor : public CommandVisitor {
 public:
@@ -195,6 +198,14 @@ public:
         UniformAlign(16);
         size_t afterSize = argBuffer.size();
         argVecs.emplace_back(beforeSize, afterSize - beforeSize);
+        luisa::visit(
+            [&]<typename T>(T const &t) {
+                if constexpr (std::is_same_v<T, ShaderDispatchCommand::IndirectArg>) {
+                    auto buffer = reinterpret_cast<Buffer *>(t.handle);
+                    stateTracker->RecordState(buffer, stateTracker->BufferReadState());
+                }
+            },
+            cmd->dispatch_size());
     }
     void visit(const AccelBuildCommand *cmd) noexcept override {
         auto accel = reinterpret_cast<TopAccel *>(cmd->handle());
@@ -379,21 +390,34 @@ public:
         auto &&tempBuffer = *bufferVec;
         bufferVec++;
         bindProps->emplace_back(DescriptorHeapView(device->samplerHeap.get()));
-        auto dispSize = cmd->dispatch_size();
-        bindProps->emplace_back(3, make_uint4(dispSize, 1));
-        if (tempBuffer.second > 0) {
-            bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
-        }
-
-        DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
-        bindProps->push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
-        cmd->decode(Visitor{this, shader->Args().data()});
-
         auto cs = static_cast<ComputeShader const *>(shader);
-        bd->DispatchCompute(
-            cs,
-            dispSize,
-            *bindProps);
+        auto BeforeDispatch = [&]() {
+            if (tempBuffer.second > 0) {
+                bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
+            }
+            DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
+            bindProps->push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
+            cmd->decode(Visitor{this, shader->Args().data()});
+        };
+        luisa::visit(
+            [&]<typename T>(T const &t) {
+                if constexpr (std::is_same_v<T, ShaderDispatchCommand::IndirectArg>) {
+                    auto buffer = reinterpret_cast<Buffer *>(t.handle);
+                    bindProps->emplace_back();
+                    BeforeDispatch();
+                    bd->DispatchComputeIndirect(cs, *buffer, *bindProps);
+                } else {
+                    // auto bfView = bd->GetCB()->GetAlloc()->GetTempUploadBuffer(16, 16);
+                    // static_cast<UploadBuffer const *>(bfView.buffer)->CopyData(bfView.offset, {reinterpret_cast<vbyte const *>(&t), 12});
+                    bindProps->emplace_back(4, make_uint4(t, 1));
+                    BeforeDispatch();
+                    bd->DispatchCompute(
+                        cs,
+                        t,
+                        *bindProps);
+                }
+            },
+            cmd->dispatch_size());
         /*switch (shader->GetTag()) {
             case Shader::Tag::ComputeShader: {
                 auto cs = static_cast<ComputeShader const *>(shader);

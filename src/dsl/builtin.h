@@ -97,7 +97,9 @@ inline void unreachable() noexcept {
 [[nodiscard]] inline auto dispatch_id() noexcept {
     return def<uint3>(detail::FunctionBuilder::current()->dispatch_id());
 }
-
+[[nodiscard]] inline auto kernel_id() noexcept {
+    return def<uint>(detail::FunctionBuilder::current()->kernel_id());
+}
 /// Get dispatch_id.x
 [[nodiscard]] inline auto dispatch_x() noexcept {
     return dispatch_id().x;

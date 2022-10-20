@@ -8,7 +8,9 @@
 
 namespace luisa::compute {
 class DeviceInterface;
+class Device;
 class LC_RUNTIME_API Resource {
+    friend class Device;
 
 public:
     enum struct Tag : uint32_t {

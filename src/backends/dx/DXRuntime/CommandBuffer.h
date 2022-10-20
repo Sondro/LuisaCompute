@@ -40,12 +40,8 @@ public:
         RasterShader const *s,
         vstd::span<const BindProperty> resources);
     void DispatchComputeIndirect(
-        ID3D12CommandSignature *cmdSig,
         ComputeShader const *cs,
-        Buffer const &indirectBuffer,
-        size_t indirectOffset,
-        Buffer const &indirectCount,
-        size_t indirectCountOffset,
+        Buffer const& indirectBuffer,
         vstd::span<const BindProperty> resources);
     /*void DispatchRT(
         RTShader const *rt,

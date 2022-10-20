@@ -302,6 +302,7 @@ public:
     [[nodiscard]] const RefExpr *block_id() noexcept;
     /// Return dispatch id.
     [[nodiscard]] const RefExpr *dispatch_id() noexcept;
+    [[nodiscard]] const RefExpr *kernel_id() noexcept;
     /// Return dispatch size.
     [[nodiscard]] const RefExpr *dispatch_size() noexcept;
     /// Return raster texture size

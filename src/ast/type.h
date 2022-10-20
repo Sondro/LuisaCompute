@@ -274,7 +274,9 @@ public:
         BUFFER,
         TEXTURE,
         BINDLESS_ARRAY,
-        ACCEL
+        ACCEL,
+
+        CUSTOM
     };
 
 private:
@@ -346,6 +348,7 @@ public:
     [[nodiscard]] constexpr bool is_texture() const noexcept { return _tag == Tag::TEXTURE; }
     [[nodiscard]] constexpr bool is_bindless_array() const noexcept { return _tag == Tag::BINDLESS_ARRAY; }
     [[nodiscard]] constexpr bool is_accel() const noexcept { return _tag == Tag::ACCEL; }
+    [[nodiscard]] constexpr bool is_custom() const noexcept { return _tag == Tag::CUSTOM; }
 };
 
 }// namespace luisa::compute

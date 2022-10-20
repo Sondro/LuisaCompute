@@ -19,6 +19,7 @@
 
 #include <runtime/stream_tag.h>
 #include <raster/depth_format.h>
+struct DispatchIndirectArgs;
 namespace luisa::compute {
 class MeshFormat;
 class RasterState;
@@ -103,6 +104,8 @@ public:
 
     // buffer
     [[nodiscard]] virtual uint64_t create_buffer(size_t size_bytes) noexcept = 0;
+    [[nodiscard]] virtual uint64_t create_dispatch_indirect_buffer(size_t capacity) noexcept = 0;
+    [[nodiscard]] virtual size_t dispatch_indirect_size(size_t indirect_capacity) noexcept = 0;
     virtual void destroy_buffer(uint64_t handle) noexcept = 0;
     [[nodiscard]] virtual void *buffer_native_handle(uint64_t handle) const noexcept = 0;
 
@@ -268,6 +271,8 @@ public:
     [[nodiscard]] auto create_buffer(size_t size) noexcept {
         return _create<Buffer<T>>(size);
     }
+    [[nodiscard]] Buffer<DispatchIndirectArgs> create_dispatch_indirect_buffer(size_t capacity) noexcept;
+    
     void set_io_visitor(BinaryIOVisitor *visitor) noexcept {
         _impl->set_io_visitor(visitor);
     }

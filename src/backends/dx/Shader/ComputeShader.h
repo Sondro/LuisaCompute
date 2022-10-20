@@ -19,7 +19,12 @@ private:
         ComPtr<ID3D12RootSignature> &&rootSig,
         ComPtr<ID3D12PipelineState> &&pso);
 
+    mutable ComPtr<ID3D12CommandSignature> cmdSig;
+    mutable vstd::spin_mutex cmdSigMtx;
+
 public:
+    ID3D12CommandSignature* CmdSig() const;
+    Device *GetDevice() const { return device; }
     Tag GetTag() const { return Tag::ComputeShader; }
     uint3 BlockSize() const { return blockSize; }
     static ComputeShader *CompileCompute(

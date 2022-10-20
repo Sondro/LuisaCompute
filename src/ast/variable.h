@@ -40,6 +40,7 @@ public:
         BLOCK_ID,
         DISPATCH_ID,
         DISPATCH_SIZE,
+        KERNEL_ID,
         // raster builtins
         OBJECT_ID
     };

@@ -189,6 +189,25 @@ void ComputeShader::SaveCompute(
             VSTL_ABORT();
         });
 }
+ID3D12CommandSignature *ComputeShader::CmdSig() const {
+    std::lock_guard lck(cmdSigMtx);
+    if (cmdSig) return cmdSig.Get();
+    D3D12_COMMAND_SIGNATURE_DESC desc{};
+    D3D12_INDIRECT_ARGUMENT_DESC indDesc[2];
+    memset(indDesc, 0, vstd::array_byte_size(indDesc));
+    indDesc[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+    auto &c = indDesc[0].Constant;
+    c.RootParameterIndex = 1;
+    c.DestOffsetIn32BitValues = 0;
+    c.Num32BitValuesToSet = 4;
+    indDesc[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+    desc.ByteStride = 28;
+    desc.NumArgumentDescs = 2;
+    desc.pArgumentDescs = indDesc;
+    ThrowIfFailed(device->device->CreateCommandSignature(&desc, rootSig.Get(), IID_PPV_ARGS(&cmdSig)));
+    return cmdSig.Get();
+}
+
 ComputeShader::ComputeShader(
     uint3 blockSize,
     vstd::vector<Property> &&prop,
@@ -220,5 +239,4 @@ ComputeShader::ComputeShader(
 
 ComputeShader::~ComputeShader() {
 }
-
 }// namespace toolhub::directx

@@ -150,7 +150,6 @@ Device::Device(ShaderPaths const &path, uint index)
         samplerHeap->CreateSampler(
             samplers[i], i);
     }
-    //cmdSig.New(this);
     {
         std::lock_guard lck(gDxcMutex);
         gDxcRefCount++;

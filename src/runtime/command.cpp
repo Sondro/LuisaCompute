@@ -5,6 +5,7 @@
 #include <core/logging.h>
 #include <runtime/command.h>
 #include <raster/raster_scene.h>
+#include <dsl/dispatch_indirect_decl.h>
 namespace luisa::compute {
 
 std::byte *ShaderDispatchCommandBase::_make_space(size_t size) noexcept {
@@ -85,9 +86,20 @@ void ShaderDispatchCommand::set_dispatch_size(uint3 launch_size) noexcept {
         }
     }
 #endif
-    _dispatch_size[0] = launch_size.x;
-    _dispatch_size[1] = launch_size.y;
-    _dispatch_size[2] = launch_size.z;
+    _dispatch_size = launch_size;
+}
+
+void ShaderDispatchCommand::set_dispatch_size(IndirectArg indirect_arg) noexcept {
+#ifndef NDEBUG
+    if (_kernel) {
+        if (_argument_count != _kernel.arguments().size()) [[unlikely]] {
+            LUISA_ERROR_WITH_LOCATION(
+                "Not all arguments are encoded (expected {}, got {}).",
+                _kernel.arguments().size(), _argument_count);
+        }
+    }
+#endif
+    _dispatch_size = indirect_arg;
 }
 
 void ShaderDispatchCommandBase::_encode_bindless_array(Function kernel, uint64_t handle) noexcept {
@@ -151,7 +163,9 @@ void ShaderDispatchCommandBase::_encode_pending_bindings(Function kernel) noexce
         }
     }
 }
-
+ShaderDispatchCommand::ShaderDispatchCommand(ShaderDispatchCommand &&) noexcept = default;
+ShaderDispatchCommand &ShaderDispatchCommand::operator=(ShaderDispatchCommand &&) noexcept = default;
+ShaderDispatchCommand::~ShaderDispatchCommand() {}
 ShaderDispatchCommand::ShaderDispatchCommand(uint64_t handle, Function kernel) noexcept
     : ShaderDispatchCommandBase{Command::Tag::EShaderDispatchCommand}, _handle{handle}, _kernel(kernel) {
     _argument_buffer.reserve(256u);

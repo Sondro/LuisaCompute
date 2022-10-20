@@ -228,9 +228,13 @@ const Type *TypeRegistry::_decode(std::string_view desc) noexcept {
         info->_size = 8u;
         info->_alignment = 8u;
     } else [[unlikely]] {
+        info->_tag = Type::Tag::CUSTOM;
+        info->_size = custom_struct_size;
+        info->_alignment = custom_struct_align;
+        /*
         LUISA_ERROR_WITH_LOCATION(
             "Unknown type identifier: {}.",
-            type_identifier);
+            type_identifier);*/
     }
     if (!desc.empty()) [[unlikely]] {
         LUISA_ERROR_WITH_LOCATION(

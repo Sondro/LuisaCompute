@@ -5,7 +5,6 @@
 #include <Resource/Buffer.h>
 #include <Shader/ComputeShader.h>
 #include <Shader/RasterShader.h>
-
 namespace toolhub::directx {
 ID3D12GraphicsCommandList4 *CommandBufferBuilder::CmdList() const { return cb->cmdList.Get(); }
 CommandBuffer::CommandBuffer(CommandBuffer &&v)
@@ -78,23 +77,29 @@ void CommandBufferBuilder::SetRasterShader(
     RasterShader const *s,
     vstd::span<const BindProperty> resources) {
     auto c = CmdList();
-	c->SetPipelineState(s->Pso());
-	c->SetGraphicsRootSignature(s->RootSig());
-	SetRasterResources(s, resources);
+    c->SetPipelineState(s->Pso());
+    c->SetGraphicsRootSignature(s->RootSig());
+    SetRasterResources(s, resources);
 }
 void CommandBufferBuilder::DispatchComputeIndirect(
-    ID3D12CommandSignature *cmdSig,
     ComputeShader const *cs,
     Buffer const &indirectBuffer,
-    size_t indirectOffset,
-    Buffer const &indirectCount,
-    size_t indirectCountOffset,
     vstd::span<const BindProperty> resources) {
     auto c = cb->cmdList.Get();
+    auto res = indirectBuffer.GetResource();
+    size_t byteSize = indirectBuffer.GetByteSize();
+    size_t cmdSize = (byteSize - 4) / 28;
+    assert(cmdSize >= 1);
+    c->SetComputeRootSignature(cs->RootSig());
+    SetComputeResources(cs, resources);
+    c->SetPipelineState(cs->Pso());
     c->ExecuteIndirect(
-        cmdSig,
-        1, indirectBuffer.GetResource(),
-        indirectOffset, indirectCount.GetResource(), indirectCountOffset);
+        cs->CmdSig(),
+        cmdSize,
+        res,
+        sizeof(uint),
+        res,
+        0);
 }
 /*void CommandBufferBuilder::DispatchRT(
     RTShader const *rt,
