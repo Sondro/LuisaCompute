@@ -105,7 +105,15 @@ protected:
         _command->set_dispatch_size(dispatch_size);
         return std::move(_command);
     }
-    [[nodiscard]] auto _parallelize(Buffer<DispatchIndirectArgs> const& indirect_buffer) &&noexcept {
+    [[nodiscard]] auto _parallelize(Buffer<DispatchArgs1D> const& indirect_buffer) &&noexcept {
+        _command->set_dispatch_size(ShaderDispatchCommand::IndirectArg{indirect_buffer.handle()});
+        return std::move(_command);
+    }
+    [[nodiscard]] auto _parallelize(Buffer<DispatchArgs2D> const& indirect_buffer) &&noexcept {
+        _command->set_dispatch_size(ShaderDispatchCommand::IndirectArg{indirect_buffer.handle()});
+        return std::move(_command);
+    }
+    [[nodiscard]] auto _parallelize(Buffer<DispatchArgs3D> const& indirect_buffer) &&noexcept {
         _command->set_dispatch_size(ShaderDispatchCommand::IndirectArg{indirect_buffer.handle()});
         return std::move(_command);
     }
@@ -122,7 +130,7 @@ struct ShaderInvoke<1> : public ShaderInvokeBase {
     [[nodiscard]] auto dispatch(uint size_x) &&noexcept {
         return std::move(*this)._parallelize(uint3{size_x, 1u, 1u});
     }
-    [[nodiscard]] auto dispatch(Buffer<DispatchIndirectArgs> const& indirect_buffer) &&noexcept {
+    [[nodiscard]] auto dispatch(Buffer<DispatchArgs1D> const& indirect_buffer) &&noexcept {
         return std::move(*this)._parallelize(indirect_buffer);
     }
 };
@@ -136,7 +144,7 @@ struct ShaderInvoke<2> : public ShaderInvokeBase {
     [[nodiscard]] auto dispatch(uint2 size) &&noexcept {
         return std::move(*this).dispatch(size.x, size.y);
     }
-    [[nodiscard]] auto dispatch(Buffer<DispatchIndirectArgs> const& indirect_buffer) &&noexcept {
+    [[nodiscard]] auto dispatch(Buffer<DispatchArgs2D> const& indirect_buffer) &&noexcept {
         return std::move(*this)._parallelize(indirect_buffer);
     }
 };
@@ -147,7 +155,7 @@ struct ShaderInvoke<3> : public ShaderInvokeBase {
     [[nodiscard]] auto dispatch(uint size_x, uint size_y, uint size_z) &&noexcept {
         return std::move(*this)._parallelize(uint3{size_x, size_y, size_z});
     }
-    [[nodiscard]] auto dispatch(Buffer<DispatchIndirectArgs> const& indirect_buffer) &&noexcept {
+    [[nodiscard]] auto dispatch(Buffer<DispatchArgs3D> const& indirect_buffer) &&noexcept {
         return std::move(*this)._parallelize(indirect_buffer);
     }
     [[nodiscard]] auto dispatch(uint3 size) &&noexcept {

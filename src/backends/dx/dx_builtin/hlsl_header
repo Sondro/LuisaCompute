@@ -457,7 +457,6 @@ uint v0;
 uint v1;
 float2 v2;
 };
-#define DispatchIndirectArgs uint
 void ClearDispInd(RWStructuredBuffer<uint> buffer){
 buffer[0]=0;
 }

@@ -3,6 +3,7 @@ BuildProject({
 	projectType = "binary"
 })
 add_includedirs("../ext/stb/")
+-- add_files("test_dsl.cpp", "../ext/stb/stb.c")
 -- add_files("test_rtx.cpp", "../ext/stb/stb.c")
 -- add_files("test_raster.cpp", "../ext/stb/stb.c")
 add_files("test_dispatch_indirect.cpp")

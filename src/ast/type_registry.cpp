@@ -36,7 +36,7 @@ const Type *TypeRegistry::_decode(std::string_view desc) noexcept {
     using namespace std::string_view_literals;
     auto read_identifier = [&desc]() noexcept {
         auto i = 0u;
-        for (; i < desc.size() && (isalpha(desc[i]) || desc[i] == '_'); i++) {}
+        for (; i < desc.size() && (isalpha(desc[i]) || isdigit(desc[i]) || desc[i] == '_'); i++) {}
         auto t = desc.substr(0u, i);
         desc = desc.substr(i);
         return t;

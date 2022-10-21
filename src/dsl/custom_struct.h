@@ -1,7 +1,15 @@
 #pragma once
 #include <stdint.h>
 namespace luisa::compute {
-struct DispatchIndirectArgs {
+struct DispatchArgs1D {
+private:
+    int32_t _placeholder;
+};
+struct DispatchArgs2D {
+private:
+    int32_t _placeholder;
+};
+struct DispatchArgs3D {
 private:
     int32_t _placeholder;
 };

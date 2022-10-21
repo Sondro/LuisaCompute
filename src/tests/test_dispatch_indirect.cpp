@@ -38,21 +38,21 @@ int main(int argc, char *argv[]) {
         set_block_size(block_size, 1, 1);
         buffer.atomic(dispatch_id().x).fetch_add(kernel_id());
     };
-    Kernel1D clear_kernel = [&](BufferVar<DispatchIndirectArgs> ind_buffer) {
+    Kernel1D clear_kernel = [&](BufferVar<DispatchArgs1D> ind_buffer) {
         set_block_size(1);
-        clear_dispatch_indirect_buffer(ind_buffer);
+        clear_dispatch_buffer(ind_buffer);
     };
-    Kernel1D indirect_kernel = [&](BufferVar<DispatchIndirectArgs> ind_buffer) {
+    Kernel1D indirect_kernel = [&](BufferVar<DispatchArgs1D> ind_buffer) {
         set_block_size(16);
         auto index = dispatch_id().x + 1;
         // Same
         // emplace_indirect_dispatch_kernel(ind_buffer, accumulate_kernel, index, index);
-        emplace_indirect_dispatch_kernel1d(ind_buffer, block_size, index, index);
+        emplace_dispatch_kernel(ind_buffer, block_size, index, index);
     };
     auto accumulate_shader = device.compile(accumulate_kernel, false);
     auto clear_shader = device.compile(clear_kernel, false);
     auto indirect_shader = device.compile(indirect_kernel, false);
-    auto indirect_buffer = device.create_dispatch_indirect_buffer(2048);// A large capacity
+    auto indirect_buffer = device.create_1d_dispatch_buffer(2048);// A large capacity
     auto buffer = device.create_buffer<uint>(17);
     uint value[17];
     memset(value, 0, 17 * sizeof(uint));

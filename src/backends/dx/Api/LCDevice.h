@@ -18,8 +18,8 @@ public:
 
     // buffer
     uint64_t create_buffer(size_t size_bytes) noexcept override;
-    uint64_t create_dispatch_indirect_buffer(size_t capacity) noexcept override;
-    size_t dispatch_indirect_size(size_t indirect_capacity) noexcept override;
+    uint64_t create_dispatch_buffer(uint32_t dimension, size_t capacity) noexcept override;
+    size_t dispatch_buffer_size(uint32_t dimension, size_t indirect_capacity) noexcept override;
     void destroy_buffer(uint64_t handle) noexcept override;
     void *buffer_native_handle(uint64_t handle) const noexcept override;
     void set_io_visitor(BinaryIOVisitor *visitor) noexcept override;

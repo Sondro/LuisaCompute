@@ -147,6 +147,6 @@ int main(int argc, char *argv[]) {
     };
     auto t1 = clock.toc();
 
-    auto kernel = device.compile(kernel_def);
+    auto kernel = device.compile(kernel_def, false);
     auto command = kernel(float_buffer, 12u).dispatch(1024u);
 }

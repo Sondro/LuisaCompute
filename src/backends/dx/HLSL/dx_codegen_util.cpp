@@ -282,7 +282,8 @@ void CodegenUtility::GetTypeName(Type const &type, vstd::string &str, Usage usag
             str << "RaytracingAccelerationStructure"sv;
         } break;
         case Type::Tag::CUSTOM: {
-            str << type.description();
+            // TODO: custom type is uint for now
+            str << "uint"sv;
         } break;
         default:
             LUISA_ERROR_WITH_LOCATION("Bad.");
@@ -877,20 +878,20 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
         case CallOp::CLEAR_DISPATCH_INDIRECT_BUFFER:
             str << "ClearDispInd"sv;
             break;
-        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL1D:
-            str << "EmplaceDispInd1D"sv;
-            break;
-        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL2D:
-            str << "EmplaceDispInd2D"sv;
-            break;
-        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL3D:
-            str << "EmplaceDispInd3D"sv;
-            break;
+        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL: {
+            auto tp = args[1]->type();
+            if (tp->is_scalar()) {
+                str << "EmplaceDispInd1D"sv;
+            } else if (tp->dimension() == 2) {
+                str << "EmplaceDispInd2D"sv;
+            } else {
+                str << "EmplaceDispInd3D"sv;
+            }
+        } break;
         default: {
             auto errorType = expr->op();
-            VEngine_Log("Function Not Implemented"sv);
-            VSTL_ABORT();
-        }
+            LUISA_ERROR("Function Not Implemented");
+        } break;
     }
     str << '(';
     PrintArgs();
