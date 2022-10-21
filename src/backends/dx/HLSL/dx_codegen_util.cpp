@@ -877,17 +877,15 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
         case CallOp::CLEAR_DISPATCH_INDIRECT_BUFFER:
             str << "ClearDispInd"sv;
             break;
-        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL: {
-            str << "EmplaceDispInd"sv;
-            auto type = args[2]->type();
-            if (type->is_scalar()) {
-                str << "1D"sv;
-            } else if (type->dimension() == 2) {
-                str << "2D"sv;
-            } else {
-                str << "3D"sv;
-            }
-        } break;
+        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL1D:
+            str << "EmplaceDispInd1D"sv;
+            break;
+        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL2D:
+            str << "EmplaceDispInd2D"sv;
+            break;
+        case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL3D:
+            str << "EmplaceDispInd3D"sv;
+            break;
         default: {
             auto errorType = expr->op();
             VEngine_Log("Function Not Implemented"sv);

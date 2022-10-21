@@ -33,15 +33,10 @@ int main(int argc, char *argv[]) {
     log_level_info();
     constexpr uint width = 1024;
     constexpr uint height = 1024;
+    
 
     Context context{argv[0]};
     auto device = context.create_device("dx");
-    auto util = device.get_util();
-    if(util->check_builtin_shader() != IUtil::Result::Success){
-        LUISA_ERROR("failed!");
-        
-    }
-
     Callable vert = []() noexcept {
         auto vert = get_vertex_data();
         Var<v2p> o;

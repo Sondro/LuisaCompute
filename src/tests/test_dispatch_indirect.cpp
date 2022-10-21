@@ -26,14 +26,16 @@ int main(int argc, char *argv[]) {
     ...
     i15 = 15 + 16
     i16 = 16
+    i17 = 0
     */
     log_level_info();
-
     Context context{argv[0]};
     auto device = context.create_device("dx");
 
     auto stream = device.create_stream();
+    static constexpr uint block_size = 32;
     Kernel1D accumulate_kernel = [&](BufferVar<uint> buffer) {
+        set_block_size(block_size, 1, 1);
         buffer.atomic(dispatch_id().x).fetch_add(kernel_id());
     };
     Kernel1D clear_kernel = [&](BufferVar<DispatchIndirectArgs> ind_buffer) {
@@ -43,15 +45,17 @@ int main(int argc, char *argv[]) {
     Kernel1D indirect_kernel = [&](BufferVar<DispatchIndirectArgs> ind_buffer) {
         set_block_size(16);
         auto index = dispatch_id().x + 1;
-        emplace_indirect_dispatch_kernel(ind_buffer, accumulate_kernel, index, index);
+        // Same
+        // emplace_indirect_dispatch_kernel(ind_buffer, accumulate_kernel, index, index);
+        emplace_indirect_dispatch_kernel1d(ind_buffer, block_size, index, index);
     };
     auto accumulate_shader = device.compile(accumulate_kernel, false);
     auto clear_shader = device.compile(clear_kernel, false);
     auto indirect_shader = device.compile(indirect_kernel, false);
     auto indirect_buffer = device.create_dispatch_indirect_buffer(2048);// A large capacity
-    auto buffer = device.create_buffer<uint>(16);
-    uint value[16];
-    memset(value, 0, 16 * sizeof(uint));
+    auto buffer = device.create_buffer<uint>(17);
+    uint value[17];
+    memset(value, 0, 17 * sizeof(uint));
 
     stream
         << buffer.copy_from(value)
@@ -60,7 +64,7 @@ int main(int argc, char *argv[]) {
         << accumulate_shader(buffer).dispatch(indirect_buffer)
         << buffer.copy_to(value)
         << synchronize();
-    std::cout << "result should be: 136 135 133 130 126 121 115 108 100 91 81 70 58 45 31 16 \n";
+    std::cout << "result should be: 136 135 133 130 126 121 115 108 100 91 81 70 58 45 31 16 0\n";
     for (auto &&i : value) {
         std::cout << i << ' ';
     }

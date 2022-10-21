@@ -31,7 +31,9 @@ void CallExpr::_mark() const noexcept {
             case CallOp::ATOMIC_FETCH_MIN:
             case CallOp::ATOMIC_FETCH_MAX:
             case CallOp::CLEAR_DISPATCH_INDIRECT_BUFFER:
-            case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL: {
+            case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL1D:
+            case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL2D:
+            case CallOp::EMPLACE_DISPATCH_INDIRECT_KERNEL3D: {
                 _arguments[0]->mark(Usage::WRITE);
                 for (auto i = 1u; i < _arguments.size(); i++) {
                     _arguments[i]->mark(Usage::READ);
