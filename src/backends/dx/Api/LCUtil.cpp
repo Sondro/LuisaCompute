@@ -42,5 +42,24 @@ IUtil::Result LCUtil::compress_bc7(Stream &stream, Image<float> const &src, luis
         device->maxAllocatorCount);
     return IUtil::Result::Success;
 }
+IUtil::Result LCUtil::check_builtin_shader() noexcept {
+    std::cout << "start try compile setAccelKernel\n";
+    if (!device->setAccelKernel.Check(device)) return Result::Failed;
 
+    std::cout << "start try compile bc6TryModeG10\n";
+    if (!device->bc6TryModeG10.Check(device)) return Result::Failed;
+    std::cout << "start try compile bc6TryModeLE10\n";
+    if (!device->bc6TryModeLE10.Check(device)) return Result::Failed;
+    std::cout << "start try compile bc6EncodeBlock\n";
+    if (!device->bc6EncodeBlock.Check(device)) return Result::Failed;
+    std::cout << "start try compile bc7TryMode456\n";
+    if (!device->bc7TryMode456.Check(device)) return Result::Failed;
+    std::cout << "start try compile bc7TryMode137\n";
+    if (!device->bc7TryMode137.Check(device)) return Result::Failed;
+    std::cout << "start try compile bc7TryMode02\n";
+    if (!device->bc7TryMode02.Check(device)) return Result::Failed;
+    std::cout << "start try compile bc7EncodeBlock\n";
+    if (!device->bc7EncodeBlock.Check(device)) return Result::Failed;
+    return Result::Success;
+}
 }// namespace toolhub::directx

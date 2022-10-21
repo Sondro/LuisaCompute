@@ -56,6 +56,7 @@ public:
 	public:
 		LazyLoadShader(LoadFunc loadFunc);
 		ComputeShader* Get(Device* self);
+		bool Check(Device* self);
 		~LazyLoadShader();
 	};
 	bool SupportMeshShader() const;

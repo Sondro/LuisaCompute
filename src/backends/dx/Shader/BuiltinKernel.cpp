@@ -42,8 +42,8 @@ ComputeShader *BuiltinKernel::LoadAccelSetKernel(Device *device, ShaderPaths con
 namespace detail {
 static ComputeShader *LoadBCKernel(
     Device *device,
-    vstd::function<vstd::string_view()> const &includeCode,
-    vstd::function<vstd::string_view()> const &kernelCode,
+    vstd::function<vstd::string()> const &includeCode,
+    vstd::function<vstd::string()> const &kernelCode,
     vstd::string &&codePath) {
     auto func = [&] {
         CodegenResult code;

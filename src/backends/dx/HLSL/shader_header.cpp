@@ -1,4 +1,4 @@
-#include "shader_header.h"
+﻿#include "shader_header.h"
 #include "vstl/BinaryReader.h"
 namespace toolhub::directx {
 vstd::string ReadInternalHLSLFile(vstd::string_view shaderName, vstd::string_view dataPath) {

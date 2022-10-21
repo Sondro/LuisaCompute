@@ -79,6 +79,16 @@ ComputeShader *Device::LazyLoadShader::Get(Device *self) {
     }
     return shader.get();
 }
+bool Device::LazyLoadShader::Check(Device *self) {
+    if (shader) return true;
+    shader = vstd::create_unique(loadFunc(self, self->path));
+    if (shader) {
+        auto afterExit = vstd::scope_exit([&] { shader = nullptr; });
+        return true;
+    }
+    return false;
+}
+
 ShaderCompiler *Device::Compiler() {
     return gDxcCompiler;
 }
