@@ -795,7 +795,7 @@ public:
     using EvalType = T;
     operator T() const {
         assert(false);
-        return T{};
+        return std::move(*reinterpret_cast<T*>(0));
     }
 };
 
@@ -1260,10 +1260,10 @@ public:
         return *this;
     }
 };
-
 template<typename... T>
 struct hash<variant<T...>> {
-    size_t operator()(variant<T...> const &v) const {
+	using type = variant<T...>;
+    size_t operator()(type const &v) const {
         return v.visit_or(
             size_t(0),
             [&](auto &&v) {
@@ -1272,14 +1272,14 @@ struct hash<variant<T...>> {
             });
     }
     template<typename V>
-        requires((variant<T...>::template IndexOf<V>) < (variant<T...>::argSize))
     size_t operator()(V const &v) const {
         return hash<V>()(v);
     }
 };
 template<typename... T>
 struct compare<variant<T...>> {
-    int32 operator()(variant<T...> const &a, variant<T...> const &b) const {
+	using type = variant<T...>;
+    int32 operator()(type const &a, type const &b) const {
         if (a.GetType() == b.GetType()) {
             return a.visit_or(
                 int32(0),
@@ -1293,9 +1293,8 @@ struct compare<variant<T...>> {
             return (a.GetType() > b.GetType()) ? 1 : -1;
     }
     template<typename V>
-        requires((variant<T...>::template IndexOf<V>) < (variant<T...>::argSize))
-    int32 operator()(variant<T...> const &a, V const &v) {
-        constexpr size_t idx = variant<T...>::template IndexOf<V>;
+    int32 operator()(type const &a, V const &v) {
+        constexpr size_t idx = type::template IndexOf<V>;
         if (a.GetType() == idx) {
             return compare<V>()(a.template get<idx>(), v);
         } else
