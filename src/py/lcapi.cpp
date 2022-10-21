@@ -100,6 +100,8 @@ PYBIND11_MODULE(lcapi, m) {
         .def("thread_id", &FunctionBuilder::thread_id, pyref)
         .def("block_id", &FunctionBuilder::block_id, pyref)
         .def("dispatch_id", &FunctionBuilder::dispatch_id, pyref)
+        .def("kernel_id", &FunctionBuilder::kernel_id, pyref)
+        .def("object_id", &FunctionBuilder::object_id, pyref)
         .def("dispatch_size", &FunctionBuilder::dispatch_size, pyref)
 
         .def("local", &FunctionBuilder::local, pyref)

@@ -305,8 +305,6 @@ public:
     [[nodiscard]] const RefExpr *kernel_id() noexcept;
     /// Return dispatch size.
     [[nodiscard]] const RefExpr *dispatch_size() noexcept;
-    /// Return raster texture size
-    [[nodiscard]] const RefExpr *texel_size() noexcept;
     /// Return raster object id
     [[nodiscard]] const RefExpr *object_id() noexcept;
     // variables
