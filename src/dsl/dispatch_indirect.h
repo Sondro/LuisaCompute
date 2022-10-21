@@ -11,7 +11,7 @@ LC_DSL_API void clear_dispatch_buffer(Expr<Buffer<DispatchArgs1D>> buffer);
 LC_DSL_API void clear_dispatch_buffer(Expr<Buffer<DispatchArgs2D>> buffer);
 LC_DSL_API void clear_dispatch_buffer(Expr<Buffer<DispatchArgs3D>> buffer);
 LC_DSL_API void emplace_dispatch_kernel(
-    Expr<Buffer<DispatchArgs1D>>buffer,
+    Expr<Buffer<DispatchArgs1D>> buffer,
     Expr<uint> block_size,
     Expr<uint> dispatch_size,
     Expr<uint> kernel_id);
@@ -25,31 +25,27 @@ LC_DSL_API void emplace_dispatch_kernel(
     Expr<uint3> block_size,
     Expr<uint3> dispatch_size,
     Expr<uint> kernel_id);
-template<typename... Args>
+template<size_t N, typename... Args>
 inline void emplace_dispatch_kernel(
-    Expr<Buffer<DispatchArgs1D>> buffer, Kernel1D<Args...> const &kernel, Expr<uint> dispatch_size, Expr<uint> kernel_id) {
-    emplace_dispatch_kernel(
-        buffer,
-        kernel.function()->block_size().x,
-        dispatch_size,
-        kernel_id);
-}
-template<typename... Args>
-inline void emplace_dispatch_kernel(
-    Expr<Buffer<DispatchArgs2D>> buffer, Kernel2D<Args...> const &kernel, Expr<uint> dispatch_size, Expr<uint> kernel_id) {
-    emplace_dispatch_kernel(
-        buffer,
-        kernel.function()->block_size().xy(),
-        dispatch_size,
-        kernel_id);
-}
-template<typename... Args>
-inline void emplace_dispatch_kernel(
-    Expr<Buffer<DispatchArgs3D>> buffer, Kernel3D<Args...> const &kernel, Expr<uint> dispatch_size, Expr<uint> kernel_id) {
-    emplace_dispatch_kernel(
-        buffer,
-        kernel.function()->block_size(),
-        dispatch_size,
-        kernel_id);
+    Expr<Buffer<DispatchArgs1D>> buffer, Kernel<N, Args...> const &kernel, Expr<uint> dispatch_size, Expr<uint> kernel_id) {
+    if constexpr (N == 1) {
+        emplace_dispatch_kernel(
+            buffer,
+            kernel.function()->block_size().x,
+            dispatch_size,
+            kernel_id);
+    } else if constexpr (N == 2) {
+        emplace_dispatch_kernel(
+            buffer,
+            kernel.function()->block_size().xy(),
+            dispatch_size,
+            kernel_id);
+    }else{
+        emplace_dispatch_kernel(
+            buffer,
+            kernel.function()->block_size().xyz(),
+            dispatch_size,
+            kernel_id);
+    }
 }
 }// namespace luisa::compute

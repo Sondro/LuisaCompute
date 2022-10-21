@@ -1057,8 +1057,27 @@ void CodegenUtility::CodegenFunction(Function func, vstd::string &result, bool c
                    << vstd::to_string(func.block_size().z)
                    << R"()]
 void main(uint3 thdId:SV_GroupThreadId,uint3 dspId:SV_DispatchThreadID,uint3 grpId:SV_GroupId){
-if(any(dspId >= dsp_c.xyz)) return;
 )"sv;
+            auto blockSize = func.block_size();
+            vstd::vector<char, VEngine_AllocType::VEngine, 3> swizzle;
+            //  result << "if(any(dspId >= dsp_c.xyz)) return;\n"sv;
+            if (blockSize.x > 1) {
+                swizzle.emplace_back('x');
+            }
+            if (blockSize.y > 1) {
+                swizzle.emplace_back('y');
+            }
+            if (blockSize.z > 1) {
+                swizzle.emplace_back('z');
+            }
+            if (!swizzle.empty()) {
+                if (swizzle.size() == 1) {
+                    result << "if(dspId."sv << swizzle[0] << ">=dsp_c."sv << swizzle[0] << ") return;\n"sv;
+                } else {
+                    vstd::string_view strv(swizzle.data(), swizzle.size());
+                    result << "if(any(dspId."sv << strv << ">=dsp_c."sv << strv << ")) return;\n"sv;
+                }
+            }
             if (cbufferNonEmpty) {
                 result << "Args a = _Global[0];\n"sv;
             }

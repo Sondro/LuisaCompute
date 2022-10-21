@@ -67,29 +67,23 @@ int main(int argc, char *argv[]) {
 
     Kernel2D raytracing_kernel = [&](BufferFloat4 image, AccelVar accel, UInt frame_index) noexcept {
         auto coord = dispatch_id().xy();
-        Float3 accumulate_color = make_float3(0.0f);
-        const uint spp = 16;
-        for (auto idx : range(spp)) {
-            auto p = (make_float2(coord) + rand(frame_index * spp + idx, coord)) /
-                         make_float2(dispatch_size().xy()) * 2.0f -
-                     1.0f;
-            auto color = def<float3>(0.3f, 0.5f, 0.7f);
-            auto ray = make_ray(
-                make_float3(p * make_float2(1.0f, -1.0f), 1.0f),
-                make_float3(0.0f, 0.0f, -1.0f));
-            auto hit = accel.trace_closest(ray);
-            $if(!hit->miss()) {
-                constexpr auto red = float3(1.0f, 0.0f, 0.0f);
-                constexpr auto green = float3(0.0f, 1.0f, 0.0f);
-                constexpr auto blue = float3(0.0f, 0.0f, 1.0f);
-                color = hit->interpolate(red, green, blue);
-            };
-            accumulate_color += color;
-        }
-        accumulate_color *= 1.0f / 16;
+        auto p = (make_float2(coord) + rand(frame_index, coord)) /
+                     make_float2(dispatch_size().xy()) * 2.0f -
+                 1.0f;
+        auto color = def<float3>(0.3f, 0.5f, 0.7f);
+        auto ray = make_ray(
+            make_float3(p * make_float2(1.0f, -1.0f), 1.0f),
+            make_float3(0.0f, 0.0f, -1.0f));
+        auto hit = accel.trace_closest(ray);
+        $if(!hit->miss()) {
+            constexpr auto red = float3(1.0f, 0.0f, 0.0f);
+            constexpr auto green = float3(0.0f, 1.0f, 0.0f);
+            constexpr auto blue = float3(0.0f, 0.0f, 1.0f);
+            color = hit->interpolate(red, green, blue);
+        };
         auto old = image.read(coord.y * dispatch_size_x() + coord.x).xyz();
         auto t = 1.0f / (frame_index + 1.0f);
-        image.write(coord.y * dispatch_size_x() + coord.x, make_float4(lerp(old, accumulate_color, t), 1.0f));
+        image.write(coord.y * dispatch_size_x() + coord.x, make_float4(lerp(old, color, t), 1.0f));
     };
 
     Kernel2D colorspace_kernel = [&](BufferFloat4 hdr_image, BufferUInt ldr_image) noexcept {
@@ -148,9 +142,11 @@ int main(int argc, char *argv[]) {
             stream << accel.build();
         }
     }
+    luisa::vector<uint> pixels(width * height);
     stream << colorspace_shader(hdr_image, ldr_image).dispatch(width, height)
+           << ldr_image.copy_to(pixels.data())
            << synchronize();
     auto time = clock.toc();
     LUISA_INFO("Time: {} ms", time);
-    system("pause");
+    stbi_write_png("test_rtx.png", width, height, 4, pixels.data(), 0);
 }
