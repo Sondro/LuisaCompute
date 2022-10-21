@@ -106,8 +106,8 @@ public:
     // buffer
     [[nodiscard]] virtual uint64_t create_buffer(size_t size_bytes) noexcept = 0;
     [[nodiscard]] virtual uint64_t create_dispatch_buffer(uint32_t dimension, size_t capacity) noexcept = 0;
-    [[nodiscard]] virtual uint64_t create_draw_indirect_buffer(const MeshFormat &mesh_format, bool use_index_buffer, size_t capacity) { return ~0ull; }
-    [[nodiscard]] virtual size_t draw_indirect_size(const MeshFormat &mesh_format, bool use_index_buffer, size_t indirect_capacity) noexcept { return 0; }
+    [[nodiscard]] virtual uint64_t create_draw_buffer(const MeshFormat &mesh_format, bool use_index_buffer, size_t capacity) { return ~0ull; }
+    [[nodiscard]] virtual size_t draw_buffer_size(const MeshFormat &mesh_format, bool use_index_buffer, size_t indirect_capacity) noexcept { return 0; }
 
     [[nodiscard]] virtual size_t dispatch_buffer_size(uint32_t dimension, size_t indirect_capacity) noexcept = 0;
     virtual void destroy_buffer(uint64_t handle) noexcept = 0;
@@ -280,8 +280,8 @@ public:
     [[nodiscard]] Buffer<DispatchArgs1D> create_1d_dispatch_buffer(size_t capacity) noexcept;
     [[nodiscard]] Buffer<DispatchArgs2D> create_2d_dispatch_buffer(size_t capacity) noexcept;
     [[nodiscard]] Buffer<DispatchArgs3D> create_3d_dispatch_buffer(size_t capacity) noexcept;
-    [[nodiscard]] Buffer<DrawIndirectArgs> create_draw_indirect_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept;
-    [[nodiscard]] Buffer<DrawIndexedIndirectArgs> create_indexed_draw_indirect_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept;
+    [[nodiscard]] Buffer<DrawIndirectArgs> create_draw_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept;
+    [[nodiscard]] Buffer<DrawIndexedIndirectArgs> create_indexed_draw_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept;
 
     void set_io_visitor(BinaryIOVisitor *visitor) noexcept {
         _impl->set_io_visitor(visitor);

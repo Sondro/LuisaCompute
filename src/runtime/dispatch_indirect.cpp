@@ -24,26 +24,26 @@ Buffer<DispatchArgs2D> Device::create_2d_dispatch_buffer(size_t capacity) noexce
 Buffer<DispatchArgs3D> Device::create_3d_dispatch_buffer(size_t capacity) noexcept {
     return create_dispatch_buffer<3, DispatchArgs3D>(capacity);
 }
-Buffer<DrawIndirectArgs> Device::create_draw_indirect_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept {
+Buffer<DrawIndirectArgs> Device::create_draw_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept {
     Buffer<DrawIndirectArgs> v;
     // Resource
     v._device = _impl;
     auto ptr = _impl.get();
-    v._handle = ptr->create_draw_indirect_buffer(mesh_format, false, capacity);
+    v._handle = ptr->create_draw_buffer(mesh_format, false, capacity);
     v._tag = Resource::Tag::BUFFER;
     // Buffer
-    v._size = capacity * ptr->draw_indirect_size(mesh_format, false, capacity) / custom_struct_size;
+    v._size = capacity * ptr->draw_buffer_size(mesh_format, false, capacity) / custom_struct_size;
     return v;
 }
-Buffer<DrawIndexedIndirectArgs> Device::create_indexed_draw_indirect_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept {
+Buffer<DrawIndexedIndirectArgs> Device::create_indexed_draw_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept {
     Buffer<DrawIndexedIndirectArgs> v;
     // Resource
     v._device = _impl;
     auto ptr = _impl.get();
-    v._handle = ptr->create_draw_indirect_buffer(mesh_format, true, capacity);
+    v._handle = ptr->create_draw_buffer(mesh_format, true, capacity);
     v._tag = Resource::Tag::BUFFER;
     // Buffer
-    v._size = capacity * ptr->draw_indirect_size(mesh_format, true, capacity) / custom_struct_size;
+    v._size = capacity * ptr->draw_buffer_size(mesh_format, true, capacity) / custom_struct_size;
     return v;
 }
 void clear_dispatch_buffer(Expr<Buffer<DispatchArgs1D>> buffer) {
