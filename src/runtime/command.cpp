@@ -5,7 +5,7 @@
 #include <core/logging.h>
 #include <runtime/command.h>
 #include <raster/raster_scene.h>
-#include <dsl/custom_struct.h>
+#include <runtime/custom_struct.h>
 namespace luisa::compute {
 
 std::byte *ShaderDispatchCommandBase::_make_space(size_t size) noexcept {

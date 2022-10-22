@@ -21,4 +21,8 @@ struct DrawIndexedIndirectArgs {
 private:
     int32_t _placeholder;
 };
+struct MeshArgs {
+private:
+    int32_t _placeholder;
+};
 }// namespace luisa::compute

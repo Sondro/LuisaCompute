@@ -19,7 +19,7 @@
 
 #include <runtime/stream_tag.h>
 #include <raster/depth_format.h>
-#include <dsl/custom_struct.h>
+#include <runtime/custom_struct.h>
 
 namespace luisa::compute {
 class MeshFormat;
@@ -95,6 +95,10 @@ protected:
     Context _ctx;
 
 public:
+    struct BuiltinBuffer {
+        uint64_t handle{};
+        uint64_t size{};
+    };
     explicit DeviceInterface(Context &&ctx) noexcept : _ctx{std::move(ctx)} {}
     virtual ~DeviceInterface() noexcept = default;
 
@@ -105,11 +109,9 @@ public:
 
     // buffer
     [[nodiscard]] virtual uint64_t create_buffer(size_t size_bytes) noexcept = 0;
-    [[nodiscard]] virtual uint64_t create_dispatch_buffer(uint32_t dimension, size_t capacity) noexcept = 0;
-    [[nodiscard]] virtual uint64_t create_draw_buffer(const MeshFormat &mesh_format, bool use_index_buffer, size_t capacity) { return ~0ull; }
-    [[nodiscard]] virtual size_t draw_buffer_size(const MeshFormat &mesh_format, bool use_index_buffer, size_t indirect_capacity) noexcept { return 0; }
+    [[nodiscard]] virtual BuiltinBuffer create_dispatch_buffer(uint32_t dimension, size_t capacity) noexcept = 0;
+    [[nodiscard]] virtual BuiltinBuffer create_draw_buffer(const MeshFormat &mesh_format, bool use_index_buffer, size_t capacity) { return {}; }
 
-    [[nodiscard]] virtual size_t dispatch_buffer_size(uint32_t dimension, size_t indirect_capacity) noexcept = 0;
     virtual void destroy_buffer(uint64_t handle) noexcept = 0;
     [[nodiscard]] virtual void *buffer_native_handle(uint64_t handle) const noexcept = 0;
 

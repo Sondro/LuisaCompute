@@ -14,7 +14,7 @@
 #include <ast/function_builder.h>
 #include <runtime/stream_tag.h>
 #include <raster/viewport.h>
-#include <dsl/custom_struct.h>
+#include <runtime/custom_struct.h>
 
 namespace luisa::compute {
 class CmdDeser;

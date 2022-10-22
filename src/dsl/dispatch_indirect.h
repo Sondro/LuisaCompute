@@ -2,7 +2,7 @@
 #include <dsl/expr.h>
 #include <dsl/var.h>
 #include <dsl/struct.h>
-#include <dsl/custom_struct.h>
+#include <runtime/custom_struct.h>
 LUISA_CUSTOM_STRUCT(DispatchArgs1D);
 LUISA_CUSTOM_STRUCT(DispatchArgs2D);
 LUISA_CUSTOM_STRUCT(DispatchArgs3D);

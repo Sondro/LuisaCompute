@@ -9,7 +9,7 @@
 #include <runtime/resource.h>
 #include <runtime/device.h>
 #include <runtime/bindless_array.h>
-#include <dsl/custom_struct.h>
+#include <runtime/custom_struct.h>
 
 namespace luisa::compute {
 
