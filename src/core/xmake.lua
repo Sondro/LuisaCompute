@@ -7,8 +7,7 @@ BuildProject({
 				public = true
 			})
 		end
-	end,
-	unityBuildBatch = 4
+	end
 })
 add_deps("EASTL", "abseil_dll", "spdlog")
 add_includedirs("../", "../ext/xxHash/", {

@@ -3,9 +3,8 @@
 //
 
 #pragma once
-
 #include <mutex>
-#include "ext/EASTL/include/EASTL/bonus/lru_cache.h"
+#include <EASTL/bonus/lru_cache.h>
 
 #include "memory.h"
 #include "optional.h"
@@ -45,5 +44,5 @@ public:
         _cache.emplace(key, std::move(value));
     }
 };
-
 }// namespace luisa
+
