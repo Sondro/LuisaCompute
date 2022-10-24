@@ -178,7 +178,7 @@ using ArrayIterator = size_t;
 //#define EXTERN_UNITY
 #ifdef VENGINE_CSHARP_SUPPORT
 #include <vstl/BinaryReader.h>
-#include <Graphics/Struct.h>
+#include <serde_lib/Struct.h>
 #include <serde_lib/DatabaseInclude.h>
 
 namespace toolhub::db {
@@ -224,19 +224,19 @@ LC_SERDE_LIB_API void db_create_array(SimpleJsonValueArray** pp) {
 	*pp = new SimpleJsonValueArray();
 }
 
-LC_SERDE_LIB_API void db_arr_ser(SimpleJsonValueArray* db, vstd::funcPtr_t<void(uint8_t*, uint64)> callback) {
+LC_SERDE_LIB_API void db_arr_ser(SimpleJsonValueArray* db, vstd::funcPtr_t<void(std::byte*, uint64)> callback) {
 	auto vec = db->Serialize();
 	callback(vec.data(), vec.size());
 }
-LC_SERDE_LIB_API void db_dict_ser(SimpleJsonValueDict* db, vstd::funcPtr_t<void(uint8_t*, uint64)> callback) {
+LC_SERDE_LIB_API void db_dict_ser(SimpleJsonValueDict* db, vstd::funcPtr_t<void(std::byte*, uint64)> callback) {
 	auto vec = db->Serialize();
 	callback(vec.data(), vec.size());
 }
-LC_SERDE_LIB_API void db_arr_deser(SimpleJsonValueArray* db, uint8_t* ptr, uint64 len, bool* success, bool clearLast) {
-	*success = db->Read(vstd::span<uint8_t const>(ptr, len), clearLast);
+LC_SERDE_LIB_API void db_arr_deser(SimpleJsonValueArray* db, std::byte* ptr, uint64 len, bool* success, bool clearLast) {
+	*success = db->Read({ptr, len}, clearLast);
 }
-LC_SERDE_LIB_API void db_dict_deser(SimpleJsonValueDict* db, uint8_t* ptr, uint64 len, bool* success, bool clearLast) {
-	*success = db->Read(vstd::span<uint8_t const>(ptr, len), clearLast);
+LC_SERDE_LIB_API void db_dict_deser(SimpleJsonValueDict* db, std::byte* ptr, uint64 len, bool* success, bool clearLast) {
+	*success = db->Read({ptr, len}, clearLast);
 }
 
 LC_SERDE_LIB_API void db_dispose_arr(SimpleJsonValueArray* p) {
