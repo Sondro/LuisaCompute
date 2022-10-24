@@ -56,7 +56,7 @@ struct SerDe {
             return *ptr;
         }
     }
-    static void Set(T const &data, luisa::vector<std::byte> &vec) {
+    static void Set(T const &data, vector<std::byte> &vec) {
         using Type = std::remove_cvref_t<T>;
         if (reverseBytes) {
             Type tempData = data;
@@ -77,7 +77,7 @@ struct SerDe<vstd::string, reverseBytes> {
         sp = vstd::span<std::byte const>(ptr + strLen, sp.size() - strLen);
         return vstd::string(reinterpret_cast<char const *>(ptr), strLen);
     }
-    static void Set(vstd::string const &data, luisa::vector<std::byte> &arr) {
+    static void Set(vstd::string const &data, vector<std::byte> &arr) {
         SerDe<uint, reverseBytes>::Set(data.size(), arr);
         auto beg = reinterpret_cast<std::byte const *>(data.data());
         arr.insert(arr.end(), beg, beg + data.size());
@@ -93,7 +93,7 @@ struct SerDe<std::string_view, reverseBytes> {
             reinterpret_cast<char const *>(ptr),
             strLen);
     }
-    static void Set(std::string_view const &data, luisa::vector<std::byte> &arr) {
+    static void Set(std::string_view const &data, vector<std::byte> &arr) {
         SerDe<uint, reverseBytes>::Set(data.size(), arr);
         auto beg = reinterpret_cast<std::byte const *>(data.data());
         arr.insert(arr.end(), beg, beg + data.size());
@@ -114,9 +114,9 @@ struct SerDe<vector<T>, reverseBytes> {
             });
         return sz;
     }
-    static void Set(Value const &data, luisa::vector<T> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<uint, reverseBytes>::Set(data.size(), arr);
-        for (auto &&i : data) {
+        for(auto&& i : data){
             SerDe<T, reverseBytes>::Set(i, arr);
         }
     }
@@ -135,9 +135,9 @@ struct SerDe<fixed_vector<T, i>, reverseBytes> {
             });
         return sz;
     }
-    static void Set(Value const &data, luisa::vector<T> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<uint, reverseBytes>::Set(data.size(), arr);
-        for (auto &&i : data) {
+        for(auto&& i : data){
             SerDe<T, reverseBytes>::Set(i, arr);
         }
     }
@@ -159,9 +159,9 @@ struct SerDe<HashMap<K, V, Hash, Equal, alloc>, reverseBytes> {
         }
         return sz;
     }
-    static void Set(Value const &data, luisa::vector<std::byte> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<uint, reverseBytes>::Set(data.size(), arr);
-        for (auto &&i : data) {
+        for(auto&& i : data){
             SerDe<K, reverseBytes>::Set(i.first, arr);
             SerDe<V, reverseBytes>::Set(i.second, arr);
         }
@@ -175,7 +175,7 @@ struct SerDe<variant<Args...>, reverseBytes> {
         new (placePtr) Value(SerDe<T, reverseBytes>::Get(sp));
     }
     template<typename T>
-    static void ExecuteSet(void const *placePtr, luisa::vector<std::byte> &sp) {
+    static void ExecuteSet(void const *placePtr, vector<std::byte> &sp) {
         SerDe<T, reverseBytes>::Set(*reinterpret_cast<T const *>(placePtr), sp);
     }
     static Value Get(vstd::span<std::byte const> &sp) {
@@ -183,13 +183,13 @@ struct SerDe<variant<Args...>, reverseBytes> {
         funcPtr_t<void(void *, vstd::span<std::byte const> &)> ptrs[sizeof...(Args)] = {
             ExecuteGet<Args>...};
         Value v;
-		v.reset_as(type);
-		ptrs[type](v.GetPlaceHolder(), sp);
-		return v;
+        v.reset_as(type);
+        ptrs[type](v.GetPlaceHolder(), sp);
+        return v;
     }
-    static void Set(Value const &data, luisa::vector<std::byte> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<uint8_t, reverseBytes>::Set(data.GetType(), arr);
-        funcPtr_t<void(void const *, luisa::vector<std::byte> &)> ptrs[sizeof...(Args)] = {
+        funcPtr_t<void(void const *, vector<std::byte> &)> ptrs[sizeof...(Args)] = {
             ExecuteSet<Args>...};
         ptrs[data.GetType()](&data, arr);
     }
@@ -201,7 +201,7 @@ struct SerDe<std::pair<A, B>, reverseBytes> {
     static Value Get(vstd::span<std::byte const> &sp) {
         return Value{SerDe<A, reverseBytes>::Get(sp), SerDe<B, reverseBytes>::Get(sp)};
     }
-    static void Set(Value const &data, luisa::vector<std::byte> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<A, reverseBytes>::Set(data.first, arr);
         SerDe<B, reverseBytes>::Set(data.second, arr);
     }
@@ -216,7 +216,7 @@ struct SerDe<vstd::span<uint8_t const>, reverseBytes> {
         sp = Value(sp.data() + sz, sp.size() - sz);
         return v;
     }
-    static void Set(Value const &data, luisa::vector<std::byte> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<uint, reverseBytes>::Set(data.size(), arr);
         auto beg = reinterpret_cast<std::byte const *>(data.data());
         arr.insert(arr.end(), beg, beg + data.size());
@@ -231,7 +231,7 @@ struct SerDe<vstd::span<std::byte const>, reverseBytes> {
         sp = Value(sp.data() + sz, sp.size() - sz);
         return v;
     }
-    static void Set(Value const &data, luisa::vector<std::byte> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<uint, reverseBytes>::Set(data.size(), arr);
         arr.insert(arr.end(), arr.begin(), arr.end());
     }
@@ -246,8 +246,8 @@ struct SerDe<std::array<T, sz>, reverseBytes> {
         }
         return v;
     }
-    static void Set(Value const &data, luisa::vector<std::byte> &arr) {
-        for (auto &&i : data) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
+        for(auto&& i : data){
             SerDe<T, reverseBytes>::Set(i);
         }
     }
@@ -266,9 +266,9 @@ struct SerDeAll_Impl<Ret(Args...)> {
         return std::apply(closureFunc, std::tuple<Args...>{SerDe<std::remove_cvref_t<Args>>::Get(data)...});
     }
 
-    static luisa::vector<std::byte> Ser(
+    static vector<std::byte> Ser(
         Args const &...args) {
-        luisa::vector<std::byte> vec;
+        vector<std::byte> vec;
         auto lst = {(SerDe<std::remove_cvref_t<Args>>::Set(args, vec), ' ')...};
         return vec;
     }
@@ -289,7 +289,7 @@ struct SerDe<Guid::GuidData, true> {
             SerDe<uint64, true>::Get(sp),
             SerDe<uint64, true>::Get(sp)};
     }
-    static void Set(Value const &data, luisa::vector<std::byte> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<uint64, true>::Set(data.data0, arr);
         SerDe<uint64, true>::Set(data.data1, arr);
     }
@@ -301,7 +301,7 @@ struct SerDe<Guid, reverseBytes> {
     static Value Get(span<std::byte const> &sp) {
         return SerDe<Guid::GuidData, reverseBytes>::Get(sp);
     }
-    static void Set(Value const &data, luisa::vector<std::byte> &arr) {
+    static void Set(Value const &data, vector<std::byte> &arr) {
         SerDe<Guid::GuidData, reverseBytes>::Set(data.ToBinary(), arr);
     }
 };
@@ -313,7 +313,7 @@ struct SerDe<MD5> {
         data.data1 = SerDe<uint64>::Get(sp);
         return MD5(data);
     }
-    static void Set(MD5 const &data, luisa::vector<std::byte> &arr) {
+    static void Set(MD5 const &data, vector<std::byte> &arr) {
         auto &&dd = data.ToBinary();
         SerDe<uint64>::Set(dd.data0, arr);
         SerDe<uint64>::Set(dd.data1, arr);

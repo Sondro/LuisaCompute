@@ -1,4 +1,7 @@
 add_rules("mode.release", "mode.debug")
+if is_plat("windows") then
+	set_config("toolchain", "clang-cl")
+end
 option("is_clang")
 add_csnippets("is_clang", "return (__clang__)?0:-1;", {
 	tryrun = true
@@ -82,10 +85,12 @@ function BuildProject(config)
 		end
 		if has_config("is_msvc") then
 			add_cxflags("/GS", "/Gd");
+			--[[
 			-- Not Clang-cl
 			if not has_config("is_clang") then
 				add_cxflags("/Zc:preprocessor")
 			end
+			]]
 		end
 		local event = GetValue(config.debugEvent)
 		if (type(event) == "function") then
@@ -98,10 +103,12 @@ function BuildProject(config)
 		end
 		if has_config("is_msvc") then
 			add_cxflags("/Oy", "/GS-", "/Gd", "/Oi", "/Ot", "/GT", "/Ob2")
+			--[[
 			-- Not Clang-cl
 			if not has_config("is_clang") then
 				add_cxflags("/GL", "/Zc:preprocessor", "/QIntel-jcc-erratum")
 			end
+			]]
 		end
 		local event = GetValue(config.releaseEvent)
 		if (type(event) == "function") then
