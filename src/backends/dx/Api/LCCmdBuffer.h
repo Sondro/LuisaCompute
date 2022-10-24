@@ -49,7 +49,7 @@ public:
         size_t maxAlloc = std::numeric_limits<size_t>::max());
     void CompressBC(
         TextureBase *rt,
-        luisa::vector<std::byte> &result,
+        vstd::vector<std::byte> &result,
         bool isHDR,
         float alphaImportance,
         IGpuAllocator *allocator,

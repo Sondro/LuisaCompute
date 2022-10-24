@@ -1059,7 +1059,7 @@ void CodegenUtility::CodegenFunction(Function func, vstd::string &result, bool c
 void main(uint3 thdId:SV_GroupThreadId,uint3 dspId:SV_DispatchThreadID,uint3 grpId:SV_GroupId){
 )"sv;
             auto blockSize = func.block_size();
-            vstd::vector<char, VEngine_AllocType::VEngine, 3> swizzle;
+            vstd::fixed_vector<char, 3> swizzle;
             //  result << "if(any(dspId >= dsp_c.xyz)) return;\n"sv;
             if (blockSize.x > 1) {
                 swizzle.emplace_back('x');
@@ -1384,7 +1384,7 @@ void CodegenUtility::PreprocessCodegenProperties(
 }
 void CodegenUtility::PostprocessCodegenProperties(CodegenResult::Properties &properties, vstd::string &finalResult) {
     if (!opt->customStructVector.empty()) {
-        vstd::vector<const StructGenerator *, VEngine_AllocType::VEngine, 8> structures(
+        vstd::fixed_vector<const StructGenerator *, 8> structures(
             opt->customStructVector.begin(),
             opt->customStructVector.end());
         pdqsort(structures.begin(), structures.end(), [](auto lhs, auto rhs) noexcept {

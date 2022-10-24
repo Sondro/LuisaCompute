@@ -105,14 +105,14 @@ class SimpleJsonParser : public vstd::IOperatorNewBase {
 public:
 	struct Field {
 		vstd::variant<
-			luisa::vector<char>,
-			luisa::vector<std::pair<
+			vstd::vector<char>,
+			vstd::vector<std::pair<
 				vstd::variant<
-					luisa::vector<char>,
+					vstd::vector<char>,
 					int64,
 					vstd::Guid>,
 				Field*>>,
-			luisa::vector<Field*>,
+			vstd::vector<Field*>,
 			int64,
 			double,
 			vstd::Guid,
@@ -128,12 +128,12 @@ public:
 	using FieldPool = vstd::Pool<Field, false>;
 
 private:
-	luisa::vector<SimpleJsonParser>* subParsers;
+	vstd::vector<SimpleJsonParser>* subParsers;
 	FieldPool* fieldPool;
 
 	KeyWordMap* keywords;
 	vstd::string_view keywordName;
-	luisa::vector<Field*> fieldStack;
+	vstd::vector<Field*> fieldStack;
 	enum class StreamState : uint8_t {
 		None,
 		SearchKey,
@@ -453,7 +453,7 @@ private:
 		ptr++;
 		char const* start = ptr;
 		bool isSlash = false;
-		luisa::vector<char> chars;
+		vstd::vector<char> chars;
 		chars.reserve(32);
 		auto func = [&]() {
 			while (true) {
@@ -605,9 +605,9 @@ private:
 	}
 	void SetDict(
 		IJsonDict* dict,
-		luisa::vector<std::pair<
+		vstd::vector<std::pair<
 			vstd::variant<
-				luisa::vector<char>,
+				vstd::vector<char>,
 				int64,
 				vstd::Guid>,
 			Field*>> const& v) {
@@ -637,9 +637,9 @@ private:
 		}
 	}
 	vstd::unique_ptr<IJsonDict> PrintDict(
-		luisa::vector<std::pair<
+		vstd::vector<std::pair<
 			vstd::variant<
-				luisa::vector<char>,
+				vstd::vector<char>,
 				int64,
 				vstd::Guid>,
 			Field*>> const& v) {
@@ -649,13 +649,13 @@ private:
 	}
 	void SetArray(
 		IJsonArray* arr,
-		luisa::vector<Field*> const& v) {
+		vstd::vector<Field*> const& v) {
 		arr->Reserve(v.size());
 		for (auto&& i : v) {
 			arr->Add(PrintField(i));
 		}
 	}
-	vstd::unique_ptr<IJsonArray> PrintArray(luisa::vector<Field*> const& v) {
+	vstd::unique_ptr<IJsonArray> PrintArray(vstd::vector<Field*> const& v) {
 		auto arr = new SimpleJsonValueArray();
 		SetArray(arr, v);
 		return vstd::create_unique<IJsonArray>(arr);
@@ -791,7 +791,7 @@ public:
 	SimpleJsonParser(
 		KeyWordMap* keywords,
 		FieldPool* poolPtr,
-		luisa::vector<SimpleJsonParser>* subParserPtr)
+		vstd::vector<SimpleJsonParser>* subParserPtr)
 		: keywords(keywords) {
 		{
 			std::lock_guard lck(recorderIsInited);
@@ -880,7 +880,7 @@ vstd::optional<ParsingException> RunParse(
 		ptr->Reset();
 	}
 	using namespace parser;
-	luisa::vector<SimpleJsonParser> subParsers;
+	vstd::vector<SimpleJsonParser> subParsers;
 	SimpleJsonParser::FieldPool fieldPool(32, false);
 	SimpleJsonParser::KeyWordMap keywords;
 	keywords.Emplace("null", fieldPool.New(nullptr));

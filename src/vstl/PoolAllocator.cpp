@@ -3,7 +3,8 @@ namespace vstd {
 PoolAllocator::AllocateHandle PoolAllocator::Allocate() {
     if (allocatedData.empty()) {
         auto ptr = data.emplace_back(visitor->Allocate(stride * elementCount));
-        allocatedData.push_back_func(
+        push_back_func(
+            allocatedData,
             elementCount, [&](size_t i) -> std::pair<void *, size_t> {
                 return {ptr, i};
             });

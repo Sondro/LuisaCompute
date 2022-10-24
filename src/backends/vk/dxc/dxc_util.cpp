@@ -86,7 +86,7 @@ CompileResult DXShaderCompiler::CompileCompute(
 	if (shaderModel < 10) {
 		return "Illegal shader model!"sv;
 	}
-	vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
+	vstd::fixed_vector<LPCWSTR, 32> args;
 	vstd::wstring smStr;
 	smStr << (isRTPipeline ? L"lib_" : L"cs_") << GetSM(shaderModel);
 	args.push_back(L"/T");
@@ -111,7 +111,7 @@ CompileResult DXShaderCompiler::CompileRayTracing(
     if (shaderModel < 10) {
         return "Illegal shader model!"sv;
     }
-    vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
+    vstd::fixed_vector<LPCWSTR, 32> args;
     vstd::wstring smStr;
     smStr << L"lib_" << GetSM(shaderModel);
     args.push_back(L"/T");

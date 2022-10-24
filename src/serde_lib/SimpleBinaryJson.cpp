@@ -37,32 +37,32 @@ IJsonDict* Database_Impl::CreateDict_RawPtr() const {
 IJsonArray* Database_Impl::CreateArray_RawPtr() const {
 	return new SimpleJsonValueArray();
 }
-luisa::vector<vstd::unique_ptr<IJsonDict>> Database_Impl::CreateDicts(size_t count) const {
-	luisa::vector<vstd::unique_ptr<IJsonDict>> vec;
+vstd::vector<vstd::unique_ptr<IJsonDict>> Database_Impl::CreateDicts(size_t count) const {
+	vstd::vector<vstd::unique_ptr<IJsonDict>> vec;
 	vec.reserve(count);
 	for (auto i : vstd::range(count)) {
 		vec.emplace_back(new SimpleJsonValueDict());
 	}
 	return vec;
 }
-luisa::vector<vstd::unique_ptr<IJsonArray>> Database_Impl::CreateArrays(size_t count) const {
-	luisa::vector<vstd::unique_ptr<IJsonArray>> vec;
+vstd::vector<vstd::unique_ptr<IJsonArray>> Database_Impl::CreateArrays(size_t count) const {
+	vstd::vector<vstd::unique_ptr<IJsonArray>> vec;
 	vec.reserve(count);
 	for (auto i : vstd::range(count)) {
 		vec.emplace_back(new SimpleJsonValueArray());
 	}
 	return vec;
 }
-luisa::vector<IJsonDict*> Database_Impl::CreateDicts_RawPtr(size_t count) const {
-	luisa::vector<IJsonDict*> vec;
+vstd::vector<IJsonDict*> Database_Impl::CreateDicts_RawPtr(size_t count) const {
+	vstd::vector<IJsonDict*> vec;
 	vec.reserve(count);
 	for (auto i : vstd::range(count)) {
 		vec.emplace_back(new SimpleJsonValueDict());
 	}
 	return vec;
 }
-luisa::vector<IJsonArray*> Database_Impl::CreateArrays_RawPtr(size_t count) const {
-	luisa::vector<IJsonArray*> vec;
+vstd::vector<IJsonArray*> Database_Impl::CreateArrays_RawPtr(size_t count) const {
+	vstd::vector<IJsonArray*> vec;
 	vec.reserve(count);
 	for (auto i : vstd::range(count)) {
 		vec.emplace_back(new SimpleJsonValueArray());

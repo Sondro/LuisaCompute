@@ -2,12 +2,11 @@
 #include "Common.h"
 namespace vstd {
 class LC_VSTL_API StringBuilder final {
-    vstd::vector<
+    vstd::fixed_vector<
         vstd::variant<
             vstd::string_view,
             vstd::string,
-            char>,
-        VEngine_AllocType::VEngine, 8>
+            char>, 8>
         views;
     size_t size = 0;
     vstd::string *target;

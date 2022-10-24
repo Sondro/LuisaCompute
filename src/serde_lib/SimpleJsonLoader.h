@@ -62,7 +62,7 @@ struct SimpleJsonVariant {
 };
 
 template<typename T>
-void PushDataToVector(T&& v, luisa::vector<std::byte>& serData) {
+void PushDataToVector(T&& v, vstd::vector<std::byte>& serData) {
 	using TT = std::remove_cvref_t<T>;
 	vstd::SerDe<TT>::Set(v, serData);
 }
@@ -74,7 +74,7 @@ public:
 	static SimpleJsonVariant DeSerialize_DiffEnding(vstd::span<std::byte const>& arr);
 	static SimpleJsonVariant DeSerialize(vstd::span<std::byte const>& arr, ValueType index);
 	static SimpleJsonVariant DeSerialize_DiffEnding(vstd::span<std::byte const>& arr, ValueType index);
-	static void Serialize(SimpleJsonVariant const& v, luisa::vector<std::byte>& data);
+	static void Serialize(SimpleJsonVariant const& v, vstd::vector<std::byte>& data);
 };
 template<typename T>
 T PopValue(vstd::span<std::byte const>& arr) {

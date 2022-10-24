@@ -1301,26 +1301,6 @@ struct compare<variant<T...>> {
             return (a.GetType() > idx) ? 1 : -1;
     }
 };
-template<typename Vec, typename Func>
-void push_back_func(Vec &&vec, Func &&func, size_t count) {
-    if constexpr (std::is_invocable_v<Func>) {
-        std::fill_n(
-            std::back_inserter(vec),
-            count,
-            v_LazyEval<std::remove_cvref_t<Func>>(std::forward<Func>(func)));
-    } else if constexpr (std::is_invocable_v<Func, size_t>) {
-        size_t i = 0;
-        std::fill_n(
-            std::back_inserter(vec),
-            count,
-            LazyEval([&] {
-                auto d = scope_exit([&] { ++i; });
-                return func(i);
-            }));
-    } else {
-        static_assert(AlwaysFalse<Vec>, "illegal type");
-    }
-}
 template<typename Vec>
 auto erase_last(Vec &&vec) {
     auto lastIte = vec.end() - 1;

@@ -57,8 +57,8 @@ void RasterShader::GetMeshFormatState(
         "UV",
         "UV"};
     static auto SemanticIndex = {0u, 0u, 0u, 0u, 0u, 1u, 2u, 3u};
-    vstd::vector<uint, VEngine_AllocType::VEngine, 4> offsets(meshFormat.vertex_stream_count());
-    memset(offsets.data(), 0, offsets.byte_size());
+    vstd::fixed_vector<uint, 4> offsets(meshFormat.vertex_stream_count());
+    memset(offsets.data(), 0, offsets.size_bytes());
     for (auto i : vstd::range(meshFormat.vertex_stream_count())) {
         auto vec = meshFormat.attributes(i);
         for (auto &&attr : vec) {
@@ -296,8 +296,9 @@ vstd::MD5 RasterShader::GenMD5(
     RasterState const &state,
     vstd::span<PixelFormat const> rtv,
     DepthFormat dsv) {
-    vstd::vector<uint64, VEngine_AllocType::VEngine, 8> streamHashes;
-    streamHashes.push_back_func(
+    vstd::fixed_vector<uint64, 8> streamHashes;
+    vstd::push_back_func(
+        streamHashes,
         meshFormat.vertex_stream_count(),
         [&](size_t i) {
             auto atr = meshFormat.attributes(i);
@@ -312,7 +313,7 @@ vstd::MD5 RasterShader::GenMD5(
     };
     Hashes h{
         .codeMd5 = codeMD5,
-        .meshFormatMD5 = vstd_xxhash_gethash(streamHashes.data(), streamHashes.byte_size()),
+        .meshFormatMD5 = vstd_xxhash_gethash(streamHashes.data(), streamHashes.size_bytes()),
         .rasterStateMD5 = vstd_xxhash_gethash(&state, sizeof(RasterState)),
         .rtv = vstd_xxhash_gethash(rtv.data(), rtv.size_bytes()),
         .dsv = vstd_xxhash_gethash(&dsv, sizeof(DepthFormat))};
@@ -368,9 +369,9 @@ RasterShader *RasterShader::CompileRaster(
         if (writeCache) {
             auto serData = ShaderSerializer::RasterSerialize(str.properties, kernelArgs, vertBin, pixelBin, md5, str.bdlsBufferCount);
             if (byteCodeIsCache) {
-                fileIo->write_cache(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+                fileIo->write_cache(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.size_bytes()});
             } else {
-                fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+                fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.size_bytes()});
             }
         }
 
@@ -437,7 +438,7 @@ void RasterShader::SaveRaster(
     auto vertBin = GetSpan(*compResult.vertex.get<0>());
     auto pixelBin = GetSpan(*compResult.pixel.get<0>());
     auto serData = ShaderSerializer::RasterSerialize(str.properties, kernelArgs, vertBin, pixelBin, md5, str.bdlsBufferCount);
-    fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+    fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.size_bytes()});
 }
 RasterShader *RasterShader::LoadRaster(
     BinaryIOVisitor *fileIo,

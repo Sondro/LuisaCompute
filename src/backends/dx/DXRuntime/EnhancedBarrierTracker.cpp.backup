@@ -156,7 +156,7 @@ void EnhancedBarrierTracker::UpdateState(CommandBufferBuilder const& cmdBuffer) 
 	for (auto&& i : frameStates) {
         UpdateResourceState(i.first, i.second);
 	}
-    vstd::vector<D3D12_BARRIER_GROUP, VEngine_AllocType::VEngine, 2> barriers;
+    vstd::fixed_vector<D3D12_BARRIER_GROUP, 2> barriers;
     if(!texBarriers.empty()){
         auto& v = barriers.emplace_back();
         v.NumBarriers = texBarriers.size();

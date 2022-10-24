@@ -82,12 +82,13 @@ CompileResult ShaderCompiler::CompileCompute(
         LUISA_ERROR("Illegal shader model!");
     }
 #endif
-    vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
+    vstd::fixed_vector<LPCWSTR, 32> args;
     vstd::wstring smStr;
     smStr << L"cs_" << GetSM(shaderModel);
     args.push_back(L"/T");
     args.push_back(smStr.c_str());
-    args.push_back_all(
+    vstd::push_back_all(
+        args,
         {L"/Qstrip_debug",
          L"/Qstrip_reflect",
          L"/Qstrip_priv",
@@ -113,9 +114,10 @@ RasterBin ShaderCompiler::CompileRaster(
         LUISA_ERROR("Illegal shader model!");
     }
 #endif
-    vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
+    vstd::fixed_vector<LPCWSTR, 32> args;
 
-    args.push_back_all(
+    vstd::push_back_all(
+        args,
         {L"/Qstrip_debug",
          L"/Qstrip_reflect",
          L"/Qstrip_priv",
@@ -152,7 +154,8 @@ CompileResult ShaderCompiler::CustomCompile(
     vstd::string_view code,
     vstd::span<vstd::string const> args) {
     vstd::vector<vstd::wstring> wstrArgs;
-    wstrArgs.push_back_func(
+    vstd::push_back_func(
+        wstrArgs,
         args.size(),
         [&](size_t i) {
             auto &&strv = args[i];
@@ -164,7 +167,8 @@ CompileResult ShaderCompiler::CustomCompile(
             return wstr;
         });
     vstd::vector<LPCWSTR> argPtr;
-    argPtr.push_back_func(
+    vstd::push_back_func(
+        argPtr,
         args.size(),
         [&](size_t i) {
             return wstrArgs[i].data();
@@ -224,7 +228,7 @@ CompileResult ShaderCompiler::CompileRayTracing(
     if (shaderModel < 10) {
         return "Illegal shader model!"_sv;
     }
-    vstd::vector<LPCWSTR, VEngine_AllocType::VEngine, 32> args;
+    vstd::fixed_vector<LPCWSTR, 32> args;
     vstd::wstring smStr;
     smStr << L"lib_" << GetSM(shaderModel);
     args.push_back(L"/T");

@@ -66,7 +66,7 @@ VkDescriptorSet DescriptorSetManager::Allocate(
 	allocatedSets.emplace_back(ite, result);
 	computeWriteRes.clear();
 	computeWriteRes.resize(descriptors.size());
-	memset(computeWriteRes.data(), 0, computeWriteRes.byte_size());
+	memset(computeWriteRes.data(), 0, computeWriteRes.size_bytes());
 	for (auto i : vstd::range(descriptors.size())) {
 		auto&& desc = descriptors[i];
 		auto&& writeDst = computeWriteRes[i];

@@ -16,7 +16,7 @@ LCUtil::LCUtil(Device *device)
 }
 LCUtil::~LCUtil() {
 }
-IUtil::Result LCUtil::compress_bc6h(Stream &stream, Image<float> const &src, luisa::vector<std::byte> &result) noexcept {
+IUtil::Result LCUtil::compress_bc6h(Stream &stream, Image<float> const &src, vstd::vector<std::byte> &result) noexcept {
     LCCmdBuffer *cmdBuffer = reinterpret_cast<LCCmdBuffer *>(stream.handle());
 
     RenderTexture *srcTex = reinterpret_cast<RenderTexture *>(src.handle());
@@ -30,7 +30,7 @@ IUtil::Result LCUtil::compress_bc6h(Stream &stream, Image<float> const &src, lui
     return IUtil::Result::Success;
 }
 
-IUtil::Result LCUtil::compress_bc7(Stream &stream, Image<float> const &src, luisa::vector<std::byte> &result, float alphaImportance) noexcept {
+IUtil::Result LCUtil::compress_bc7(Stream &stream, Image<float> const &src, vstd::vector<std::byte> &result, float alphaImportance) noexcept {
     LCCmdBuffer *cmdBuffer = reinterpret_cast<LCCmdBuffer *>(stream.handle());
     RenderTexture *srcTex = reinterpret_cast<RenderTexture *>(src.handle());
     cmdBuffer->CompressBC(

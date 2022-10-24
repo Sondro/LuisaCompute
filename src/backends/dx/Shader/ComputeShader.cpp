@@ -109,9 +109,9 @@ ComputeShader *ComputeShader::CompileCompute(
                         str.bdlsBufferCount,
                         blockSize);
                     if (byteCodeIsCache) {
-                        fileIo->write_cache(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+                        fileIo->write_cache(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.size_bytes()});
                     } else {
-                        fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+                        fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.size_bytes()});
                     }
                 }
                 auto cs = new ComputeShader(
@@ -182,7 +182,7 @@ void ComputeShader::SaveCompute(
                 md5,
                 str.bdlsBufferCount,
                 blockSize);
-            fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.byte_size()});
+            fileIo->write_bytecode(fileName, {reinterpret_cast<std::byte const *>(serData.data()), serData.size_bytes()});
         },
         [](auto &&err) {
             std::cout << err << '\n';

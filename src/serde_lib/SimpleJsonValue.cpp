@@ -159,7 +159,7 @@ struct BinaryHeader {
 	uint64 size;
 	uint64 postDefine;
 };
-static void SerPreProcess(luisa::vector<std::byte>& data) {
+static void SerPreProcess(vstd::vector<std::byte>& data) {
 	data.resize(data.size() + sizeof(uint64));
 }
 static bool IsMachineLittleEnding() {
@@ -168,7 +168,7 @@ static bool IsMachineLittleEnding() {
 	return (*p == 0x78) && (*(p + 1) == 0x56);
 }
 template<bool isDict>
-static void SerPostProcess(luisa::vector<std::byte>& data, size_t initOffset) {
+static void SerPostProcess(vstd::vector<std::byte>& data, size_t initOffset) {
 	uint64 hashValue;
 	vstd::hash<BinaryHeader> hasher;
 	if constexpr (isDict) {
@@ -605,22 +605,22 @@ vstd::optional<WriteJsonVariant> SimpleJsonValueDict::GetAndSet(Key const& key, 
 size_t SimpleJsonValueDict::Length() const {
 	return vars.size();
 }
-luisa::vector<std::byte> SimpleJsonValueDict::Serialize() const {
-	luisa::vector<std::byte> result;
+vstd::vector<std::byte> SimpleJsonValueDict::Serialize() const {
+	vstd::vector<std::byte> result;
 	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<uint8_t>::max()) : static_cast<std::byte>(0));
 	SerPreProcess(result);
 	M_GetSerData(result);
 	SerPostProcess<true>(result, 1);
 	return result;
 }
-void SimpleJsonValueDict::Serialize(luisa::vector<std::byte>& result) const {
+void SimpleJsonValueDict::Serialize(vstd::vector<std::byte>& result) const {
 	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<uint8_t>::max()) : static_cast<std::byte>(0));
 	auto sz = result.size();
 	SerPreProcess(result);
 	M_GetSerData(result);
 	SerPostProcess<true>(result, sz);
 }
-void SimpleJsonValueDict::M_GetSerData(luisa::vector<std::byte>& data) const {
+void SimpleJsonValueDict::M_GetSerData(vstd::vector<std::byte>& data) const {
 	PushDataToVector<uint64>(vars.size(), data);
 	for (auto&& kv : vars) {
 		PushDataToVector(kv.first.value, data);
@@ -678,15 +678,15 @@ size_t SimpleJsonValueArray::Length() const {
 		});
 }
 
-luisa::vector<std::byte> SimpleJsonValueArray::Serialize() const {
-	luisa::vector<std::byte> result;
+vstd::vector<std::byte> SimpleJsonValueArray::Serialize() const {
+	vstd::vector<std::byte> result;
 	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<uint8_t>::max()) : static_cast<std::byte>(0));
 	SerPreProcess(result);
 	M_GetSerData(result);
 	SerPostProcess<false>(result, 1);
 	return result;
 }
-void SimpleJsonValueArray::Serialize(luisa::vector<std::byte>& result) const {
+void SimpleJsonValueArray::Serialize(vstd::vector<std::byte>& result) const {
 	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<uint8_t>::max()) : static_cast<std::byte>(0));
 	auto sz = result.size();
 	SerPreProcess(result);
@@ -694,35 +694,35 @@ void SimpleJsonValueArray::Serialize(luisa::vector<std::byte>& result) const {
 	SerPostProcess<false>(result, sz);
 }
 
-void SimpleJsonValueArray::M_GetSerData(luisa::vector<std::byte>& data) const {
+void SimpleJsonValueArray::M_GetSerData(vstd::vector<std::byte>& data) const {
 	PushDataToVector<uint64>(Length(), data);
 	PushDataToVector<uint8_t>(arr.index(), data);
 	arr.visit([&]<typename T>(T const& arr) {
-		if constexpr (std::is_same_v<T, luisa::vector<int64>>) {
+		if constexpr (std::is_same_v<T, vstd::vector<int64>>) {
 			for (auto&& v : arr) {
 				PushDataToVector(v, data);
 			}
-		} else if constexpr (std::is_same_v<T, luisa::vector<double>>) {
+		} else if constexpr (std::is_same_v<T, vstd::vector<double>>) {
 			for (auto&& v : arr) {
 				PushDataToVector(v, data);
 			}
-		} else if constexpr (std::is_same_v<T, luisa::vector<vstd::string>>) {
+		} else if constexpr (std::is_same_v<T, vstd::vector<vstd::string>>) {
 			for (auto&& v : arr) {
 				PushDataToVector(v, data);
 			}
-		} else if constexpr (std::is_same_v<T, luisa::vector<vstd::unique_ptr<IJsonDict>>>) {
+		} else if constexpr (std::is_same_v<T, vstd::vector<vstd::unique_ptr<IJsonDict>>>) {
 			for (auto&& v : arr) {
 				static_cast<SimpleJsonValueDict*>(v.get())->M_GetSerData(data);
 			}
-		} else if constexpr (std::is_same_v<T, luisa::vector<vstd::unique_ptr<IJsonArray>>>) {
+		} else if constexpr (std::is_same_v<T, vstd::vector<vstd::unique_ptr<IJsonArray>>>) {
 			for (auto&& v : arr) {
 				static_cast<SimpleJsonValueArray*>(v.get())->M_GetSerData(data);
 			}
-		} else if constexpr (std::is_same_v<T, luisa::vector<vstd::Guid>>) {
+		} else if constexpr (std::is_same_v<T, vstd::vector<vstd::Guid>>) {
 			for (auto&& v : arr) {
 				PushDataToVector(v, data);
 			}
-		} else if constexpr (std::is_same_v<T, luisa::vector<bool>>) {
+		} else if constexpr (std::is_same_v<T, vstd::vector<bool>>) {
 			for (auto&& v : arr) {
 				PushDataToVector(v, data);
 			}
@@ -835,14 +835,14 @@ void SimpleJsonValueArray::M_Print_Compress(vstd::string& str) const {
 	}
 }
 vstd::MD5 SimpleJsonValueDict::GetMD5() const {
-	luisa::vector<std::byte> vec;
+	vstd::vector<std::byte> vec;
 	M_GetSerData(vec);
 	return vstd::MD5(vstd::span<uint8_t const>{
 		reinterpret_cast<uint8_t const*>(vec.data()),
 		vec.size()});
 }
 vstd::MD5 SimpleJsonValueArray::GetMD5() const {
-	luisa::vector<std::byte> vec;
+	vstd::vector<std::byte> vec;
 	M_GetSerData(vec);
 	return vstd::MD5(vstd::span<uint8_t const>{
 		reinterpret_cast<uint8_t const*>(vec.data()),
@@ -908,7 +908,7 @@ void SimpleJsonValueArray::ArrayTypeTraits(size_t typeIndex) {
 		if (!int64Vec.empty()) {
 			// I confess
 			// Use magic here: reinterpret vector<int64> to vector<double>
-			auto doubleVec = std::move(reinterpret_cast<luisa::vector<double>&>(int64Vec));
+			auto doubleVec = std::move(reinterpret_cast<vstd::vector<double>&>(int64Vec));
 			for(auto&& i : doubleVec){
 				auto doubleValue = static_cast<double>(reinterpret_cast<int64&>(i));
 				i = doubleValue;

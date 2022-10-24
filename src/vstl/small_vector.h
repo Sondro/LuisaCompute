@@ -11,6 +11,6 @@ constexpr size_t SmallVecEleCount(){
     return SMALL_VECTOR_STACK_SIZE / sizeof(T);
 }
 }
-template<typename T, VEngine_AllocType allocType = VEngine_AllocType::VEngine>
-using small_vector = vector<T, allocType, (detail::SmallVecEleCount<T>())>;
+template<typename T>
+using small_vector = fixed_vector<T, (detail::SmallVecEleCount<T>())>;
 }// namespace vstd

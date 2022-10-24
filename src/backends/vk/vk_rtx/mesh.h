@@ -14,7 +14,7 @@ class MeshHandle;
 class Mesh : public GPUCollection {
 	VkAccelerationStructureKHR accel = nullptr;
 	vstd::unique_ptr<Buffer> accelBuffer;
-	vstd::vector<MeshHandle*, VEngine_AllocType::VEngine, 2> handles;
+	vstd::fixedvector<MeshHandle*, 2> handles;
 	vstd::spin_mutex handleMtx;
 	size_t lastVertSize = 0;
 	size_t lastTriSize = 0;

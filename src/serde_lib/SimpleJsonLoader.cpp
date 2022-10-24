@@ -163,7 +163,7 @@ SimpleJsonVariant SimpleJsonLoader::DeSerialize_DiffEnding(vstd::span<std::byte 
 	}
 }
 
-void SimpleJsonLoader::Serialize(SimpleJsonVariant const& v, luisa::vector<std::byte>& data) {
+void SimpleJsonLoader::Serialize(SimpleJsonVariant const& v, vstd::vector<std::byte>& data) {
 	size_t dataOffset = data.size();
 	data.push_back(static_cast<std::byte>(v.value.index()));
 	switch (v.value.index()) {

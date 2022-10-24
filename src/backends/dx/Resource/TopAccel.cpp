@@ -85,7 +85,7 @@ size_t TopAccel::PreProcess(
     topLevelBuildDesc.Inputs.NumDescs = size;
     allInstance.resize(size);
     setDesc.clear();
-    setDesc.push_back_all(modifications);
+    vstd::push_back_all(setDesc, modifications);
 
     for (auto &&m : setDesc) {
         auto ite = setMap.Find(m.index);
@@ -112,7 +112,7 @@ size_t TopAccel::PreProcess(
         update = false;
         setDesc.reserve(setMap.size());
         for (auto &&i : setMap) {
-            auto& mod = setDesc.emplace_back(i.first);
+            auto &mod = setDesc.emplace_back(i.first);
             mod.flags = mod.flag_mesh;
             mod.mesh = i.second->mesh->GetAccelBuffer()->GetAddress();
         }
@@ -199,7 +199,7 @@ void TopAccel::Build(
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         tracker.UpdateState(builder);
         auto cs = device->setAccelKernel.Get(device);
-        auto setBuffer = alloc->GetTempUploadBuffer(setDesc.byte_size());
+        auto setBuffer = alloc->GetTempUploadBuffer(setDesc.size_bytes());
         auto cbuffer = alloc->GetTempUploadBuffer(sizeof(size_t), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         struct CBuffer {
             uint dsp;
@@ -213,7 +213,7 @@ void TopAccel::Build(
                        {reinterpret_cast<uint8_t const *>(&cbValue), sizeof(CBuffer)});
         static_cast<UploadBuffer const *>(setBuffer.buffer)
             ->CopyData(setBuffer.offset,
-                       {reinterpret_cast<uint8_t const *>(setDesc.data()), setDesc.byte_size()});
+                       {reinterpret_cast<uint8_t const *>(setDesc.data()), setDesc.size_bytes()});
         BindProperty properties[3];
         properties[0] = cbuffer;
         properties[1] = setBuffer;

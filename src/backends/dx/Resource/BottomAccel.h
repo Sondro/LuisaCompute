@@ -36,7 +36,7 @@ class BottomAccel : public vstd::IOperatorNewBase {
     Device *device;
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS hint;
     bool update = false;
-    vstd::vector<MeshHandle *, VEngine_AllocType::VEngine, 2> handles;
+    vstd::fixed_vector<MeshHandle *, 2> handles;
     vstd::spin_mutex handleMtx;
     MeshHandle *AddAccelRef(TopAccel *accel, uint index);
     void RemoveAccelRef(MeshHandle *handle);

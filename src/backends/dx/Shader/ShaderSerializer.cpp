@@ -47,13 +47,13 @@ ShaderSerializer::Serialize(
         bindlessCount,
         static_cast<uint>(kernelArgs.size())};
     *reinterpret_cast<Header *>(result.data()) = std::move(header);
-    result.push_back_all(binByte);
-    result.push_back_all(
-        reinterpret_cast<std::byte const *>(properties.data()),
-        properties.size_bytes());
-    result.push_back_all(
-        reinterpret_cast<std::byte const *>(kernelArgs.data()),
-        kernelArgs.size_bytes());
+    vstd::push_back_all(result, binByte);
+    vstd::push_back_all(result,
+                        reinterpret_cast<std::byte const *>(properties.data()),
+                        properties.size_bytes());
+    vstd::push_back_all(result,
+                        reinterpret_cast<std::byte const *>(kernelArgs.data()),
+                        kernelArgs.size_bytes());
     return result;
 }
 vstd::vector<std::byte> ShaderSerializer::RasterSerialize(
@@ -76,14 +76,14 @@ vstd::vector<std::byte> ShaderSerializer::RasterSerialize(
         bindlessCount,
         static_cast<uint>(kernelArgs.size())};
     *reinterpret_cast<RasterHeader *>(result.data()) = std::move(header);
-    result.push_back_all(vertBin);
-    result.push_back_all(pixelBin);
-    result.push_back_all(
-        reinterpret_cast<std::byte const *>(properties.data()),
-        properties.size_bytes());
-    result.push_back_all(
-        reinterpret_cast<std::byte const *>(kernelArgs.data()),
-        kernelArgs.size_bytes());
+    vstd::push_back_all(result, vertBin);
+    vstd::push_back_all(result, pixelBin);
+    vstd::push_back_all(result,
+                        reinterpret_cast<std::byte const *>(properties.data()),
+                        properties.size_bytes());
+    vstd::push_back_all(result,
+                        reinterpret_cast<std::byte const *>(kernelArgs.data()),
+                        kernelArgs.size_bytes());
     return result;
 }
 bool ShaderSerializer::CheckMD5(
@@ -181,9 +181,9 @@ ComputeShader *ShaderSerializer::DeSerialize(
     vstd::vector<SavedArgument> kernelArgs;
     properties.resize(header.propertyCount);
     kernelArgs.resize(header.kernelArgCount);
-    memcpy(properties.data(), binPtr, properties.byte_size());
-    binPtr += properties.byte_size();
-    memcpy(kernelArgs.data(), binPtr, kernelArgs.byte_size());
+    memcpy(properties.data(), binPtr, properties.size_bytes());
+    binPtr += properties.size_bytes();
+    memcpy(kernelArgs.data(), binPtr, kernelArgs.size_bytes());
 
     auto cs = new ComputeShader(
         header.blockSize,
@@ -293,9 +293,9 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
     vstd::vector<SavedArgument> kernelArgs;
     properties.resize(header.propertyCount);
     kernelArgs.resize(header.kernelArgCount);
-    memcpy(properties.data(), binPtr, properties.byte_size());
-    binPtr += properties.byte_size();
-    memcpy(kernelArgs.data(), binPtr, kernelArgs.byte_size());
+    memcpy(properties.data(), binPtr, properties.size_bytes());
+    binPtr += properties.size_bytes();
+    memcpy(kernelArgs.data(), binPtr, kernelArgs.size_bytes());
     auto s = new RasterShader(
         device,
         std::move(properties),
@@ -308,9 +308,9 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
 }
 ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
     vstd::span<Property const> properties, bool isRasterShader) {
-    vstd::vector<CD3DX12_ROOT_PARAMETER, VEngine_AllocType::VEngine, 32> allParameter;
+    vstd::fixed_vector<CD3DX12_ROOT_PARAMETER, 32> allParameter;
     allParameter.reserve(properties.size() + isRasterShader ? 1 : 0);
-    vstd::vector<CD3DX12_DESCRIPTOR_RANGE, VEngine_AllocType::VEngine, 32> allRange;
+    vstd::fixed_vector<CD3DX12_DESCRIPTOR_RANGE, 32> allRange;
     for (auto &&var : properties) {
         switch (var.type) {
             case ShaderVariableType::UAVDescriptorHeap:
@@ -384,7 +384,8 @@ size_t ShaderSerializer::SerializeRootSig(
     bool isRasterShader) {
     auto lastSize = result.size();
     auto blob = SerializeRootSig(properties, isRasterShader);
-    result.push_back_all(
+    vstd::push_back_all(
+        result,
         (std::byte const *)blob->GetBufferPointer(),
         blob->GetBufferSize());
     return result.size() - lastSize;
@@ -404,7 +405,7 @@ vstd::vector<SavedArgument> ShaderSerializer::SerializeKernel(Function kernel) {
     assert(kernel.tag() == Function::Tag::KERNEL);
     auto &&args = kernel.arguments();
     vstd::vector<SavedArgument> result;
-    result.push_back_func(args.size(), [&](size_t i) {
+    vstd::push_back_func(result, args.size(), [&](size_t i) {
         auto &&var = args[i];
         auto type = var.type();
         return SavedArgument(kernel, var);

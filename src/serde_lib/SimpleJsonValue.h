@@ -176,9 +176,9 @@ public:
 	vstd::Iterator<JsonKeyPair> begin() const& override;
 	vstd::Iterator<MoveJsonKeyPair> begin() && override;
 	size_t Length() const override;
-	luisa::vector<std::byte> Serialize() const override;
-	void Serialize(luisa::vector<std::byte>& vec) const override;
-	void M_GetSerData(luisa::vector<std::byte>& arr) const;
+	vstd::vector<std::byte> Serialize() const override;
+	void Serialize(vstd::vector<std::byte>& vec) const override;
+	void M_GetSerData(vstd::vector<std::byte>& arr) const;
 	void LoadFromSer(vstd::span<std::byte const>& arr);
 	void LoadFromSer_DiffEnding(vstd::span<std::byte const>& arr);
 	bool Read(vstd::span<std::byte const> sp,
@@ -207,7 +207,7 @@ template<typename T>
 struct VariantVector;
 template<typename... Args>
 struct VariantVector<vstd::variant<Args...>> {
-	using Type = vstd::variant<luisa::vector<Args>..., luisa::vector<std::nullptr_t>>;
+	using Type = vstd::variant<vstd::vector<Args>..., vstd::vector<std::nullptr_t>>;
 };
 }// namespace detail
 class SimpleJsonValueArray final : public IJsonArray {
@@ -233,9 +233,9 @@ public:
 	vstd::optional<ParsingException> Parse(
 		vstd::string_view str,
 		bool clearLast) override;
-	luisa::vector<std::byte> Serialize() const override;
-	void Serialize(luisa::vector<std::byte>& vec) const override;
-	void M_GetSerData(luisa::vector<std::byte>& result) const;
+	vstd::vector<std::byte> Serialize() const override;
+	void Serialize(vstd::vector<std::byte>& vec) const override;
+	void M_GetSerData(vstd::vector<std::byte>& result) const;
 	void LoadFromSer(vstd::span<std::byte const>& arr);
 	void LoadFromSer_DiffEnding(vstd::span<std::byte const>& arr);
 	bool Read(vstd::span<std::byte const> sp, bool clearLast) override;

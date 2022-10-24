@@ -24,7 +24,7 @@ public:
     vstd::vector<uint8_t> argBuffer;
     vstd::vector<BottomAccelData> bottomAccelDatas;
     size_t buildAccelSize = 0;
-    vstd::vector<std::pair<size_t, size_t>, VEngine_AllocType::VEngine, 4> accelOffset;
+    vstd::fixed_vector<std::pair<size_t, size_t>, 4> accelOffset;
     void AddBuildAccel(size_t size) {
         size = CalcAlign(size, 256);
         accelOffset.emplace_back(buildAccelSize, size);
@@ -396,7 +396,7 @@ public:
                 bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
             }
             DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
-            bindProps->push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
+            vstd::push_back_func(*bindProps, shader->BindlessCount() + 2, [&] { return globalHeapView; });
             cmd->decode(Visitor{this, shader->Args().data()});
         };
         luisa::visit(
@@ -605,7 +605,7 @@ public:
             bindProps->emplace_back(BufferView(argBuffer.buffer, argBuffer.offset + tempBuffer.first, tempBuffer.second));
         }
         DescriptorHeapView globalHeapView(DescriptorHeapView(device->globalHeap.get()));
-        bindProps->push_back_func(shader->BindlessCount() + 2, [&] { return globalHeapView; });
+        vstd::push_back_func(*bindProps, shader->BindlessCount() + 2, [&] { return globalHeapView; });
         cmd->decode(Visitor{this, shader->Args().data()});
         bd->SetRasterShader(shader, *bindProps);
         auto cmdList = bd->CmdList();
@@ -696,7 +696,8 @@ public:
             cmdList->SetGraphicsRoot32BitConstant(propCount, mesh.object_id(), 0);
             vbv->clear();
             auto src = mesh.vertex_buffers();
-            vbv->push_back_func(
+            vstd::push_back_func(
+                *vbv,
                 src.size(),
                 [&](size_t i) {
                     auto &e = src[i];
@@ -902,7 +903,7 @@ void LCCmdBuffer::Present(
 }
 void LCCmdBuffer::CompressBC(
     TextureBase *rt,
-    luisa::vector<std::byte> &result,
+    vstd::vector<std::byte> &result,
     bool isHDR,
     float alphaImportance,
     IGpuAllocator *allocator,

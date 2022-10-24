@@ -59,15 +59,15 @@ Iterator<T> GetIterator(vstd::span<T> const &sp) {
     };
 }
 template<typename T>
-Iterator<T> GetIterator(eastl::vector<T> const &sp) {
+Iterator<T> GetIterator(vstd::vector<T> const &sp) {
     return [&](void *ptr) {
         return new (ptr) detail::SpanIterator<T>{sp.data(), sp.size()};
     };
 }
-template<typename T, VEngine_AllocType alloc, size_t stackCount>
-Iterator<T> GetIterator(vstd::vector<T, alloc, stackCount> &vec) {
+template<typename T, size_t node>
+Iterator<T> GetIterator(vstd::fixed_vector<T, node> const &sp) {
     return [&](void *ptr) {
-        return new (ptr) detail::SpanIterator<T>{vec.data(), vec.size()};
+        return new (ptr) detail::SpanIterator<T>{sp.data(), sp.size()};
     };
 }
 template<typename K, typename V, typename Hash, typename Compare, VEngine_AllocType allocType>

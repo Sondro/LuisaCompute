@@ -13,7 +13,8 @@ LCSwapChain::LCSwapChain(
     bool allowHDR,
     uint backBufferCount) {
     auto frameCount = backBufferCount + 1;
-    m_renderTargets.push_back_func(
+    vstd::push_back_func(
+        m_renderTargets,
         frameCount,
         [&] { return device; });
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};

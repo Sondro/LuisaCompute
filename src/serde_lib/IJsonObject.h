@@ -48,8 +48,8 @@ public:
 	virtual bool IsDict() const { return false; }
 	virtual bool IsArray() const { return false; }
 	virtual size_t Length() const = 0;
-	virtual luisa::vector<std::byte> Serialize() const = 0;
-	virtual void Serialize(luisa::vector<std::byte>& vec) const = 0;
+	virtual vstd::vector<std::byte> Serialize() const = 0;
+	virtual void Serialize(vstd::vector<std::byte>& vec) const = 0;
 	virtual void Reset() = 0;
 	virtual bool IsEmpty() const = 0;
 	virtual vstd::string FormattedPrint() const = 0;

@@ -18,7 +18,7 @@ public:
 	vstd::HashMap<vstd::Guid, std::pair<SimpleJsonObject*, uint8_t>>::Index dbIndexer;
 	SimpleBinaryJson* GetDB() const { return db; }
 	vstd::Guid const& GetGUID() const { return selfGuid; }
-	virtual void M_GetSerData(luisa::vector<uint8_t>& data) = 0;
+	virtual void M_GetSerData(vstd::vector<uint8_t>& data) = 0;
 	virtual void LoadFromData(vstd::span<uint8_t const> data) = 0;
 };
 }// namespace toolhub::db

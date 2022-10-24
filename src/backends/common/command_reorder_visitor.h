@@ -100,7 +100,7 @@ private:
     int64_t maxBufferReadLevel = -1;
     int64_t maxAccelReadLevel = -1;
     int64_t maxAccelWriteLevel = -1;
-    luisa::vector<vstd::vector<Command const *, VEngine_AllocType::VEngine, 4>> commandLists;
+    vstd::vector<vstd::fixed_vector<Command const *, 4>> commandLists;
     size_t layerCount = 0;
     bool useBindlessInPass;
     bool useAccelInPass;
@@ -425,8 +425,8 @@ private:
             } break;
         }
     }
-    luisa::vector<std::pair<Range, ResourceHandle *>> dispatchReadHandle;
-    luisa::vector<std::pair<Range, ResourceHandle *>> dispatchWriteHandle;
+    vstd::vector<std::pair<Range, ResourceHandle *>> dispatchReadHandle;
+    vstd::vector<std::pair<Range, ResourceHandle *>> dispatchWriteHandle;
     size_t argIndex;
     uint64_t shaderHandle;
     size_t dispatchLayer;

@@ -189,7 +189,8 @@ void DeviceDeser::Receive(SocketVisitor* visitor) {
 			uint64 typeCount;
 			strm >> typeCount;
 			vstd::vector<Type const*> types;
-			types.push_back_func(
+			push_back_func(
+				types,
 				typeCount,
 				[&]() -> Type const* {
 					uint64 strLen;

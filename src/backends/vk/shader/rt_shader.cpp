@@ -106,7 +106,7 @@ RTShader::RTShader(
 		vstd::vector<uint8_t> shaderHandleStorage(sbtSize);
 		ThrowIfFailed(device->vkGetRayTracingShaderGroupHandlesKHR(device->device, pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data()));
 		const VkBufferUsageFlagBits bufferUsageFlags = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-		sbtBuffer.New(device, shaderHandleStorage.byte_size(), bufferUsageFlags, false, RWState::Upload);
+		sbtBuffer.New(device, shaderHandleStorage.size_bytes(), bufferUsageFlags, false, RWState::Upload);
 		sbtBuffer->CopyFrom(shaderHandleStorage, 0);
 	}
 }

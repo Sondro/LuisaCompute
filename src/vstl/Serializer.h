@@ -100,13 +100,35 @@ struct SerDe<std::string_view, reverseBytes> {
     }
 };
 
-template<typename T, VEngine_AllocType alloc, size_t tri, bool reverseBytes>
-struct SerDe<vector<T, alloc, tri>, reverseBytes> {
-    using Value = vector<T, alloc, tri>;
+template<typename T, bool reverseBytes>
+struct SerDe<vector<T>, reverseBytes> {
+    using Value = vector<T>;
     static Value Get(vstd::span<T const> &sp) {
         Value sz;
         auto s = SerDe<uint, reverseBytes>::Get(sp);
-        sz.push_back_func(
+        push_back_func(
+            sz,
+            s,
+            [&]() {
+                return SerDe<T, reverseBytes>::Get(sp);
+            });
+        return sz;
+    }
+    static void Set(Value const &data, luisa::vector<T> &arr) {
+        SerDe<uint, reverseBytes>::Set(data.size(), arr);
+        for (auto &&i : data) {
+            SerDe<T, reverseBytes>::Set(i, arr);
+        }
+    }
+};
+template<typename T, size_t i, bool reverseBytes>
+struct SerDe<fixed_vector<T, i>, reverseBytes> {
+    using Value = fixed_vector<T, i>;
+    static Value Get(vstd::span<T const> &sp) {
+        Value sz;
+        auto s = SerDe<uint, reverseBytes>::Get(sp);
+        push_back_func(
+            sz,
             s,
             [&]() {
                 return SerDe<T, reverseBytes>::Get(sp);

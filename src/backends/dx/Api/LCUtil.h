@@ -10,8 +10,8 @@ public:
     Device *device;
     LCUtil(Device *device);
     ~LCUtil();
-    Result compress_bc6h(Stream &stream, Image<float> const &src, luisa::vector<std::byte> &result) noexcept override;
-    Result compress_bc7(Stream &stream, Image<float> const &src, luisa::vector<std::byte> &result, float alphaImportance) noexcept override;
+    Result compress_bc6h(Stream &stream, Image<float> const &src, vstd::vector<std::byte> &result) noexcept override;
+    Result compress_bc7(Stream &stream, Image<float> const &src, vstd::vector<std::byte> &result, float alphaImportance) noexcept override;
     Result check_builtin_shader() noexcept override;
 };
 }// namespace toolhub::directx
