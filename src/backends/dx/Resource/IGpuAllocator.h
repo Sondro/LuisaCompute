@@ -3,7 +3,7 @@
 namespace toolhub::directx {
 class IGpuAllocator : public vstd::ISelfPtr {
 public:
-	enum class Tag : vbyte {
+	enum class Tag : uint8_t {
 		None,
 		DefaultAllocator
 	};

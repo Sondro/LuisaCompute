@@ -10,10 +10,10 @@ public:
 	std::lock_guard<std::mutex> lock() const { return  std::lock_guard{mtx}; }
 	bool CacheAvailable() const { return cacheAvailable; }
 	VkPipelineCache Cache() const { return pipelineCache; }
-	vstd::vector<vbyte> GetPSOData() const;
+	vstd::vector<uint8_t> GetPSOData() const;
 	PipelineCache(
 		Device const* device,
-		vstd::span<vbyte const> psoCache);
+		vstd::span<uint8_t const> psoCache);
 	~PipelineCache();
 };
 }// namespace toolhub::vk

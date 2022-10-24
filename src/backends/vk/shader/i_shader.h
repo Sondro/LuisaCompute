@@ -4,7 +4,7 @@ namespace toolhub::vk {
 class PipelineLayout;
 class IShader {
 public:
-	enum class Tag : vbyte {
+	enum class Tag : uint8_t {
 		Compute,
 		RayTracing
 	};

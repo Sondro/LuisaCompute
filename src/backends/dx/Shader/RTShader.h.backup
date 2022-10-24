@@ -6,7 +6,7 @@ class CommandBufferBuilder;
 class RTShader final : public Shader {
 protected:
     Microsoft::WRL::ComPtr<ID3D12StateObject> stateObj;
-    using ByteVector = vstd::vector<vbyte, VEngine_AllocType::VEngine, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES>;
+    using ByteVector = vstd::vector<uint8_t, VEngine_AllocType::VEngine, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES>;
     ByteVector raygenIdentifier;
     ByteVector missIdentifier;
     ByteVector identifier;
@@ -18,7 +18,7 @@ protected:
         bool closestHit,
         bool anyHit,
         bool intersectHit,
-        vstd::span<vbyte const> binData,
+        vstd::span<uint8_t const> binData,
         Device* device);
 
 public:
@@ -39,7 +39,7 @@ public:
         bool anyHit,
         bool intersectHit,
         vstd::span<std::pair<vstd::string, Property> const> properties,
-        vstd::span<vbyte const> binData,
+        vstd::span<uint8_t const> binData,
         Device *device);
     RTShader(
         bool closestHit,
@@ -47,7 +47,7 @@ public:
         bool intersectHit,
         vstd::span<std::pair<vstd::string, Property> const> prop,
         ComPtr<ID3D12RootSignature> &&rootSig,
-        vstd::span<vbyte const> binData,
+        vstd::span<uint8_t const> binData,
         Device *device);
 
     ~RTShader();

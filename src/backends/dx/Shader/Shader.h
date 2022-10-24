@@ -21,7 +21,7 @@ class TopAccel;
 class CommandBufferBuilder;
 class Shader : public vstd::IOperatorNewBase {
 public:
-	enum class Tag : vbyte {
+	enum class Tag : uint8_t {
 		ComputeShader,
 		RayTracingShader,
 		RasterShader

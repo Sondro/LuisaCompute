@@ -264,7 +264,7 @@ void Mesh::RemoveAccelRef(MeshHandle* handle) {
 	assert(handle->mesh == this);
 	{
 		std::lock_guard lck(handleMtx);
-		auto last = handles.erase_last();
+		auto last = handles.pop_back();
 		if (last != handle) {
 			last->meshIndex = handle->meshIndex;
 			handles[handle->meshIndex] = last;

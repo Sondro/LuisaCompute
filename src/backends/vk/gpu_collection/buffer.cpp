@@ -42,11 +42,11 @@ Buffer::Buffer(
 		  rwState,
 		  alignment) {
 }
-void Buffer::CopyFrom(vstd::span<vbyte const> data, size_t offset) const {
-	memcpy(reinterpret_cast<vbyte*>(vmaBuffer.mappedPtr) + offset, data.data(), data.size());
+void Buffer::CopyFrom(vstd::span<uint8_t const> data, size_t offset) const {
+	memcpy(reinterpret_cast<uint8_t*>(vmaBuffer.mappedPtr) + offset, data.data(), data.size());
 }
-void Buffer::CopyTo(vstd::span<vbyte> data, size_t offset) const {
-	memcpy(data.data(), reinterpret_cast<vbyte const*>(vmaBuffer.mappedPtr) + offset, data.size());
+void Buffer::CopyTo(vstd::span<uint8_t> data, size_t offset) const {
+	memcpy(data.data(), reinterpret_cast<uint8_t const*>(vmaBuffer.mappedPtr) + offset, data.size());
 }
 VkDescriptorBufferInfo Buffer::GetDescriptor(
 	size_t offset, size_t size) const {

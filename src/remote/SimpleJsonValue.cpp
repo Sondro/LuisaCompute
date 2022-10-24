@@ -472,7 +472,7 @@ size_t SimpleJsonValueDict::Length() const {
 	return vars.size();
 }
 void SimpleJsonValueDict::Serialize(luisa::vector<std::byte>& result) const {
-	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<vbyte>::max()) : static_cast<std::byte>(0));
+	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<uint8_t>::max()) : static_cast<std::byte>(0));
 	auto sz = result.size();
 	SerPreProcess(result);
 	M_GetSerData(result);
@@ -540,7 +540,7 @@ size_t SimpleJsonValueArray::Length() const {
 }
 
 void SimpleJsonValueArray::Serialize(luisa::vector<std::byte>& result) const {
-	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<vbyte>::max()) : static_cast<std::byte>(0));
+	result.emplace_back(IsMachineLittleEnding() ? static_cast<std::byte>(std::numeric_limits<uint8_t>::max()) : static_cast<std::byte>(0));
 	auto sz = result.size();
 	SerPreProcess(result);
 	M_GetSerData(result);

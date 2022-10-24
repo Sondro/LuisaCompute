@@ -21,7 +21,7 @@ public:
     ResourceStateTracker *stateTracker;
     vstd::vector<Resource const *> backState;
     vstd::vector<std::pair<size_t, size_t>> argVecs;
-    vstd::vector<vbyte> argBuffer;
+    vstd::vector<uint8_t> argBuffer;
     vstd::vector<BottomAccelData> bottomAccelDatas;
     size_t buildAccelSize = 0;
     vstd::vector<std::pair<size_t, size_t>, VEngine_AllocType::VEngine, 4> accelOffset;
@@ -408,7 +408,7 @@ public:
                     bd->DispatchComputeIndirect(cs, *buffer, *bindProps);
                 } else {
                     // auto bfView = bd->GetCB()->GetAlloc()->GetTempUploadBuffer(16, 16);
-                    // static_cast<UploadBuffer const *>(bfView.buffer)->CopyData(bfView.offset, {reinterpret_cast<vbyte const *>(&t), 12});
+                    // static_cast<UploadBuffer const *>(bfView.buffer)->CopyData(bfView.offset, {reinterpret_cast<uint8_t const *>(&t), 12});
                     bindProps->emplace_back(4, make_uint4(t, 1));
                     BeforeDispatch();
                     bd->DispatchCompute(
@@ -446,12 +446,12 @@ public:
         if (copyInfo.bufferSize == copyInfo.alignedBufferSize) {
             uploadBuffer->CopyData(
                 bfView.offset,
-                {reinterpret_cast<vbyte const *>(cmd->data()),
+                {reinterpret_cast<uint8_t const *>(cmd->data()),
                  bfView.byteSize});
         } else {
             size_t bufferOffset = bfView.offset;
             size_t leftedSize = copyInfo.bufferSize;
-            auto dataPtr = reinterpret_cast<vbyte const *>(cmd->data());
+            auto dataPtr = reinterpret_cast<uint8_t const *>(cmd->data());
             while (leftedSize > 0) {
                 uploadBuffer->CopyData(
                     bufferOffset,
@@ -504,7 +504,7 @@ public:
                     size_t bufferOffset = bfView.offset;
                     rbBuffer->CopyData(
                         bufferOffset,
-                        {reinterpret_cast<vbyte *>(ptr), bfView.byteSize});
+                        {reinterpret_cast<uint8_t *>(ptr), bfView.byteSize});
                 });
         } else {
             auto rbBuffer = static_cast<ReadbackBuffer const *>(bfView.buffer);
@@ -512,7 +512,7 @@ public:
             alloc->ExecuteAfterComplete(
                 [rbBuffer,
                  bufferOffset,
-                 dataPtr = reinterpret_cast<vbyte *>(cmd->data()),
+                 dataPtr = reinterpret_cast<uint8_t *>(cmd->data()),
                  copyInfo]() mutable {
                     while (copyInfo.bufferSize > 0) {
 
@@ -952,7 +952,7 @@ void LCCmdBuffer::CompressBC(
         tracker.RecordState(rt, tracker.TextureReadState(rt));
         auto RunComputeShader = [&](ComputeShader const *cs, uint dispatchCount, DefaultBuffer const &inBuffer, DefaultBuffer const &outBuffer) {
             auto cbuffer = alloc->GetTempUploadBuffer(sizeof(BCCBuffer), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-            static_cast<UploadBuffer const *>(cbuffer.buffer)->CopyData(cbuffer.offset, {reinterpret_cast<vbyte const *>(&cbData), sizeof(BCCBuffer)});
+            static_cast<UploadBuffer const *>(cbuffer.buffer)->CopyData(cbuffer.offset, {reinterpret_cast<uint8_t const *>(&cbData), sizeof(BCCBuffer)});
             tracker.RecordState(
                 &inBuffer,
                 tracker.BufferReadState());
@@ -1075,7 +1075,7 @@ void LCCmdBuffer::CompressBC(
          readbackBuffer = std::move(readbackBuffer)] {
             result.clear();
             result.resize(readbackBuffer.GetByteSize());
-            readbackBuffer.CopyData(0, {reinterpret_cast<vbyte *>(result.data()), result.size()});
+            readbackBuffer.CopyData(0, {reinterpret_cast<uint8_t *>(result.data()), result.size()});
         });
 }
 }// namespace toolhub::directx

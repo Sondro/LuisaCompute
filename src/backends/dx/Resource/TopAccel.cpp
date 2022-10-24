@@ -210,10 +210,10 @@ void TopAccel::Build(
         cbValue.count = Length();
         static_cast<UploadBuffer const *>(cbuffer.buffer)
             ->CopyData(cbuffer.offset,
-                       {reinterpret_cast<vbyte const *>(&cbValue), sizeof(CBuffer)});
+                       {reinterpret_cast<uint8_t const *>(&cbValue), sizeof(CBuffer)});
         static_cast<UploadBuffer const *>(setBuffer.buffer)
             ->CopyData(setBuffer.offset,
-                       {reinterpret_cast<vbyte const *>(setDesc.data()), setDesc.byte_size()});
+                       {reinterpret_cast<uint8_t const *>(setDesc.data()), setDesc.byte_size()});
         BindProperty properties[3];
         properties[0] = cbuffer;
         properties[1] = setBuffer;
@@ -258,7 +258,7 @@ void TopAccel::FinalCopy(
         readback.offset,
         sizeof(size_t));
     alloc->ExecuteAfterComplete([readback, this] {
-        static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(vbyte *)&compactSize, sizeof(size_t)});
+        static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(uint8_t *)&compactSize, sizeof(size_t)});
     });
 }
 bool TopAccel::RequireCompact() const {

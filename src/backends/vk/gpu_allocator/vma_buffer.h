@@ -3,7 +3,7 @@
 #include <gpu_allocator/vk_mem_alloc.h>
 namespace toolhub::vk {
 class GPUAllocator;
-enum class RWState : vbyte {
+enum class RWState : uint8_t {
 	None,
 	Readback,
 	Upload,

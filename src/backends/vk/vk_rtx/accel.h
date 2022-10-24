@@ -28,7 +28,7 @@ class Accel : public GPUCollection {
 	luisa::unordered_set<uint> requireUpdateMesh;
 
 public:
-	enum class Visibility : vbyte {
+	enum class Visibility : uint8_t {
 		On,
 		Off,
 		Unchange

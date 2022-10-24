@@ -1413,7 +1413,7 @@ void CodegenUtility::CodegenProperties(
     Function kernel,
     uint offset,
     vstd::array<uint, 3> &registerCount) {
-    enum class RegisterType : vbyte {
+    enum class RegisterType : uint8_t {
         CBV,
         UAV,
         SRV
@@ -1441,7 +1441,7 @@ void CodegenUtility::CodegenProperties(
             varData << varName;
         };
         auto genArg = [&]<bool rtBuffer = false, bool writable = false>(RegisterType regisT, ShaderVariableType sT, char v) {
-            auto &&r = registerCount[(vbyte)regisT];
+            auto &&r = registerCount[(uint8_t)regisT];
             Property prop = {
                 .type = sT,
                 .spaceIndex = 0,

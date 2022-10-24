@@ -115,7 +115,7 @@ struct CodegenGlobalPool {
     vstd::unique_ptr<CodegenStackData> Allocate() {
         std::lock_guard lck(mtx);
         if (!allCodegen.empty()) {
-            auto ite = allCodegen.erase_last();
+            auto ite = allCodegen.pop_back();
             ite->Clear();
             return ite;
         }

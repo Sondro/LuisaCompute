@@ -9,9 +9,9 @@ class SimpleBinaryJson;
 class ConcurrentBinaryJson;
 class SimpleJsonValueArray;
 class SimpleJsonValueDict;
-static constexpr vbyte DICT_TYPE = 0;
-static constexpr vbyte ARRAY_TYPE = 1;
-enum class ValueType : vbyte {
+static constexpr uint8_t DICT_TYPE = 0;
+static constexpr uint8_t ARRAY_TYPE = 1;
+enum class ValueType : uint8_t {
 	Int,
 	Float,
 	String,

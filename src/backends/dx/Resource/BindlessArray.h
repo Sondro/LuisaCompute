@@ -10,7 +10,7 @@ class CommandBufferBuilder;
 class ResourceStateTracker;
 class BindlessArray final : public Resource {
 public:
-    enum class BindTag : vbyte {
+    enum class BindTag : uint8_t {
         Buffer,
         Tex2D,
         Tex3D
@@ -27,8 +27,8 @@ public:
         uint16_t tex3DX;
         uint16_t tex3DY;
         uint16_t tex3DZ;
-        vbyte samp2D;
-        vbyte samp3D;
+        uint8_t samp2D;
+        uint8_t samp3D;
     };
     struct MapIndicies {
         MapIndex buffer;

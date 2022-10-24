@@ -8,7 +8,7 @@ PoolAllocator::AllocateHandle PoolAllocator::Allocate() {
                 return {ptr, i};
             });
     }
-    auto result = allocatedData.erase_last();
+    auto result = allocatedData.pop_back();
     return {
         result.first,
         result.second};

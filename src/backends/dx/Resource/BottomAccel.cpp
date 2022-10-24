@@ -181,7 +181,7 @@ void BottomAccel::FinalCopy(
         readback.offset,
         sizeof(size_t));
     alloc->ExecuteAfterComplete([readback, this] {
-        static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(vbyte *)&compactSize, sizeof(size_t)});
+        static_cast<ReadbackBuffer const *>(readback.buffer)->CopyData(readback.offset, {(uint8_t *)&compactSize, sizeof(size_t)});
     });
 }
 MeshHandle *BottomAccel::AddAccelRef(TopAccel *accel, uint index) {
@@ -200,7 +200,7 @@ void BottomAccel::RemoveAccelRef(MeshHandle *handle) {
     assert(handle->mesh == this);
     {
         std::lock_guard lck(handleMtx);
-        auto last = handles.erase_last();
+        auto last = handles.pop_back();
         if (last != handle) {
             last->meshIndex = handle->meshIndex;
             handles[handle->meshIndex] = last;

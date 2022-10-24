@@ -76,7 +76,7 @@ ComputeShader *ComputeShader::CompileCompute(
             if (checkMD5) {
                 md5 = *checkMD5;
             } else {
-                md5 = vstd::MD5({reinterpret_cast<vbyte const *>(str.result.data() + str.immutableHeaderSize), str.result.size() - str.immutableHeaderSize});
+                md5 = vstd::MD5({reinterpret_cast<uint8_t const *>(str.result.data() + str.immutableHeaderSize), str.result.size() - str.immutableHeaderSize});
             }
         }
         if constexpr (PRINT_CODE) {
@@ -166,7 +166,7 @@ void ComputeShader::SaveCompute(
     uint shaderModel,
     vstd::string_view fileName) {
     using namespace ComputeShaderDetail;
-    vstd::MD5 md5({reinterpret_cast<vbyte const *>(str.result.data() + str.immutableHeaderSize), str.result.size() - str.immutableHeaderSize});
+    vstd::MD5 md5({reinterpret_cast<uint8_t const *>(str.result.data() + str.immutableHeaderSize), str.result.size() - str.immutableHeaderSize});
     if (ShaderSerializer::CheckMD5(fileName, md5, *fileIo)) return;
     auto compResult = Device::Compiler()->CompileCompute(
         str.result,

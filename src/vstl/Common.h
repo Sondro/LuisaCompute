@@ -14,7 +14,6 @@
 #include <vstl/unique_ptr.h>
 #include <vstl/HashMap.h>
 #include <vstl/vstring.h>
-#include <core/mathematics.h>
 #include <string_view>
 #include <vstl/array.h>
 namespace vstd {

@@ -22,7 +22,7 @@ DescriptorSetManager::~DescriptorSetManager() {
 	detail::gDescriptorPool = device->pool.get();
 	descSets.Clear();
 	std::lock_guard lck(detail::managerMtx);
-	auto last = detail::managers.erase_last();
+	auto last = detail::managers.pop_back();
 	if (glbIndex != detail::managers.size()) {
 		detail::managers[glbIndex] = last;
 		last->glbIndex = glbIndex;
@@ -61,7 +61,7 @@ VkDescriptorSet DescriptorSetManager::Allocate(
 		if (vec.empty())
 			result = device->pool->Allocate(layout);
 		else
-			result = vec.erase_last();
+			result = vec.pop_back();
 	}
 	allocatedSets.emplace_back(ite, result);
 	computeWriteRes.clear();

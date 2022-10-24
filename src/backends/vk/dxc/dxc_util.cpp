@@ -16,8 +16,8 @@ DXByteBlob::DXByteBlob(
 	ComPtr<IDxcResult>&& rr)
 	: blob(std::move(b)),
 	  comRes(std::move(rr)) {}
-vbyte* DXByteBlob::GetBufferPtr() const {
-	return reinterpret_cast<vbyte*>(blob->GetBufferPointer());
+uint8_t* DXByteBlob::GetBufferPtr() const {
+	return reinterpret_cast<uint8_t*>(blob->GetBufferPointer());
 }
 size_t DXByteBlob::GetBufferSize() const {
 	return blob->GetBufferSize();

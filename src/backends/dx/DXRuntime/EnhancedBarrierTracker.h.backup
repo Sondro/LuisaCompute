@@ -60,7 +60,7 @@ private:
 		ID3D12Resource* res;
 		vstd::small_vector<SubResourceState> layerStates;
 		vstd::small_vector<SubResourceState> frameStates;
-		enum class Type : vbyte {
+		enum class Type : uint8_t {
 			Buffer,
 			Texture
 		};

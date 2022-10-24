@@ -21,7 +21,7 @@ public:
 			bfView,
 			BufferWriteState::Copy);
 		auto upload = frameRes->AllocateUpload(cmd->size());
-		upload.buffer->CopyFrom({reinterpret_cast<vbyte const*>(cmd->data()), cmd->size()}, upload.offset);
+		upload.buffer->CopyFrom({reinterpret_cast<uint8_t const*>(cmd->data()), cmd->size()}, upload.offset);
 		frameRes->AddCopyCmd(
 			upload.buffer,
 			upload.offset,
@@ -46,7 +46,7 @@ public:
 			cmd->size());
 		frameRes->AddDisposeEvent([readback, ptr = cmd->data(), size = cmd->size()] {
 			readback.buffer->CopyTo(
-				{reinterpret_cast<vbyte*>(ptr), size},
+				{reinterpret_cast<uint8_t*>(ptr), size},
 				readback.offset);
 		});
 	}
@@ -109,7 +109,7 @@ public:
 		auto upload = frameRes->AllocateUpload(
 			byteSize);
 		upload.buffer->CopyFrom(
-			{reinterpret_cast<vbyte const*>(cmd->data()),
+			{reinterpret_cast<uint8_t const*>(cmd->data()),
 			 byteSize},
 			upload.offset);
 		frameRes->AddCopyCmd(
@@ -138,7 +138,7 @@ public:
 			 ptr = cmd->data(),
 			 byteSize] {
 				readback.buffer->CopyTo(
-					{reinterpret_cast<vbyte*>(ptr), byteSize},
+					{reinterpret_cast<uint8_t*>(ptr), byteSize},
 					readback.offset);
 			});
 	}
@@ -258,7 +258,7 @@ public:
 			uniformData.size(),
 			stream->GetDevice()->limits.minStorageBufferOffsetAlignment);
 		upload.buffer->CopyFrom(
-			{reinterpret_cast<vbyte const*>(uniformData.data()),
+			{reinterpret_cast<uint8_t const*>(uniformData.data()),
 			 uniformData.size()},
 			upload.offset);
 		stream->StateTracker().MarkBufferWrite(

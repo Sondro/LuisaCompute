@@ -3,7 +3,7 @@
 namespace toolhub::vk {
 PipelineCache::PipelineCache(
 	Device const* device,
-	vstd::span<vbyte const> psoCache)
+	vstd::span<uint8_t const> psoCache)
 	: Resource(device) {
 	VkPipelineCacheCreateInfo createInfo{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
 	auto ptr = reinterpret_cast<VkPipelineCacheHeaderVersionOne const*>(psoCache.data());
@@ -18,8 +18,8 @@ PipelineCache::PipelineCache(
 	}
 	ThrowIfFailed(vkCreatePipelineCache(device->device, &createInfo, Device::Allocator(), &pipelineCache));
 }
-vstd::vector<vbyte> PipelineCache::GetPSOData() const {
-	vstd::vector<vbyte> data;
+vstd::vector<uint8_t> PipelineCache::GetPSOData() const {
+	vstd::vector<uint8_t> data;
 	size_t dataSize;
 	vkGetPipelineCacheData(device->device, pipelineCache, &dataSize, nullptr);
 	data.resize(dataSize);

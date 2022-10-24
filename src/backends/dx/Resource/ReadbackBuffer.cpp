@@ -36,14 +36,14 @@ ReadbackBuffer::~ReadbackBuffer() {
 }
 void ReadbackBuffer::CopyData(
 	uint64 offset, 
-	vstd::span<vbyte> data) const {
+	vstd::span<uint8_t> data) const {
 	void* mapPtr;
 	D3D12_RANGE range;
 	range.Begin = offset;
     range.End = offset + data.size();
 	ThrowIfFailed(allocHandle.resource->Map(0, &range, (void**)(&mapPtr)));
 	auto d = vstd::scope_exit([&] { allocHandle.resource->Unmap(0, nullptr); });
-    memcpy(data.data(), reinterpret_cast<vbyte const *>(mapPtr) + offset, data.size());
+    memcpy(data.data(), reinterpret_cast<uint8_t const *>(mapPtr) + offset, data.size());
 }
 
 }// namespace toolhub::directx

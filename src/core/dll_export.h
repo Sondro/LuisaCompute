@@ -59,6 +59,11 @@
 #define LC_DSL_API __declspec(dllimport)
 #endif
 
+#ifdef LC_SERDE_LIB_EXPORT_DLL
+#define LC_SERDE_LIB_API extern "C" __declspec(dllexport)
+#else
+#define LC_SERDE_LIB_API extern "C" __declspec(dllimport)
+#endif
 /*
 #ifdef LC_REMOTE_EXPORT_DLL
 #define LC_REMOTE_API __declspec(dllexport)

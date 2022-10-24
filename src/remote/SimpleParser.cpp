@@ -5,7 +5,7 @@
 #include <remote/StateRecorder.h>
 namespace toolhub::db {
 namespace parser {
-enum class OutsideState : vbyte {
+enum class OutsideState : uint8_t {
 	None,
 	BeginDict,
 	EndDict,
@@ -104,14 +104,14 @@ class SimpleJsonParser : public vstd::IOperatorNewBase {
 public:
 	struct Field {
 		vstd::variant<
-			vstd::vector<char>,
-			vstd::vector<std::pair<
+			luisa::vector<char>,
+			luisa::vector<std::pair<
 				vstd::variant<
-					vstd::vector<char>,
+					luisa::vector<char>,
 					int64,
 					vstd::Guid>,
 				Field*>>,
-			vstd::vector<Field*>,
+			luisa::vector<Field*>,
 			int64,
 			double,
 			vstd::Guid,
@@ -127,13 +127,13 @@ public:
 	using FieldPool = vstd::Pool<Field, false>;
 
 private:
-	vstd::vector<SimpleJsonParser>* subParsers;
+	luisa::vector<SimpleJsonParser>* subParsers;
 	FieldPool* fieldPool;
 
 	KeyWordMap* keywords;
 	vstd::string_view keywordName;
-	vstd::vector<Field*> fieldStack;
-	enum class StreamState : vbyte {
+	luisa::vector<Field*> fieldStack;
+	enum class StreamState : uint8_t {
 		None,
 		SearchKey,
 		SearchElement,
@@ -209,7 +209,7 @@ private:
 			errorStr = ("Illegal character '}'");
 			return false;
 		}
-		fieldStack.erase_last();
+		fieldStack.pop_back();
 		++ptr;
 		return SetLastFieldState(errorStr);
 	}
@@ -261,7 +261,7 @@ private:
 			errorStr = ("Illegal character ']'");
 			return false;
 		}
-		fieldStack.erase_last();
+		fieldStack.pop_back();
 		++ptr;
 		return SetLastFieldState(errorStr);
 	}
@@ -452,7 +452,7 @@ private:
 		ptr++;
 		char const* start = ptr;
 		bool isSlash = false;
-		vstd::vector<char> chars;
+		luisa::vector<char> chars;
 		chars.reserve(32);
 		auto func = [&]() {
 			while (true) {
@@ -605,9 +605,9 @@ private:
 	IJsonDatabase* db;
 	void SetDict(
 		IJsonDict* dict,
-		vstd::vector<std::pair<
+		luisa::vector<std::pair<
 			vstd::variant<
-				vstd::vector<char>,
+				luisa::vector<char>,
 				int64,
 				vstd::Guid>,
 			Field*>> const& v) {
@@ -637,9 +637,9 @@ private:
 		}
 	}
 	vstd::unique_ptr<IJsonDict> PrintDict(
-		vstd::vector<std::pair<
+		luisa::vector<std::pair<
 			vstd::variant<
-				vstd::vector<char>,
+				luisa::vector<char>,
 				int64,
 				vstd::Guid>,
 			Field*>> const& v) {
@@ -649,13 +649,13 @@ private:
 	}
 	void SetArray(
 		IJsonArray* arr,
-		vstd::vector<Field*> const& v) {
+		luisa::vector<Field*> const& v) {
 		arr->Reserve(v.size());
 		for (auto&& i : v) {
 			arr->Add(PrintField(i));
 		}
 	}
-	vstd::unique_ptr<IJsonArray> PrintArray(vstd::vector<Field*> const& v) {
+	vstd::unique_ptr<IJsonArray> PrintArray(luisa::vector<Field*> const& v) {
 		auto arr = db->CreateArray();
 		SetArray(arr.get(), v);
 		return arr;
@@ -795,7 +795,7 @@ public:
 	SimpleJsonParser(
 		KeyWordMap* keywords,
 		FieldPool* poolPtr,
-		vstd::vector<SimpleJsonParser>* subParserPtr)
+		luisa::vector<SimpleJsonParser>* subParserPtr)
 		: keywords(keywords) {
 		{
 			std::lock_guard lck(recorderIsInited);
@@ -885,7 +885,7 @@ vstd::optional<ParsingException> RunParse(
 		ptr->Reset();
 	}
 	using namespace parser;
-	vstd::vector<SimpleJsonParser> subParsers;
+	luisa::vector<SimpleJsonParser> subParsers;
 	SimpleJsonParser::FieldPool fieldPool(32, false);
 	SimpleJsonParser::KeyWordMap keywords;
 	keywords.Emplace("null", fieldPool.New(nullptr));

@@ -40,23 +40,23 @@ void BindlessArray::Bind(uint index, Buffer const* buffer, uint64 offset) {
 	RemoveRef(ref.buffer, ref.refCount);
 	AddRef(buffer, ref.refCount);
 	ref.buffer = buffer;
-	v.flag = (UpdateFlag)((vbyte)v.flag | (vbyte)UpdateFlag::BUFFER);
+	v.flag = (UpdateFlag)((uint8_t)v.flag | (uint8_t)UpdateFlag::BUFFER);
 	v.bufferOffset = offset;
 }
-void BindlessArray::Bind(uint index, Texture const* tex, vbyte offset) {
+void BindlessArray::Bind(uint index, Texture const* tex, uint8_t offset) {
 	auto&& v = updateList.Emplace(index).Value();
 	auto& ref = instances[index].second;
 	if (tex->Dimension() == VK_IMAGE_TYPE_2D) {
 		RemoveRef(ref.tex2D, ref.refCount);
 		AddRef(tex, ref.refCount);
 		ref.tex2D = tex;
-		v.flag = (UpdateFlag)((vbyte)v.flag | (vbyte)UpdateFlag::TEX2D);
+		v.flag = (UpdateFlag)((uint8_t)v.flag | (uint8_t)UpdateFlag::TEX2D);
 		v.tex2DOffset = offset;
 	} else {
 		RemoveRef(ref.tex3D, ref.refCount);
 		AddRef(tex, ref.refCount);
 		ref.tex3D = tex;
-		v.flag = (UpdateFlag)((vbyte)v.flag | (vbyte)UpdateFlag::TEX3D);
+		v.flag = (UpdateFlag)((uint8_t)v.flag | (uint8_t)UpdateFlag::TEX3D);
 		v.tex3DOffset = offset;
 	}
 }
@@ -65,21 +65,21 @@ void BindlessArray::UnBindBuffer(uint index) {
 	auto& ref = instances[index].second;
 	RemoveRef(ref.buffer, ref.refCount);
 	ref.buffer = nullptr;
-	v.flag = (UpdateFlag)((vbyte)v.flag | (vbyte)UpdateFlag::BUFFER);
+	v.flag = (UpdateFlag)((uint8_t)v.flag | (uint8_t)UpdateFlag::BUFFER);
 }
 void BindlessArray::UnBindTex2D(uint index) {
 	auto&& v = updateList.Emplace(index).Value();
 	auto& ref = instances[index].second;
 	RemoveRef(ref.tex2D, ref.refCount);
 	ref.tex2D = nullptr;
-	v.flag = (UpdateFlag)((vbyte)v.flag | (vbyte)UpdateFlag::TEX2D);
+	v.flag = (UpdateFlag)((uint8_t)v.flag | (uint8_t)UpdateFlag::TEX2D);
 }
 void BindlessArray::UnBindTex3D(uint index) {
 	auto&& v = updateList.Emplace(index).Value();
 	auto& ref = instances[index].second;
 	RemoveRef(ref.tex3D, ref.refCount);
 	ref.tex3D = nullptr;
-	v.flag = (UpdateFlag)((vbyte)v.flag | (vbyte)UpdateFlag::TEX3D);
+	v.flag = (UpdateFlag)((uint8_t)v.flag | (uint8_t)UpdateFlag::TEX3D);
 }
 //rendering
 void BindlessArray::Preprocess(
@@ -113,7 +113,7 @@ void BindlessArray::Preprocess(
 			}
 		}
 		// update buffer
-		if ((static_cast<vbyte>(refOp.flag) & static_cast<vbyte>(UpdateFlag::BUFFER)) != 0) {
+		if ((static_cast<uint8_t>(refOp.flag) & static_cast<uint8_t>(UpdateFlag::BUFFER)) != 0) {
 			if (ref.buffer) {
 				device->AddBindlessBufferUpdateCmd(
 					inst.first.index,
@@ -122,7 +122,7 @@ void BindlessArray::Preprocess(
 			inst.second.buffer = ref.buffer;
 		}
 		// update tex2d
-		if ((static_cast<vbyte>(refOp.flag) & static_cast<vbyte>(UpdateFlag::TEX2D)) != 0) {
+		if ((static_cast<uint8_t>(refOp.flag) & static_cast<uint8_t>(UpdateFlag::TEX2D)) != 0) {
 			if (ref.tex2D) {
 				device->AddBindlessTex2DUpdateCmd(
 					inst.first.index,
@@ -131,7 +131,7 @@ void BindlessArray::Preprocess(
 			inst.second.tex2D = ref.tex2D;
 		}
 		// update tex3d
-		if ((static_cast<vbyte>(refOp.flag) & static_cast<vbyte>(UpdateFlag::TEX3D)) != 0) {
+		if ((static_cast<uint8_t>(refOp.flag) & static_cast<uint8_t>(UpdateFlag::TEX3D)) != 0) {
 			if (ref.tex3D) {
 				device->AddBindlessTex3DUpdateCmd(
 					inst.first.index,

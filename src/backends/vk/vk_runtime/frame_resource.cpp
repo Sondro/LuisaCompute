@@ -233,7 +233,7 @@ template<typename Ele>
 decltype(auto) GetVecPoolLazyEval(vstd::vector<Ele>& vec) {
 	return vstd::LazyEval([&]() -> Ele {
 		if (vec.empty()) return {};
-		return vec.erase_last();
+		return vec.pop_back();
 	});
 }
 }// namespace detail

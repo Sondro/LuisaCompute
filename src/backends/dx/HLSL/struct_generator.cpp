@@ -87,12 +87,12 @@ void StructGenerator::ProvideAlignVariable(size_t tarAlign, size_t &structSize, 
 }
 
 StructureType StructureType::GetScalar() {
-    return {Tag::Scalar, vbyte(0)};
+    return {Tag::Scalar, uint8_t(0)};
 }
-StructureType StructureType::GetVector(vbyte dim) {
+StructureType StructureType::GetVector(uint8_t dim) {
     return {Tag::Vector, dim};
 }
-StructureType StructureType::GetMatrix(vbyte dim) {
+StructureType StructureType::GetMatrix(uint8_t dim) {
     return {Tag::Matrix, dim};
 }
 void StructGenerator::InitAsStruct(

@@ -14,6 +14,7 @@
 #include <dsl/sugar.h>
 #include <dsl/dispatch_indirect.h>
 #include <rtx/accel.h>
+#include <vstl/Common.h>
 
 using namespace luisa;
 using namespace luisa::compute;
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
         set_block_size(block_size, 1, 1);
         buffer.atomic(dispatch_id().x).fetch_add(kernel_id());
     };
-    Kernel1D clear_kernel = [&](BufferVar<DispatchArgs1D> ind_buffer) {
+    Kernel1D clear_kernel = [](BufferVar<DispatchArgs1D> ind_buffer) {
         set_block_size(1);
         clear_dispatch_buffer(ind_buffer);
     };

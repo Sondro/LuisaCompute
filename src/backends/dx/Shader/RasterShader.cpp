@@ -317,8 +317,8 @@ vstd::MD5 RasterShader::GenMD5(
         .rtv = vstd_xxhash_gethash(rtv.data(), rtv.size_bytes()),
         .dsv = vstd_xxhash_gethash(&dsv, sizeof(DepthFormat))};
     return vstd::MD5(
-        vstd::span<vbyte const>{
-            reinterpret_cast<vbyte const *>(&h),
+        vstd::span<uint8_t const>{
+            reinterpret_cast<uint8_t const *>(&h),
             sizeof(Hashes)});
 }
 RasterShader *RasterShader::CompileRaster(

@@ -205,7 +205,7 @@ void CommandBufferBuilder::Upload(BufferView const &buffer, void const *src) {
     static_cast<UploadBuffer const *>(uBuffer.buffer)
         ->CopyData(
             uBuffer.offset,
-            {reinterpret_cast<vbyte const *>(src), size_t(uBuffer.byteSize)});
+            {reinterpret_cast<uint8_t const *>(src), size_t(uBuffer.byteSize)});
     CopyBuffer(
         uBuffer.buffer,
         buffer.buffer,
@@ -248,7 +248,7 @@ void CommandBufferBuilder::Readback(BufferView const &buffer, void *dst) {
             static_cast<ReadbackBuffer const *>(rBuffer.buffer)
                 ->CopyData(
                     rBuffer.offset,
-                    {reinterpret_cast<vbyte *>(dst), size_t(rBuffer.byteSize)});
+                    {reinterpret_cast<uint8_t *>(dst), size_t(rBuffer.byteSize)});
         });
 }
 void CommandBuffer::Reset() const {

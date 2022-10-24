@@ -225,7 +225,7 @@ uint64_t DeviceSer::create_mesh(
 	bool allow_compact, bool allow_update) noexcept {
 	std::lock_guard lck(mtx);
 	auto handle = handleCounter++;
-	vbyte mask = 0;
+	uint8_t mask = 0;
 	if (allow_compact) {
 		mask |= 1;
 	}
@@ -246,7 +246,7 @@ void DeviceSer::destroy_mesh(uint64_t handle) noexcept {
 uint64_t DeviceSer::create_accel(AccelUsageHint hint, bool allow_compact, bool allow_update) noexcept {
 	std::lock_guard lck(mtx);
 	auto handle = handleCounter++;
-	vbyte mask = 0;
+	uint8_t mask = 0;
 	if (allow_compact) {
 		mask |= 1;
 	}

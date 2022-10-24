@@ -276,7 +276,7 @@ void Device::InitBindless() {
 }
 uint Device::AllocateBindlessIdx() const {
 	std::lock_guard lck(allocIdxMtx);
-	return bindlessIdx.erase_last();
+	return bindlessIdx.pop_back();
 }
 void Device::DeAllocateBindlessIdx(uint index) const {
 	std::lock_guard lck(allocIdxMtx);

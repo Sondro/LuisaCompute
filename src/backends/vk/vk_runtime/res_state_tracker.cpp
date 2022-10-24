@@ -133,9 +133,9 @@ void ResStateTracker::MarkRange(
 		ite.Value().bufferBarriers.emplace_back(v);
 
 		if (i != (vec.size() - 1)) {
-			value = vec.erase_last();
+			value = vec.pop_back();
 		} else {
-			vec.erase_last();
+			vec.pop_back();
 			break;
 		}
 	}
@@ -176,7 +176,7 @@ void ResStateTracker::MarkTexture(
 }
 ResStateTracker::Barriers ResStateTracker::AllocateBarrier() {
 	if (barrierPool.empty()) return {};
-	return barrierPool.erase_last();
+	return barrierPool.pop_back();
 }
 void ResStateTracker::ClearCollectMap() {
 	barrierPool.reserve(barrierPool.size() + collectedBarriers.size());

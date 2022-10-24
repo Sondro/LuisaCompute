@@ -17,7 +17,7 @@ public:
 		uint64 byteSize,
 		IGpuAllocator* allocator = nullptr);
 	~ReadbackBuffer();
-	void CopyData(uint64 offset, vstd::span<vbyte> data) const;
+	void CopyData(uint64 offset, vstd::span<uint8_t> data) const;
 	D3D12_RESOURCE_STATES GetInitState() const override {
 		return D3D12_RESOURCE_STATE_COPY_DEST;
 	}

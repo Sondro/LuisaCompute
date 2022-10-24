@@ -30,4 +30,3 @@ using uint = uint32_t;
 using uint64 = uint64_t;
 using int64 = int64_t;
 using int32 = int32_t;
-using vbyte = uint8_t;

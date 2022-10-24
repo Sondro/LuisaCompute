@@ -8,18 +8,18 @@ class Buffer;
 class CommandBuffer;
 class Texture;
 class BindlessArray;
-enum class BufferReadState : vbyte {
+enum class BufferReadState : uint8_t {
 	ComputeOrCopy,
 	IndirectArgs,
 	BuildAccel,
 	UseAccel,
 };
-enum class BufferWriteState : vbyte {
+enum class BufferWriteState : uint8_t {
 	Compute,
 	Copy,
 	Accel,
 };
-enum class TextureWriteState : vbyte {
+enum class TextureWriteState : uint8_t {
 	Compute,
 	Copy
 };

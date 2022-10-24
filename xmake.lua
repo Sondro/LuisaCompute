@@ -35,6 +35,7 @@ end
     })
 ]]
 UseMimalloc = true
+UseUnityBuild = true
 if is_mode("debug") then
 	set_targetdir("bin/debug")
 else
@@ -52,14 +53,16 @@ function BuildProject(config)
 	if projectType ~= nil then
 		set_kind(projectType)
 	end
-	local unityBuildBatch = GetValue(config.unityBuildBatch)
-	if (unityBuildBatch ~= nil) and (unityBuildBatch > 1) then
-		add_rules("c.unity_build", {
-			batchsize = unityBuildBatch
-		})
-		add_rules("c++.unity_build", {
-			batchsize = unityBuildBatch
-		})
+	if UseUnityBuild then
+		local unityBuildBatch = GetValue(config.unityBuildBatch)
+		if (unityBuildBatch ~= nil) and (unityBuildBatch > 1) then
+			add_rules("c.unity_build", {
+				batchsize = unityBuildBatch
+			})
+			add_rules("c++.unity_build", {
+				batchsize = unityBuildBatch
+			})
+		end
 	end
 	local value = GetValue(config.exception)
 	if (value ~= nil) and value then

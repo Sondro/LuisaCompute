@@ -35,7 +35,7 @@ uint DescriptorHeap::AllocateIndex() {
         VENGINE_EXIT;
     }
 #endif
-    uint v = allocatePool.erase_last();
+    uint v = allocatePool.pop_back();
     return v;
 }
 void DescriptorHeap::ReturnIndex(uint v) {

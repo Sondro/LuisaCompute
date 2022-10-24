@@ -9,23 +9,23 @@ namespace toolhub::directx {
 class StructureType : public vstd::IOperatorNewBase {
 
 public:
-    enum class Tag : vbyte {
+    enum class Tag : uint8_t {
         Scalar,
         Vector,
         Matrix
     };
 
 private:
-    vbyte mDimension;
+    uint8_t mDimension;
     Tag mTag;
-    StructureType(Tag t, vbyte d)
+    StructureType(Tag t, uint8_t d)
         : mTag(t), mDimension(d) {}
 
 public:
     static StructureType GetScalar();
-    static StructureType GetVector(vbyte dim);
-    static StructureType GetMatrix(vbyte dim);
-    vbyte dimension() const { return mDimension; }
+    static StructureType GetVector(uint8_t dim);
+    static StructureType GetMatrix(uint8_t dim);
+    uint8_t dimension() const { return mDimension; }
     Tag tag() const { return mTag; }
     //size_t size() const;
   //  size_t align() const;

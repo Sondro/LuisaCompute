@@ -7,7 +7,7 @@ public:
 	GPUCollection(GPUCollection const&) = delete;
 	GPUCollection(GPUCollection&&) = delete;
 	virtual ~GPUCollection() = default;
-	enum class Tag : vbyte {
+	enum class Tag : uint8_t {
 		Buffer,
 		Texture,
 		Accel,

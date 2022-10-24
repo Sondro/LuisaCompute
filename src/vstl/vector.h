@@ -437,7 +437,7 @@ public:
         return vec.arr + mSize - 1;
     }
 
-    T erase_last() noexcept {
+    T pop_back() noexcept {
         mSize--;
         if constexpr (!(std::is_trivially_destructible_v<T>)) {
             auto disp = scope_exit([this]() {

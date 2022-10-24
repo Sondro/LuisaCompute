@@ -176,7 +176,7 @@ void LCDevice::set_io_visitor(BinaryIOVisitor *visitor) noexcept {
 
 uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noexcept {
     auto code = CodegenUtility::Codegen(kernel, shaderPaths.dataFolder);
-    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
+    vstd::MD5 checkMD5({reinterpret_cast<uint8_t const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
     return reinterpret_cast<uint64>(
         ComputeShader::CompileCompute(
             nativeDevice.fileIo,
@@ -192,7 +192,7 @@ uint64 LCDevice::create_shader(Function kernel, std::string_view file_name) noex
 uint64 LCDevice::create_shader(Function kernel, bool use_cache) noexcept {
     auto code = CodegenUtility::Codegen(kernel, shaderPaths.dataFolder);
     vstd::string file_name;
-    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
+    vstd::MD5 checkMD5({reinterpret_cast<uint8_t const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
     if (use_cache) {
         file_name << checkMD5.ToString() << ".dxil";
     }
@@ -319,7 +319,7 @@ uint64_t LCDevice::create_raster_shader(
     Function pixel,
     luisa::string_view file_name) noexcept {
     auto code = CodegenUtility::RasterCodegen(mesh_format, vert, pixel, shaderPaths.dataFolder);
-    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
+    vstd::MD5 checkMD5({reinterpret_cast<uint8_t const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
     auto shader = RasterShader::CompileRaster(
         nativeDevice.fileIo,
         &nativeDevice,
@@ -360,7 +360,7 @@ void LCDevice::save_raster_shader(
     Function pixel,
     luisa::string_view file_name) noexcept {
     auto code = CodegenUtility::RasterCodegen(mesh_format, vert, pixel, shaderPaths.dataFolder);
-    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
+    vstd::MD5 checkMD5({reinterpret_cast<uint8_t const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
     RasterShader::SaveRaster(
         nativeDevice.fileIo,
         &nativeDevice,
@@ -382,7 +382,7 @@ uint64_t LCDevice::create_raster_shader(
     bool use_cache) noexcept {
     auto code = CodegenUtility::RasterCodegen(mesh_format, vert, pixel, shaderPaths.dataFolder);
     vstd::string file_name;
-    vstd::MD5 checkMD5({reinterpret_cast<vbyte const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
+    vstd::MD5 checkMD5({reinterpret_cast<uint8_t const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
     if (use_cache) {
         file_name << checkMD5.ToString() << ".dxil";
     }

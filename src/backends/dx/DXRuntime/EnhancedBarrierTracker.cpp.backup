@@ -77,9 +77,9 @@ void EnhancedBarrierTracker::Record(
 		resRange.second.Combine(localValue.range);
 		resUsage = FilterUsage(localValue.usage, resUsage);
 		if (i != vec.size() - 1) {
-			localValue = vec.erase_last();
+			localValue = vec.pop_back();
 		} else {
-			vec.erase_last();
+			vec.pop_back();
 		}
 		--i;
 	}
@@ -98,9 +98,9 @@ void EnhancedBarrierTracker::UpdateResourceState(void const* resPtr, ResourceSta
 					callback(src.range, src.usage, dst.usage);
 				}
 				if (i != state.frameStates.size() - 1) {
-					src = state.frameStates.erase_last();
+					src = state.frameStates.pop_back();
 				} else {
-					state.frameStates.erase_last();
+					state.frameStates.pop_back();
 				}
 				--i;
 			}

@@ -25,30 +25,30 @@ public:
 		RWState rwState,
 		size_t alignment = 0);
 		
-	void CopyTo(vstd::span<vbyte> data, size_t offset) const;
-	void CopyFrom(vstd::span<vbyte const> data, size_t offset) const;
+	void CopyTo(vstd::span<uint8_t> data, size_t offset) const;
+	void CopyFrom(vstd::span<uint8_t const> data, size_t offset) const;
 	template<typename T>
 	void CopyValueTo(T& data, size_t offset) const {
 		CopyTo(
-			{reinterpret_cast<vbyte*>(&data), sizeof(T)},
+			{reinterpret_cast<uint8_t*>(&data), sizeof(T)},
 			offset);
 	}
 	template<typename T>
 	void CopyArrayTo(T* data, size_t count, size_t offset) const {
 		CopyTo(
-			{reinterpret_cast<vbyte*>(data), sizeof(T) * count},
+			{reinterpret_cast<uint8_t*>(data), sizeof(T) * count},
 			offset);
 	}
 	template<typename T>
 	void CopyValueFrom(T const& data, size_t offset) const {
 		CopyFrom(
-			{reinterpret_cast<vbyte const*>(&data), sizeof(T)},
+			{reinterpret_cast<uint8_t const*>(&data), sizeof(T)},
 			offset);
 	}
 	template<typename T>
 	void CopyArrayFrom(T const* data, size_t count, size_t offset) const {
 		CopyFrom(
-			{reinterpret_cast<vbyte const*>(data), sizeof(T) * count},
+			{reinterpret_cast<uint8_t const*>(data), sizeof(T) * count},
 			offset);
 	}
 	VkDescriptorBufferInfo GetDescriptor(size_t offset = 0, size_t size = VK_WHOLE_SIZE) const;

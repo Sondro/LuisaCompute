@@ -12,7 +12,7 @@ class BindlessArray : public GPUCollection {
 	struct Instance {
 		uint index = std::numeric_limits<uint>::max();
 	};
-	enum class UpdateFlag : vbyte {
+	enum class UpdateFlag : uint8_t {
 		None = 0,
 		BUFFER = 1,
 		TEX2D = 2,
@@ -27,8 +27,8 @@ class BindlessArray : public GPUCollection {
 
 	struct RefOption {
 		uint64 bufferOffset;
-		vbyte tex2DOffset;
-		vbyte tex3DOffset;
+		uint8_t tex2DOffset;
+		uint8_t tex3DOffset;
 		UpdateFlag flag = UpdateFlag::None;
 	};
 	Buffer instanceBuffer;
@@ -46,7 +46,7 @@ class BindlessArray : public GPUCollection {
 public:
 	//host set
 	void Bind(uint index, Buffer const* buffer, uint64 offset);
-	void Bind(uint index, Texture const* tex, vbyte mipOffset);
+	void Bind(uint index, Texture const* tex, uint8_t mipOffset);
 	void UnBindBuffer(uint index);
 	void UnBindTex2D(uint index);
 	void UnBindTex3D(uint index);

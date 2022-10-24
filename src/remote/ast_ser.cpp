@@ -644,7 +644,7 @@ void AstSerializer::PushStack() {
         constDict});
 }
 void AstSerializer::PopStack() {
-    stacks.erase_last();
+    stacks.pop_back();
     if (!stacks.empty()) {
         auto &&stack = *stacks.last();
         VENGINE_SET_STACK(localVarDict);

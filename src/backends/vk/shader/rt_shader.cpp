@@ -103,7 +103,7 @@ RTShader::RTShader(
 		const uint handleSizeAligned = CalcAlign(rayTracingProperties.shaderGroupHandleSize, std::max(rayTracingProperties.shaderGroupHandleAlignment, rayTracingProperties.shaderGroupBaseAlignment));
 		const uint groupCount = static_cast<uint>(shaderGroups.size());
 		const uint sbtSize = groupCount * handleSizeAligned;
-		vstd::vector<vbyte> shaderHandleStorage(sbtSize);
+		vstd::vector<uint8_t> shaderHandleStorage(sbtSize);
 		ThrowIfFailed(device->vkGetRayTracingShaderGroupHandlesKHR(device->device, pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data()));
 		const VkBufferUsageFlagBits bufferUsageFlags = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 		sbtBuffer.New(device, shaderHandleStorage.byte_size(), bufferUsageFlags, false, RWState::Upload);

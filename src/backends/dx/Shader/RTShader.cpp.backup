@@ -87,7 +87,7 @@ void RTShader::Init(
     bool closestHit,
     bool anyHit,
     bool intersectHit,
-    vstd::span<vbyte const> binData,
+    vstd::span<uint8_t const> binData,
     Device *device) {
     finishedUpdate.clear();
     using Microsoft::WRL::ComPtr;
@@ -140,7 +140,7 @@ RTShader::RTShader(
     bool intersectHit,
     vstd::span<std::pair<vstd::string, Property> const> prop,
     ComPtr<ID3D12RootSignature> &&rootSig,
-    vstd::span<vbyte const> binData,
+    vstd::span<uint8_t const> binData,
     Device *device)
     : Shader(prop, std::move(rootSig)),
       identityBuffer(
@@ -154,7 +154,7 @@ RTShader::RTShader(
     bool anyHit,
     bool intersectHit,
     vstd::span<std::pair<vstd::string, Property> const> properties,
-    vstd::span<vbyte const> binData,
+    vstd::span<uint8_t const> binData,
     Device *device)
     : Shader(std::move(properties), device->device.Get()),
       identityBuffer(

@@ -14,7 +14,7 @@ public:
 		ComPtr<IDxcBlob>&& b,
 		ComPtr<IDxcResult>&& rr);
 	~DXByteBlob();
-	vbyte* GetBufferPtr() const;
+	uint8_t* GetBufferPtr() const;
 	size_t GetBufferSize() const;
 };
 using CompileResult = vstd::variant<

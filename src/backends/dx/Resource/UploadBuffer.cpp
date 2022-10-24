@@ -34,7 +34,7 @@ UploadBuffer::UploadBuffer(
 }
 UploadBuffer::~UploadBuffer() {
 }
-void UploadBuffer::CopyData(uint64 offset, vstd::span<vbyte const> data) const {
+void UploadBuffer::CopyData(uint64 offset, vstd::span<uint8_t const> data) const {
 	void* mappedPtr;
 	D3D12_RANGE range;
 	range.Begin = offset;
@@ -43,7 +43,7 @@ void UploadBuffer::CopyData(uint64 offset, vstd::span<vbyte const> data) const {
 	auto disp = vstd::scope_exit([&] {
 		allocHandle.resource->Unmap(0, &range);
 	});
-    memcpy(reinterpret_cast<vbyte *>(mappedPtr) + offset, data.data(), data.size());
+    memcpy(reinterpret_cast<uint8_t *>(mappedPtr) + offset, data.data(), data.size());
 }
 
 }// namespace toolhub::directx
