@@ -18,7 +18,7 @@ using namespace luisa;
 using namespace luisa::compute;
 
 int main(int argc, char *argv[]) {
-
+std::atomic_int32_t v;
     log_level_info();
 
     Context context{argv[0]};

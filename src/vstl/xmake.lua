@@ -7,5 +7,5 @@ add_deps("luisa-compute-core")
 add_files("**.cpp")
 add_defines("LC_VSTL_EXPORT_DLL")
 if is_plat("windows") then
-	add_links("Ole32")
+	add_syslinks("Ole32")
 end

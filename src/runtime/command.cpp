@@ -242,6 +242,11 @@ LUISA_MAP(LUISA_MAKE_COMMAND_POOL_IMPL, LUISA_COMPUTE_RUNTIME_COMMANDS)
 #undef LUISA_MAKE_COMMAND_POOL_IMPL
 
 }// namespace detail
+AccelBuildCommand::AccelBuildCommand(uint64_t handle, uint32_t instance_count, AccelBuildRequest request, luisa::vector<Modification> modifications) noexcept
+    : Command{Command::Tag::EAccelBuildCommand},
+      _handle{handle}, _instance_count{instance_count},
+      _request{request}, _modifications{std::move(modifications)} {}
+AccelBuildCommand::~AccelBuildCommand() {}
 
 void AccelBuildCommand::Modification::set_transform(float4x4 m) noexcept {
     affine[0] = m[0][0];

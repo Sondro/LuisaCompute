@@ -21,7 +21,11 @@ struct DrawIndexedIndirectArgs {
 private:
     int32_t _placeholder;
 };
-struct MeshArgs {
+struct VertexBufferAddress {
+private:
+    int32_t _placeholder;
+};
+struct IndexBufferAddress{
 private:
     int32_t _placeholder;
 };

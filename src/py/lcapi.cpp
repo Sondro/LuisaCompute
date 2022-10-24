@@ -56,12 +56,12 @@ PYBIND11_MODULE(lcapi, m) {
         .def(py::init<const std::filesystem::path &>())
         .def("create_device", [](Context &self, luisa::string_view backend_name) { return self.create_device(backend_name); })// TODO: support properties
         .def("installed_backends", [](Context &self) {
-            luisa::vector<luisa::string> strs;
+            std::vector<luisa::string> strs;
             for (auto s : self.installed_backends()) strs.emplace_back(luisa::string_view(s.data(), s.size()));
             return strs;
         });
     py::class_<Device>(m, "Device")
-        .def("create_stream", &Device::create_stream, py::arg("present") = false)
+        .def("create_stream", &Device::create_stream)
         .def("impl", &Device::impl, pyref)
         .def("create_accel", &Device::create_accel);
     py::class_<DeviceInterface, eastl::shared_ptr<DeviceInterface>>(m, "DeviceInterface")
@@ -88,13 +88,13 @@ PYBIND11_MODULE(lcapi, m) {
     py::class_<Stream>(m, "Stream")
         .def("synchronize", &Stream::synchronize)
         .def("add", [](Stream &self, Command *cmd) { self << luisa::unique_ptr<Command>(cmd); })
-        .def("add_callback", [](Stream &self, luisa::function<void()>&& callback) { self << [c = std::move(callback)] { c(); }; });
+        .def("add_callback", [](Stream &self, std::function<void()> &&callback) { self << [c = std::move(callback)] { c(); }; });
 
     // AST (FunctionBuilder)
     py::class_<Function>(m, "Function");
     py::class_<FunctionBuilder, eastl::shared_ptr<FunctionBuilder>>(m, "FunctionBuilder")
-        .def("define_kernel", &FunctionBuilder::define_kernel<const luisa::function<void()> &>)
-        .def("define_callable", &FunctionBuilder::define_callable<const luisa::function<void()> &>)
+        .def("define_kernel", &FunctionBuilder::define_kernel<const std::function<void()> &>)
+        .def("define_callable", &FunctionBuilder::define_callable<const std::function<void()> &>)
         .def("set_block_size", [](FunctionBuilder &self, uint sx, uint sy, uint sz) { self.set_block_size(uint3{sx, sy, sz}); })
 
         .def("thread_id", &FunctionBuilder::thread_id, pyref)
@@ -128,11 +128,11 @@ PYBIND11_MODULE(lcapi, m) {
         .def("cast", &FunctionBuilder::cast, pyref)
 
         .def(
-            "call", [](FunctionBuilder &self, const Type *type, CallOp call_op, luisa::vector<const Expression *>&& args) { return self.call(type, call_op, std::move(args)); }, pyref)
+            "call", [](FunctionBuilder &self, const Type *type, CallOp call_op, std::vector<const Expression *> &&args) { return self.call(type, call_op, std::move(args)); }, pyref)
         .def(
-            "call", [](FunctionBuilder &self, const Type *type, Function custom, luisa::vector<const Expression *>&& args) { return self.call(type, custom, std::move(args)); }, pyref)
-        .def("call", [](FunctionBuilder &self, CallOp call_op, luisa::vector<const Expression *>&& args) { self.call(call_op, std::move(args)); })
-        .def("call", [](FunctionBuilder &self, Function custom, luisa::vector<const Expression *>&& args) { self.call(custom, std::move(args)); })
+            "call", [](FunctionBuilder &self, const Type *type, Function custom, std::vector<const Expression *> &&args) { return self.call(type, custom, std::move(args)); }, pyref)
+        .def("call", [](FunctionBuilder &self, CallOp call_op, std::vector<const Expression *> &&args) { self.call(call_op, std::move(args)); })
+        .def("call", [](FunctionBuilder &self, Function custom, std::vector<const Expression *> &&args) { self.call(custom, std::move(args)); })
 
         .def("break_", &FunctionBuilder::break_)
         .def("continue_", &FunctionBuilder::continue_)
@@ -261,15 +261,19 @@ PYBIND11_MODULE(lcapi, m) {
         .def_static(
             "create", [](uint64_t handle, AccelBuildRequest request, uint64_t vertex_buffer, size_t vertex_buffer_offset, size_t vertex_buffer_size, size_t vertex_stride, uint64_t triangle_buffer, size_t triangle_buffer_offset, size_t triangle_buffer_size) {
                 return MeshBuildCommand::create(
-                    handle, request, vertex_buffer, vertex_buffer_offset, vertex_buffer_size,
-                    vertex_stride,
-                    triangle_buffer, triangle_buffer_offset, triangle_buffer_size).release();
+                           handle, request, vertex_buffer, vertex_buffer_offset, vertex_buffer_size,
+                           vertex_stride,
+                           triangle_buffer, triangle_buffer_offset, triangle_buffer_size)
+                    .release();
             },
             pyref);
     py::class_<AccelBuildCommand, Command>(m, "AccelBuildCommand")
         .def_static(
-            "create", [](uint64_t handle, uint32_t instance_count, AccelBuildRequest request, luisa::vector<AccelModification>&& modifications) {
-                return AccelBuildCommand::create(handle, instance_count, request, std::move(modifications)).release();
+            "create", [](uint64_t handle, uint32_t instance_count, AccelBuildRequest request, std::vector<AccelModification> &&modifications) {
+                luisa::vector<AccelModification> vec;
+                vec.reserve(modifications.size());
+                for (auto &&i : modifications) { vec.emplace_back(i); }
+                return AccelBuildCommand::create(handle, instance_count, request, std::move(vec)).release();
             },
             pyref);
     // bindless

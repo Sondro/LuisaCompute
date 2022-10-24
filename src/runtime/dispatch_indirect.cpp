@@ -25,6 +25,7 @@ Buffer<DispatchArgs2D> Device::create_2d_dispatch_buffer(size_t capacity) noexce
 Buffer<DispatchArgs3D> Device::create_3d_dispatch_buffer(size_t capacity) noexcept {
     return create_dispatch_buffer<3, DispatchArgs3D>(capacity);
 }
+/*
 Buffer<DrawIndirectArgs> Device::create_draw_buffer(const MeshFormat &mesh_format, size_t capacity) noexcept {
     Buffer<DrawIndirectArgs> v;
     // Resource
@@ -49,6 +50,7 @@ Buffer<DrawIndexedIndirectArgs> Device::create_indexed_draw_buffer(const MeshFor
     v._size = buffer.size / custom_struct_size;
     return v;
 }
+*/
 void clear_dispatch_buffer(Expr<Buffer<DispatchArgs1D>> buffer) {
     detail::FunctionBuilder::current()->call(CallOp::CLEAR_DISPATCH_INDIRECT_BUFFER, {buffer.expression()});
 }

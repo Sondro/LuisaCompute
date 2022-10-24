@@ -466,9 +466,10 @@ public:
 
 class LC_RUNTIME_API ShaderDispatchCommand final : public ShaderDispatchCommandBase {
 public:
-    struct IndirectArg{
+    struct IndirectArg {
         uint64_t handle;
     };
+
 private:
     uint64_t _handle{};
     Function _kernel{};
@@ -633,11 +634,8 @@ private:
     luisa::vector<Modification> _modifications;
 
 public:
-    AccelBuildCommand(uint64_t handle, uint32_t instance_count,
-                      AccelBuildRequest request, luisa::vector<Modification> modifications) noexcept
-        : Command{Command::Tag::EAccelBuildCommand},
-          _handle{handle}, _instance_count{instance_count},
-          _request{request}, _modifications{std::move(modifications)} {}
+    AccelBuildCommand(uint64_t handle, uint32_t instance_count, AccelBuildRequest request, luisa::vector<Modification> modifications) noexcept;
+    ~AccelBuildCommand();
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] auto request() const noexcept { return _request; }
     [[nodiscard]] auto instance_count() const noexcept { return _instance_count; }

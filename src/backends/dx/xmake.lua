@@ -9,7 +9,7 @@ BuildProject({
 add_deps("luisa-compute-runtime", "luisa-compute-vstl")
 add_files("Api/**.cpp", "DXRuntime/**.cpp", "Resource/**.cpp", "Shader/**.cpp", "HLSL/**.cpp")
 add_includedirs("./")
-add_links("D3D12", "dxgi")
+add_syslinks("D3D12", "dxgi")
 after_build(function(target)
 	local binDir = nil
 	if is_mode("release") then

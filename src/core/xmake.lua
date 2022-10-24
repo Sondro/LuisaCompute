@@ -3,7 +3,7 @@ BuildProject({
 	projectType = "shared",
 	debugEvent = function()
 		if is_plat("windows") then
-			add_links("Dbghelp", {
+			add_syslinks("Dbghelp", {
 				public = true
 			})
 		end
