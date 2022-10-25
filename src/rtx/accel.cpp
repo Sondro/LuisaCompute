@@ -80,6 +80,16 @@ void Accel::emplace_back(const Mesh &mesh, float4x4 transform, bool visible) noe
     _mesh_handles.emplace_back(mesh.handle());
 }
 
+void Accel::emplace_back_handle(uint64_t mesh, float4x4 transform, bool visible) noexcept {
+    auto index = static_cast<uint>(_mesh_handles.size());
+    Modification modification{index};
+    modification.set_mesh(mesh);
+    modification.set_transform(transform);
+    modification.set_visibility(visible);
+    _modifications[index] = modification;
+    _mesh_handles.emplace_back(mesh);
+}
+
 void Accel::pop_back() noexcept {
     if (auto n = _mesh_handles.size()) {
         _mesh_handles.pop_back();

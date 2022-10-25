@@ -109,7 +109,7 @@ Hit.add_method(interpolate)
 
 class Accel:
     def __init__(self):
-        self._accel = get_global_device().create_accel(lcapi.AccelUsageHint.FAST_TRACE)
+        self._accel = get_global_device().create_accel(lcapi.AccelUsageHint.FAST_BUILD, False, False)
         self.handle = self._accel.handle()
 
     @staticmethod
@@ -188,10 +188,8 @@ class Mesh:
         self.vertices = vertices
         self.triangles = triangles
         # TODO: support buffer of structs or arrays
-        self.handle = get_global_device().impl().create_mesh(
-            self.vertices.handle, 0, to_lctype(vertices.dtype).size(), self.vertices.size,
-            self.triangles.handle, 0, self.triangles.size//3,
-            lcapi.AccelUsageHint.FAST_TRACE)
+        self.handle = get_global_device().impl().create_mesh(lcapi.AccelUsageHint.FAST_TRACE,True, False)
+        #self.vertices.handle, 0, to_lctype(vertices.dtype).size(), self.vertices.size, self.triangles.handle, 0, self.triangles.size//3,
         self.update()
 
     def update(self, sync = False, stream = None):
@@ -199,7 +197,7 @@ class Mesh:
             stream = globalvars.stream
         globalvars.stream.add(lcapi.MeshBuildCommand.create(
             self.handle, lcapi.AccelBuildRequest.PREFER_UPDATE,
-            self.vertices.handle, 0, self.vertices.size,
+            self.vertices.handle, 0, self.vertices.size, to_lctype(self.vertices.dtype).size(),
             self.triangles.handle, 0, self.triangles.size//3))
         if sync:
             stream.synchronize()

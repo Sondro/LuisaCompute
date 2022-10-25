@@ -33,6 +33,15 @@ void export_matrix(py::module &m);
 int add(int i, int j) {
     return i + j;
 }
+template<typename T>
+struct make_std_literal_value {
+    static_assert(always_false_v<T>);
+};
+
+template<typename... T>
+struct make_std_literal_value<std::tuple<T...>> {
+    using type = std::variant<T...>;
+};
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, eastl::shared_ptr<T>);
 
@@ -61,11 +70,11 @@ PYBIND11_MODULE(lcapi, m) {
             return strs;
         });
     py::class_<Device>(m, "Device")
-        .def("create_stream", &Device::create_stream)
+        .def("create_stream", [](Device &self) { return self.create_stream(); })
         .def("impl", &Device::impl, pyref)
         .def("create_accel", &Device::create_accel);
     py::class_<DeviceInterface, eastl::shared_ptr<DeviceInterface>>(m, "DeviceInterface")
-        .def("create_shader", [](DeviceInterface &self, Function kernel) { return self.create_shader(kernel, {}); })// TODO: support metaoptions
+        .def("create_shader", [](DeviceInterface &self, Function kernel) { return self.create_shader(kernel, true); })// TODO: support metaoptions
         .def("destroy_shader", &DeviceInterface::destroy_shader)
         .def("create_buffer", &DeviceInterface::create_buffer)
         .def("destroy_buffer", &DeviceInterface::destroy_buffer)
@@ -119,7 +128,12 @@ PYBIND11_MODULE(lcapi, m) {
         .def("bindless_array", &FunctionBuilder::bindless_array, pyref)
         .def("accel", &FunctionBuilder::accel, pyref)
 
-        .def("literal", &FunctionBuilder::literal, pyref)
+        .def(
+            "literal", [](FunctionBuilder &self, const Type *type, typename make_std_literal_value<basic_types>::type value) {
+                return std::visit([&]<typename T>(T const &v) { 
+                    return self.literal(type, v); }, value);
+            },
+            pyref)
         .def("unary", &FunctionBuilder::unary, pyref)
         .def("binary", &FunctionBuilder::binary, pyref)
         .def("member", &FunctionBuilder::member, pyref)
@@ -297,20 +311,21 @@ PYBIND11_MODULE(lcapi, m) {
     export_matrix(m);
 
     // util function for uniform encoding
-    m.def("to_bytes", [](LiteralExpr::Value value) {
-        return luisa::visit([](auto x) noexcept { return py::bytes(std::string(reinterpret_cast<char *>(&x), sizeof(x))); }, value);
+    m.def("to_bytes", [](typename make_std_literal_value<basic_types>::type value) {
+        return std::visit([](auto x) noexcept { return py::bytes(std::string(reinterpret_cast<char *>(&x), sizeof(x))); }, value);
     });
 
     // accel
     py::class_<Accel>(m, "Accel")
         .def("size", &Accel::size)
         .def("handle", [](Accel &self) { return self.handle(); })
-        .def("emplace_back", &Accel::emplace_back)
+        .def("emplace_back", &Accel::emplace_back_handle)
         .def("set", &Accel::set)
         .def("pop_back", &Accel::pop_back)
         .def("set_transform_on_update", &Accel::set_transform_on_update)
         .def("set_visibility_on_update", &Accel::set_visibility_on_update)
-        .def("build_command", &Accel::build, pyref);
+        .def(
+            "build_command", [](Accel &self, Accel::BuildRequest request) { return self.build(request).release(); }, pyref);
 
     py::enum_<AccelUsageHint>(m, "AccelUsageHint")
         .value("FAST_TRACE", AccelUsageHint::FAST_TRACE)

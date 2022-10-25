@@ -9,6 +9,7 @@ public:
 class LC_VSTL_API StackAllocator {
     StackAllocatorVisitor *visitor;
     uint64 capacity;
+    uint64 initCapacity;
     struct Buffer {
         uint64 handle;
         uint64 fullSize;
@@ -17,6 +18,7 @@ class LC_VSTL_API StackAllocator {
     vstd::vector<Buffer> allocatedBuffers;
 
 public:
+    void WarmUp();
     StackAllocator(
         uint64 initCapacity,
         StackAllocatorVisitor *visitor);
@@ -31,6 +33,7 @@ public:
         uint64 targetSize,
         uint64 align);
     void Clear();
+    void Dispose();
     template<typename T, bool clearMemory = true>
         requires(std::is_trivially_constructible_v<T>)
     T *AllocateMemory() {

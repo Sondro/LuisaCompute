@@ -827,7 +827,7 @@ void LCCmdBuffer::Execute(
             // Execute commands
             for (auto &&i : lst)
                 i->accept(visitor);
-            if (!visitor.updateAccel->empty()) {
+            if (!updateAccel.empty()) {
                 tracker.RecordState(
                     accelScratchBuffer,
                     D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -852,7 +852,7 @@ void LCCmdBuffer::Execute(
                         p->CheckAccel(cmdBuilder);
                     });
                 }
-                visitor.updateAccel->clear();
+                updateAccel.clear();
             }
             tracker.ClearFence();
         }

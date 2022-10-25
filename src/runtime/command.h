@@ -58,15 +58,6 @@ struct MutableCommandVisitor {
 class Command;
 class CommandList;
 
-namespace detail {
-
-#define LUISA_MAKE_COMMAND_POOL_DECL(Cmd) \
-    LC_RUNTIME_API Pool<Cmd> &pool_##Cmd() noexcept;
-LUISA_MAP(LUISA_MAKE_COMMAND_POOL_DECL, LUISA_COMPUTE_RUNTIME_COMMANDS)
-#undef LUISA_MAKE_COMMAND_POOL_DECL
-
-}// namespace detail
-
 #define LUISA_MAKE_COMMAND_COMMON_CREATE(Cmd)                        \
     template<typename... Args>                                       \
         requires(std::is_constructible_v<Cmd, Args &&...>)           \
@@ -85,7 +76,7 @@ LUISA_MAP(LUISA_MAKE_COMMAND_POOL_DECL, LUISA_COMPUTE_RUNTIME_COMMANDS)
     LUISA_MAKE_COMMAND_COMMON_ACCEPT(Cmd)    \
     StreamTag stream_tag() const noexcept override { return Type; }
 
-class LC_RUNTIME_API Command {
+class Command {
 
 public:
     enum struct Tag {
@@ -106,7 +97,7 @@ public:
     [[nodiscard]] virtual StreamTag stream_tag() const noexcept = 0;
 };
 
-class LC_RUNTIME_API BufferUploadCommand final : public Command {
+class BufferUploadCommand final : public Command {
 
 private:
     uint64_t _handle{};
@@ -129,7 +120,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(BufferUploadCommand, StreamTag::COPY)
 };
 
-class LC_RUNTIME_API BufferDownloadCommand final : public Command {
+class BufferDownloadCommand final : public Command {
 
 private:
     uint64_t _handle{};
@@ -152,7 +143,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(BufferDownloadCommand, StreamTag::COPY)
 };
 
-class LC_RUNTIME_API BufferCopyCommand final : public Command {
+class BufferCopyCommand final : public Command {
 
 private:
     uint64_t _src_handle{};
@@ -178,7 +169,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(BufferCopyCommand, StreamTag::COPY)
 };
 
-class LC_RUNTIME_API BufferToTextureCopyCommand final : public Command {
+class BufferToTextureCopyCommand final : public Command {
 
 private:
     uint64_t _buffer_handle{};
@@ -209,7 +200,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(BufferToTextureCopyCommand, StreamTag::COPY)
 };
 
-class LC_RUNTIME_API TextureToBufferCopyCommand final : public Command {
+class TextureToBufferCopyCommand final : public Command {
 
 private:
     uint64_t _buffer_handle{};
@@ -240,7 +231,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(TextureToBufferCopyCommand, StreamTag::COPY)
 };
 
-class LC_RUNTIME_API TextureCopyCommand final : public Command {
+class TextureCopyCommand final : public Command {
 
 private:
     PixelStorage _storage{};
@@ -269,7 +260,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(TextureCopyCommand, StreamTag::COPY)
 };
 
-class LC_RUNTIME_API TextureUploadCommand final : public Command {
+class TextureUploadCommand final : public Command {
 
 private:
     uint64_t _handle{};
@@ -296,7 +287,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(TextureUploadCommand, StreamTag::COPY)
 };
 
-class LC_RUNTIME_API TextureDownloadCommand final : public Command {
+class TextureDownloadCommand final : public Command {
 
 private:
     uint64_t _handle{};
@@ -559,7 +550,7 @@ enum struct AccelBuildRequest : uint32_t {
     FORCE_BUILD,
 };
 
-class LC_RUNTIME_API MeshBuildCommand final : public Command {
+class MeshBuildCommand final : public Command {
 
 private:
     uint64_t _handle{};
@@ -584,7 +575,8 @@ public:
           _vertex_buffer{vertex_buffer}, _vertex_buffer_offset{vertex_buffer_offset},
           _vertex_buffer_size{vertex_buffer_size}, _vertex_stride{vertex_stride},
           _triangle_buffer{triangle_buffer}, _triangle_buffer_offset{triangle_buffer_offset},
-          _triangle_buffer_size{triangle_buffer_size} {}
+          _triangle_buffer_size{triangle_buffer_size} {
+    }
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] auto vertex_stride() const noexcept { return _vertex_stride; }
     [[nodiscard]] auto request() const noexcept { return _request; }
@@ -597,12 +589,12 @@ public:
     LUISA_MAKE_COMMAND_COMMON(MeshBuildCommand, StreamTag::COMPUTE)
 };
 
-class LC_RUNTIME_API AccelBuildCommand final : public Command {
+class AccelBuildCommand final : public Command {
     friend class CmdSer;
     friend class CmdDeser;
 
 public:
-    struct LC_RUNTIME_API alignas(16) Modification {
+    struct alignas(16) Modification {
 
         // flags
         static constexpr auto flag_mesh = 1u << 0u;
@@ -622,9 +614,29 @@ public:
         explicit Modification(uint index) noexcept : index{index} {}
 
         // encode interfaces
-        void set_transform(float4x4 m) noexcept;
-        void set_visibility(bool vis) noexcept;
-        void set_mesh(uint64_t handle) noexcept;
+        void set_transform(float4x4 m) noexcept {
+            affine[0] = m[0][0];
+            affine[1] = m[1][0];
+            affine[2] = m[2][0];
+            affine[3] = m[3][0];
+            affine[4] = m[0][1];
+            affine[5] = m[1][1];
+            affine[6] = m[2][1];
+            affine[7] = m[3][1];
+            affine[8] = m[0][2];
+            affine[9] = m[1][2];
+            affine[10] = m[2][2];
+            affine[11] = m[3][2];
+            flags |= flag_transform;
+        }
+        void set_visibility(bool vis) noexcept {
+            flags &= ~flag_visibility;// clear old visibility flags
+            flags |= vis ? flag_visibility_on : flag_visibility_off;
+        }
+        void set_mesh(uint64_t handle) noexcept {
+            mesh = handle;
+            flags |= flag_mesh;
+        }
     };
 
 private:
@@ -634,8 +646,10 @@ private:
     luisa::vector<Modification> _modifications;
 
 public:
-    AccelBuildCommand(uint64_t handle, uint32_t instance_count, AccelBuildRequest request, luisa::vector<Modification> modifications) noexcept;
-    ~AccelBuildCommand();
+    AccelBuildCommand(uint64_t handle, uint32_t instance_count, AccelBuildRequest request, luisa::vector<Modification> modifications) noexcept
+        : Command{Command::Tag::EAccelBuildCommand},
+          _handle{handle}, _instance_count{instance_count},
+          _request{request}, _modifications{std::move(modifications)} {}
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] auto request() const noexcept { return _request; }
     [[nodiscard]] auto instance_count() const noexcept { return _instance_count; }
@@ -643,7 +657,7 @@ public:
     LUISA_MAKE_COMMAND_COMMON(AccelBuildCommand, StreamTag::COMPUTE)
 };
 
-class LC_RUNTIME_API BindlessArrayUpdateCommand final : public Command {
+class BindlessArrayUpdateCommand final : public Command {
 
 private:
     uint64_t _handle;

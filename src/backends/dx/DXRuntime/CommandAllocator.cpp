@@ -47,13 +47,14 @@ CommandAllocatorBase::CommandAllocatorBase(
         device,
         this);
 }
+static size_t TEMP_SIZE = 1024ull * 1024ull;
 CommandAllocator::CommandAllocator(
     Device *device,
     IGpuAllocator *resourceAllocator,
     D3D12_COMMAND_LIST_TYPE type)
     : CommandAllocatorBase(device, resourceAllocator, type),
       uploadAllocator(TEMP_SIZE, &ubVisitor),
-      readbackAllocator(TEMP_SIZE, &rbVisitor),
+      readbackAllocator(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, &rbVisitor),
       defaultAllocator(TEMP_SIZE, &dbVisitor),
       rtvAllocator(64, &rtvVisitor),
       dsvAllocator(64, &dsvVisitor),
@@ -62,6 +63,9 @@ CommandAllocator::CommandAllocator(
     rbVisitor.self = this;
     ubVisitor.self = this;
     dbVisitor.self = this;
+    uploadAllocator.WarmUp();
+    readbackAllocator.WarmUp();
+    defaultAllocator.WarmUp();
 }
 CommandAllocator::~CommandAllocator() {
     cbuffer.Delete();
@@ -72,9 +76,9 @@ void CommandAllocatorBase::Reset(CommandQueue *queue) {
     cbuffer->Reset();
 }
 void CommandAllocator::Reset(CommandQueue *queue) {
-    readbackAllocator.Clear();
-    uploadAllocator.Clear();
-    defaultAllocator.Clear();
+    readbackAllocator.Dispose();
+    uploadAllocator.Dispose();
+    defaultAllocator.Dispose();
     rtvAllocator.Clear();
     dsvAllocator.Clear();
     CommandAllocatorBase::Reset(queue);

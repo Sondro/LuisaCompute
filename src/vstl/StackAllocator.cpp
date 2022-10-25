@@ -4,7 +4,15 @@ StackAllocator::StackAllocator(
     uint64 initCapacity,
     StackAllocatorVisitor *visitor)
     : capacity(initCapacity),
+      initCapacity(initCapacity),
       visitor(visitor) {
+}
+void StackAllocator::WarmUp(){
+    if(!allocatedBuffers.empty()) return;
+    auto& v = allocatedBuffers.emplace_back();
+    v.handle = visitor->Allocate(capacity);
+    v.fullSize = capacity;
+    v.leftSize = capacity;
 }
 StackAllocator::Chunk StackAllocator::Allocate(uint64 targetSize) {
     for (auto &&i : allocatedBuffers) {
@@ -69,6 +77,23 @@ StackAllocator::Chunk StackAllocator::Allocate(
         newHandle,
         0};
 }
+void StackAllocator::Dispose() {
+    capacity = initCapacity;
+    if (allocatedBuffers.empty()) return;
+    if (allocatedBuffers.size() > 1) {
+        for (auto i : vstd::range(1, allocatedBuffers.size())) {
+            visitor->DeAllocate(allocatedBuffers[i].handle);
+        }
+        allocatedBuffers.resize(1);
+    }
+    auto& first = allocatedBuffers[0];
+    if (first.fullSize > capacity) {
+        visitor->DeAllocate(first.handle);
+        first.handle = visitor->Allocate(capacity);
+        first.fullSize = capacity;
+        first.leftSize = capacity;
+    }
+}
 void StackAllocator::Clear() {
     switch (allocatedBuffers.size()) {
         case 0: break;
@@ -86,7 +111,7 @@ void StackAllocator::Clear() {
             allocatedBuffers.push_back(Buffer{
                 .handle = visitor->Allocate(sumSize),
                 .fullSize = sumSize,
-                .leftSize = 0});
+                .leftSize = sumSize});
         } break;
     }
 }

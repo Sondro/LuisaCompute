@@ -280,7 +280,7 @@ void StringStateVisitor::visit(const ScopeStmt *state) {
     str << "}\n";
 }
 void StringStateVisitor::visit(const CommentStmt *state) {
-    str << "/* " << state->comment() << " */\n";
+    // str << "/* " << state->comment() << " */\n";
 }
 void StringStateVisitor::visit(const IfStmt *state) {
     str << "if(";

@@ -28,6 +28,7 @@ private:
     friend class Device;
     friend class Mesh;
     explicit Accel(DeviceInterface *device, UsageHint hint = UsageHint::FAST_TRACE, bool allow_compact = false, bool allow_update = true) noexcept;
+    
 
 public:
     Accel() noexcept = default;
@@ -36,6 +37,7 @@ public:
 
     // host interfaces
     void emplace_back(Mesh const &mesh, float4x4 transform = make_float4x4(1.f), bool visible = true) noexcept;
+    void emplace_back_handle(uint64_t mesh_handle, float4x4 transform, bool visible) noexcept;
     void set(size_t index, const Mesh &mesh, float4x4 transform = make_float4x4(1.f), bool visible = true) noexcept;
     void pop_back() noexcept;
     void set_transform_on_update(size_t index, float4x4 transform) noexcept;

@@ -8,7 +8,6 @@ class CommandAllocator final : public CommandAllocatorBase {
     friend class CommandBuffer;
 
 private:
-    static constexpr size_t TEMP_SIZE = 4ull * 1024ull * 1024ull;
     template<typename Pack>
     class Visitor : public vstd::StackAllocatorVisitor {
     public:
@@ -24,7 +23,6 @@ private:
         void DeAllocate(uint64 handle) override;
         DescHeapVisitor(Device *device, D3D12_DESCRIPTOR_HEAP_TYPE type) : type(type), device(device) {}
     };
-
     Visitor<ReadbackBuffer> rbVisitor;
     Visitor<DefaultBuffer> dbVisitor;
     Visitor<UploadBuffer> ubVisitor;
