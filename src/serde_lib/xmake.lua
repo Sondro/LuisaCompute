@@ -1,5 +1,5 @@
 BuildProject({
-    projectName = "serde_lib",
+    projectName = "luisa-compute-serdelib",
     projectType = "shared",
     unityBuildBatch = 4
 })

@@ -121,9 +121,9 @@ struct SerDe<vector<T>, reverseBytes> {
         }
     }
 };
-template<typename T, size_t i, bool reverseBytes>
-struct SerDe<fixed_vector<T, i>, reverseBytes> {
-    using Value = fixed_vector<T, i>;
+template<typename T, size_t idx, bool reverseBytes>
+struct SerDe<fixed_vector<T, idx>, reverseBytes> {
+    using Value = fixed_vector<T, idx>;
     static Value Get(vstd::span<T const> &sp) {
         Value sz;
         auto s = SerDe<uint, reverseBytes>::Get(sp);
