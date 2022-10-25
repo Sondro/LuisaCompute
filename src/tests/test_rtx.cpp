@@ -117,8 +117,8 @@ std::atomic_int32_t v;
 
     auto colorspace_shader = device.compile(colorspace_kernel, false);
     auto raytracing_shader = device.compile(raytracing_kernel, false);
-    static constexpr auto width = 1024u;
-    static constexpr auto height = 1024u;
+    static constexpr auto width = 512u;
+    static constexpr auto height = 512u;
     auto hdr_image = device.create_buffer<float4>(width * height);
     auto ldr_image = device.create_buffer<uint>(width * height);
 

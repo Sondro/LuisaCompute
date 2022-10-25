@@ -56,9 +56,9 @@ Context::Context(const std::filesystem::path &program) noexcept
              path.extension() == ".dylib")) {
             using namespace std::string_view_literals;
             constexpr std::array possible_prefixes{
-                "luisa-compute-backend-"sv,
+                "lc-backend-"sv,
                 // Make Mingw happy
-                "libluisa-compute-backend-"sv};
+                "liblc-backend-"sv};
             auto filename = path.stem().string<char, std::char_traits<char>, luisa::allocator<char>>();
             for (auto prefix : possible_prefixes) {
                 if (filename.starts_with(prefix)) {
@@ -114,7 +114,7 @@ Device Context::create_device(std::string_view backend_name_in,  DeviceSettings 
 #endif
         auto &&m = impl->loaded_modules.emplace_back(
             impl->runtime_directory,
-            fmt::format("luisa-compute-backend-{}", backend_name));
+            fmt::format("lc-backend-{}", backend_name));
 #ifdef LUISA_PLATFORM_WINDOWS
         SetDllDirectoryW(nullptr);
 #endif

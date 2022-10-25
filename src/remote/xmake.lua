@@ -1,7 +1,7 @@
 BuildProject({
-	projectName = "luisa-compute-remote",
+	projectName = "lc-remote",
 	projectType = "shared",
 	unityBuildBatch = 4
 })
-add_deps("luisa-compute-vstl", "luisa-compute-runtime", "luisa-compute-ast")
+add_deps("lc-vstl", "lc-runtime", "lc-ast")
 add_files("*.cpp")

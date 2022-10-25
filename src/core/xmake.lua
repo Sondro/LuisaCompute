@@ -1,5 +1,5 @@
 BuildProject({
-	projectName = "luisa-compute-core",
+	projectName = "lc-core",
 	projectType = "shared",
 	debugEvent = function()
 		if is_plat("windows") then

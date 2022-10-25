@@ -1,9 +1,9 @@
 BuildProject({
-	projectName = "luisa-compute-vstl",
+	projectName = "lc-vstl",
 	projectType = "shared",
 	unityBuildBatch = 4
 })
-add_deps("luisa-compute-core")
+add_deps("lc-core")
 add_files("**.cpp")
 add_defines("LC_VSTL_EXPORT_DLL")
 if is_plat("windows") then
