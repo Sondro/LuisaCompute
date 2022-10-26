@@ -97,6 +97,7 @@ class Buffer:
         assert len(packed_bytes) == self.bytesize
         ulcmd = lcapi.BufferUploadCommand.create(self.handle, 0, self.bytesize, packed_bytes)
         stream.add(ulcmd)
+        stream.add_upload_buffer(packed_bytes)
         if sync:
             stream.synchronize()
         
@@ -107,6 +108,7 @@ class Buffer:
         assert arr.size * arr.itemsize == self.bytesize
         ulcmd = lcapi.BufferUploadCommand.create(self.handle, 0, self.bytesize, arr)
         stream.add(ulcmd)
+        stream.add_upload_buffer(arr)
         if sync:
             stream.synchronize()
 
@@ -124,6 +126,7 @@ class Buffer:
         assert arr.size * arr.itemsize == self.bytesize
         dlcmd = lcapi.BufferDownloadCommand.create(self.handle, 0, self.bytesize, arr)
         stream.add(dlcmd)
+        stream.add_readback_buffer(arr)
         if sync:
             stream.synchronize()
 
@@ -140,6 +143,7 @@ class Buffer:
         if stream is None:
             stream = globalvars.stream
         stream.add(dlcmd)
+        stream.add_readback_buffer(packed_bytes)
         stream.synchronize()
         elsize = to_lctype(self.dtype).size()
         return [from_bytes(self.dtype, packed_bytes[elsize*i: elsize*(i+1)]) for i in range(self.size)]

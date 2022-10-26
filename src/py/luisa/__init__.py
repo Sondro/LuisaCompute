@@ -32,7 +32,6 @@ def init(backend_name = None):
         raise NameError(f"backend '{backend_name}' is not installed.")
     globalvars.device = globalvars.context.create_device(backend_name)
     globalvars.stream = globalvars.device.create_stream()
-    globalvars.printer = Printer()
 
 
 def synchronize(stream = None):
@@ -40,3 +39,7 @@ def synchronize(stream = None):
         stream = globalvars.stream
     stream.synchronize()
 
+def execute(stream = None):
+    if stream is None:
+        stream = globalvars.stream
+    stream.execute()

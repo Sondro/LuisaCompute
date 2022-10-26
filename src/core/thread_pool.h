@@ -9,7 +9,6 @@
 #include <thread>
 #include <memory>
 #include <concepts>
-#include <functional>
 #include <condition_variable>
 
 #include <core/basic_types.h>

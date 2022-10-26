@@ -7,7 +7,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <functional>
 #include <fstream>
 #include <core/concepts.h>
 #include <core/thread_pool.h>

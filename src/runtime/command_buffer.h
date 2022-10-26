@@ -26,11 +26,12 @@ private:
 private:
     friend class Stream;
     void _commit() &noexcept;
-    CommandBuffer(CommandBuffer &&another) noexcept;
     explicit CommandBuffer(Stream *stream) noexcept;
 
 public:
     ~CommandBuffer() noexcept;
+    CommandBuffer(CommandBuffer const &another) = delete;
+    CommandBuffer(CommandBuffer &&another) noexcept;
     CommandBuffer &operator=(CommandBuffer &&) noexcept = delete;
     CommandBuffer &operator<<(luisa::unique_ptr<Command> &&cmd) &noexcept;
     CommandBuffer &operator<<(Event::Signal) &noexcept;
@@ -40,6 +41,7 @@ public:
     CommandBuffer &operator<<(Synchronize) &noexcept;
     CommandBuffer &operator<<(luisa::move_only_function<void()> &&f) &noexcept;
 
+    auto empty() const noexcept { return _command_list.empty(); }
     void commit() &noexcept { _commit(); }
     void synchronize() &noexcept;
     [[nodiscard]] auto &stream() noexcept { return *_stream; }

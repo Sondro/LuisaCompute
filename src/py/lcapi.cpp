@@ -12,6 +12,7 @@
 #include <runtime/device.h>
 #include <runtime/context.h>
 #include <runtime/stream.h>
+#include <py/py_stream.h>
 #include <runtime/command.h>
 #include <runtime/image.h>
 #include <rtx/accel.h>
@@ -70,7 +71,7 @@ PYBIND11_MODULE(lcapi, m) {
             return strs;
         });
     py::class_<Device>(m, "Device")
-        .def("create_stream", [](Device &self) { return self.create_stream(); })
+        .def("create_stream", [](Device &self) { return PyStream(self); }, pyref)
         .def("impl", &Device::impl, pyref)
         .def("create_accel", &Device::create_accel);
     py::class_<DeviceInterface, eastl::shared_ptr<DeviceInterface>>(m, "DeviceInterface")
@@ -94,10 +95,13 @@ PYBIND11_MODULE(lcapi, m) {
         .def("remove_tex2d_in_bindless_array", &DeviceInterface::remove_tex2d_in_bindless_array)
         .def("remove_tex3d_in_bindless_array", &DeviceInterface::remove_tex3d_in_bindless_array);
 
-    py::class_<Stream>(m, "Stream")
-        .def("synchronize", &Stream::synchronize)
-        .def("add", [](Stream &self, Command *cmd) { self << luisa::unique_ptr<Command>(cmd); })
-        .def("add_callback", [](Stream &self, std::function<void()> &&callback) { self << [c = std::move(callback)] { c(); }; });
+    py::class_<PyStream>(m, "Stream")
+        .def("synchronize", [](PyStream &self) { self.data->stream.synchronize(); }, pyref)
+        .def("add", [](PyStream &self, Command *cmd) { self.Add(cmd); }, pyref)
+        .def("add_upload_buffer", [](PyStream &self, py::buffer &&buf) { self.AddUploadRef(std::move(buf)); }, pyref)
+        .def("add_readback_buffer", [](PyStream &self, py::buffer &&buf) { self.AddReadbackRef(std::move(buf)); }, pyref)
+        .def("add_callback", [](PyStream &self, std::function<void()> &&callback) { self.ExecuteCallback(std::move(callback)); }, pyref)
+        .def("execute", [](PyStream &self) { self.Execute(); }, pyref);
 
     // AST (FunctionBuilder)
     py::class_<Function>(m, "Function");
@@ -130,8 +134,7 @@ PYBIND11_MODULE(lcapi, m) {
 
         .def(
             "literal", [](FunctionBuilder &self, const Type *type, typename make_std_literal_value<basic_types>::type value) {
-                return std::visit([&]<typename T>(T const &v) { 
-                    return self.literal(type, v); }, value);
+                return std::visit([&]<typename T>(T const &v) { return self.literal(type, v); }, value);
             },
             pyref)
         .def("unary", &FunctionBuilder::unary, pyref)
@@ -223,13 +226,13 @@ PYBIND11_MODULE(lcapi, m) {
     // Pybind can't deduce argument list of the create function, so using lambda to inform it
     py::class_<BufferUploadCommand, Command>(m, "BufferUploadCommand")
         .def_static(
-            "create", [](uint64_t handle, size_t offset_bytes, size_t size_bytes, py::buffer buf) {
+            "create", [](uint64_t handle, size_t offset_bytes, size_t size_bytes, py::buffer &&buf) {
                 return BufferUploadCommand::create(handle, offset_bytes, size_bytes, buf.request().ptr).release();
             },
             pyref);
     py::class_<BufferDownloadCommand, Command>(m, "BufferDownloadCommand")
         .def_static(
-            "create", [](uint64_t handle, size_t offset_bytes, size_t size_bytes, py::buffer buf) {
+            "create", [](uint64_t handle, size_t offset_bytes, size_t size_bytes, py::buffer &&buf) {
                 return BufferDownloadCommand::create(handle, offset_bytes, size_bytes, buf.request().ptr).release();
             },
             pyref);
@@ -242,13 +245,13 @@ PYBIND11_MODULE(lcapi, m) {
     // texture operation commands
     py::class_<TextureUploadCommand, Command>(m, "TextureUploadCommand")
         .def_static(
-            "create", [](uint64_t handle, PixelStorage storage, uint level, uint3 size, py::buffer buf) {
+            "create", [](uint64_t handle, PixelStorage storage, uint level, uint3 size, py::buffer &&buf) {
                 return TextureUploadCommand::create(handle, storage, level, size, buf.request().ptr).release();
             },
             pyref);
     py::class_<TextureDownloadCommand, Command>(m, "TextureDownloadCommand")
         .def_static(
-            "create", [](uint64_t handle, PixelStorage storage, uint level, uint3 size, py::buffer buf) {
+            "create", [](uint64_t handle, PixelStorage storage, uint level, uint3 size, py::buffer &&buf) {
                 return TextureDownloadCommand::create(handle, storage, level, size, buf.request().ptr).release();
             },
             pyref);
