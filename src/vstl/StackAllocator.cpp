@@ -7,35 +7,24 @@ StackAllocator::StackAllocator(
       initCapacity(initCapacity),
       visitor(visitor) {
 }
-void StackAllocator::WarmUp(){
-    if(!allocatedBuffers.empty()) return;
-    auto& v = allocatedBuffers.emplace_back();
-    v.handle = visitor->Allocate(capacity);
-    v.fullSize = capacity;
-    v.leftSize = capacity;
-}
 StackAllocator::Chunk StackAllocator::Allocate(uint64 targetSize) {
     for (auto &&i : allocatedBuffers) {
-        if (i.leftSize >= targetSize) {
-            Buffer *bf = &i;
-            auto ofst = bf->fullSize - bf->leftSize;
-            bf->leftSize -= targetSize;
-            return {
-                bf->handle,
-                ofst};
+        int64 leftSize = (i.fullSize - i.position);
+        if (leftSize >= targetSize) {
+            auto ofst = i.position;
+            i.position += targetSize;
+            return {i.handle, ofst};
         }
     }
-    while (capacity < targetSize) {
-        capacity = std::max<uint64>(capacity + 1, capacity * 1.5);
+    if (capacity < targetSize) {
+        capacity = std::max<uint64>(targetSize , capacity * 1.5);
     }
     auto newHandle = visitor->Allocate(capacity);
     allocatedBuffers.push_back(Buffer{
         newHandle,
         capacity,
         capacity - targetSize});
-    return {
-        newHandle,
-        0};
+    return {newHandle, 0};
 }
 StackAllocator::Chunk StackAllocator::Allocate(
     uint64 targetSize,
@@ -44,29 +33,18 @@ StackAllocator::Chunk StackAllocator::Allocate(
     auto CalcAlign = [](uint64 value, uint64 align) -> uint64 {
         return (value + (align - 1)) & ~(align - 1);
     };
-    struct Result {
-        uint64 offset;
-        uint64 leftSize;
-    };
-    auto GetLeftSize = [&](uint64 leftSize, uint64 size) -> vstd::optional<Result> {
-        uint64 offset = size - leftSize;
-        uint64 alignedOffset = CalcAlign(offset, align);
-        uint64 afterAllocSize = targetSize + alignedOffset;
-        if (afterAllocSize > size) return {};
-        return Result{alignedOffset, size - afterAllocSize};
-    };
     for (auto &&i : allocatedBuffers) {
-        auto result = GetLeftSize(i.leftSize, i.fullSize);
-        if (!result) continue;
-        Buffer *bf = &i;
-        uint64 offset = result->offset;
-        bf->leftSize = result->leftSize;
-        return {
-            bf->handle,
-            offset};
+        auto position = CalcAlign(i.position, align);
+        int64 leftSize = (i.fullSize - position);
+        if (leftSize >= targetSize) {
+            auto ofst = position;
+            position += targetSize;
+            i.position = position;
+            return {i.handle, ofst};
+        }
     }
-    while (capacity < targetSize) {
-        capacity = std::max<uint64>(capacity + 1, capacity * 1.5);
+    if (capacity < targetSize) {
+        capacity = std::max<uint64>(targetSize , capacity * 1.5);
     }
     auto newHandle = visitor->Allocate(capacity);
     allocatedBuffers.push_back(Buffer{
@@ -86,20 +64,20 @@ void StackAllocator::Dispose() {
         }
         allocatedBuffers.resize(1);
     }
-    auto& first = allocatedBuffers[0];
+    auto &first = allocatedBuffers[0];
     if (first.fullSize > capacity) {
         visitor->DeAllocate(first.handle);
         first.handle = visitor->Allocate(capacity);
         first.fullSize = capacity;
-        first.leftSize = capacity;
     }
+    first.position = 0;
 }
 void StackAllocator::Clear() {
     switch (allocatedBuffers.size()) {
         case 0: break;
         case 1: {
             auto &&i = allocatedBuffers[0];
-            i.leftSize = i.fullSize;
+            i.position = 0;
         } break;
         default: {
             size_t sumSize = 0;
@@ -111,7 +89,7 @@ void StackAllocator::Clear() {
             allocatedBuffers.push_back(Buffer{
                 .handle = visitor->Allocate(sumSize),
                 .fullSize = sumSize,
-                .leftSize = sumSize});
+                .position = 0});
         } break;
     }
 }

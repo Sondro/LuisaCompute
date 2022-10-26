@@ -54,7 +54,7 @@ CommandAllocator::CommandAllocator(
     D3D12_COMMAND_LIST_TYPE type)
     : CommandAllocatorBase(device, resourceAllocator, type),
       uploadAllocator(TEMP_SIZE, &ubVisitor),
-      readbackAllocator(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, &rbVisitor),
+      readbackAllocator(TEMP_SIZE, &rbVisitor),
       defaultAllocator(TEMP_SIZE, &dbVisitor),
       rtvAllocator(64, &rtvVisitor),
       dsvAllocator(64, &dsvVisitor),
@@ -63,9 +63,6 @@ CommandAllocator::CommandAllocator(
     rbVisitor.self = this;
     ubVisitor.self = this;
     dbVisitor.self = this;
-    uploadAllocator.WarmUp();
-    readbackAllocator.WarmUp();
-    defaultAllocator.WarmUp();
 }
 CommandAllocator::~CommandAllocator() {
     cbuffer.Delete();

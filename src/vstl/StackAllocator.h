@@ -13,12 +13,11 @@ class LC_VSTL_API StackAllocator {
     struct Buffer {
         uint64 handle;
         uint64 fullSize;
-        uint64 leftSize;
+        uint64 position;
     };
     vstd::vector<Buffer> allocatedBuffers;
 
 public:
-    void WarmUp();
     StackAllocator(
         uint64 initCapacity,
         StackAllocatorVisitor *visitor);
