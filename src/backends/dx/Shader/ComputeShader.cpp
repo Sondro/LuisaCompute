@@ -8,9 +8,11 @@ namespace toolhub::directx {
 namespace ComputeShaderDetail {
 
 static void SavePSO(vstd::string_view fileName, BinaryIOVisitor *fileStream, ComputeShader const *cs) {
+    vstd::MD5 fileNameMd5(fileName);
     ComPtr<ID3DBlob> psoCache;
     cs->Pso()->GetCachedBlob(&psoCache);
-    fileStream->write_cache(fileName, {reinterpret_cast<std::byte const *>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
+    auto name = fileNameMd5.ToString(false);
+    fileStream->write_cache(name, {reinterpret_cast<std::byte const *>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
 };
 }// namespace ComputeShaderDetail
 ComputeShader *ComputeShader::LoadPresetCompute(
@@ -20,15 +22,13 @@ ComputeShader *ComputeShader::LoadPresetCompute(
     vstd::string_view fileName) {
     using namespace ComputeShaderDetail;
     bool oldDeleted = false;
-    vstd::MD5 lastMD5;
     auto result = ShaderSerializer::DeSerialize(
         fileName,
         false,
         device,
         *fileIo,
         {},
-        oldDeleted,
-        &lastMD5);
+        oldDeleted);
     //Cached
 
     if (result) {
@@ -51,7 +51,8 @@ ComputeShader *ComputeShader::LoadPresetCompute(
             }
         }
         if (oldDeleted) {
-            SavePSO(lastMD5.ToString(), fileIo, result);
+            // SavePSO(lastMD5.ToString(), fileIo, result);
+            SavePSO(fileName, fileIo, result);
         }
     }
     return result;
@@ -123,7 +124,8 @@ ComputeShader *ComputeShader::CompileCompute(
                     device);
                 cs->bindlessCount = str.bdlsBufferCount;
                 if (WriteCache) {
-                    SavePSO(md5.ToString(), fileIo, cs);
+                    SavePSO(fileName, fileIo, cs);
+                    // SavePSO(md5.ToString(), fileIo, cs);
                 }
                 return cs;
             },
@@ -136,7 +138,6 @@ ComputeShader *ComputeShader::CompileCompute(
     if (!fileName.empty()) {
 
         bool oldDeleted = false;
-        vstd::MD5 lastMD5;
         //Cached
         auto result = ShaderSerializer::DeSerialize(
             fileName,
@@ -144,11 +145,11 @@ ComputeShader *ComputeShader::CompileCompute(
             device,
             *fileIo,
             checkMD5,
-            oldDeleted,
-            &lastMD5);
+            oldDeleted);
         if (result) {
             if (oldDeleted) {
-                SavePSO(lastMD5.ToString(), fileIo, result);
+                SavePSO(fileName, fileIo, result);
+                // SavePSO(lastMD5.ToString(), fileIo, result);
             }
             return result;
         }

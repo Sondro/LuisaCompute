@@ -42,8 +42,7 @@ public:
         Device *device,
         BinaryIOVisitor &streamFunc,
         vstd::optional<vstd::MD5> const &checkMD5,
-        bool &clearCache,
-        vstd::MD5 *lastMD5 = nullptr);
+        bool &clearCache);
     static RasterShader *RasterDeSerialize(
         luisa::string_view fileName,
         bool byteCodeIsCache,

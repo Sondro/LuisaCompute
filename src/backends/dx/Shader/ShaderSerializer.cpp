@@ -105,8 +105,7 @@ ComputeShader *ShaderSerializer::DeSerialize(
     Device *device,
     BinaryIOVisitor &streamFunc,
     vstd::optional<vstd::MD5> const &checkMD5,
-    bool &clearCache,
-    vstd::MD5 *lastMD5) {
+    bool &clearCache) {
     using namespace shader_ser;
 
     auto binStream = [&] {
@@ -119,9 +118,6 @@ ComputeShader *ShaderSerializer::DeSerialize(
     Header header;
     binStream->read({reinterpret_cast<std::byte *>(&header),
                      sizeof(Header)});
-    if (lastMD5)
-        *lastMD5 = header.md5;
-
     if (checkMD5 && header.md5 != *checkMD5) return nullptr;
     size_t targetSize =
         header.rootSigBytes +

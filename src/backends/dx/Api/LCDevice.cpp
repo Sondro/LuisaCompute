@@ -194,7 +194,7 @@ uint64 LCDevice::create_shader(Function kernel, bool use_cache) noexcept {
     vstd::string file_name;
     vstd::MD5 checkMD5({reinterpret_cast<uint8_t const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
     if (use_cache) {
-        file_name << checkMD5.ToString() << ".dxil";
+        file_name << checkMD5.ToString(false) << ".dxil"sv;
     }
     return reinterpret_cast<uint64>(
         ComputeShader::CompileCompute(
@@ -384,7 +384,7 @@ uint64_t LCDevice::create_raster_shader(
     vstd::string file_name;
     vstd::MD5 checkMD5({reinterpret_cast<uint8_t const *>(code.result.data() + code.immutableHeaderSize), code.result.size() - code.immutableHeaderSize});
     if (use_cache) {
-        file_name << checkMD5.ToString() << ".dxil";
+        file_name << checkMD5.ToString(false) << ".dxil"sv;
     }
     auto shader = RasterShader::CompileRaster(
         nativeDevice.fileIo,

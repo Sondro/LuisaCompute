@@ -8,9 +8,11 @@
 namespace toolhub::directx {
 namespace RasterShaderDetail {
 static void SavePSO(vstd::string_view fileName, BinaryIOVisitor *fileStream, RasterShader const *s) {
+    vstd::MD5 fileNameMd5(fileName);
     ComPtr<ID3DBlob> psoCache;
     s->Pso()->GetCachedBlob(&psoCache);
-    fileStream->write_cache(fileName, {reinterpret_cast<std::byte const *>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
+    auto name = fileNameMd5.ToString(false);
+    fileStream->write_cache(name, {reinterpret_cast<std::byte const *>(psoCache->GetBufferPointer()), psoCache->GetBufferSize()});
 };
 static vstd::vector<SavedArgument> GetKernelArgs(Function vertexKernel, Function pixelKernel) {
     if (vertexKernel.builder() == nullptr || pixelKernel.builder() == nullptr) {
@@ -387,7 +389,8 @@ RasterShader *RasterShader::CompileRaster(
             pixelBin);
         s->bindlessCount = str.bdlsBufferCount;
         if (writeCache) {
-            RasterShaderDetail::SavePSO(psoMd5->ToString(), fileIo, s);
+            // RasterShaderDetail::SavePSO(psoMd5->ToString(), fileIo, s);
+            RasterShaderDetail::SavePSO(fileName, fileIo, s);
         }
         return s;
     };
@@ -399,7 +402,8 @@ RasterShader *RasterShader::CompileRaster(
             psoMd5, meshFormat, state, rtv, dsv, oldDeleted);
         if (result) {
             if (oldDeleted) {
-                RasterShaderDetail::SavePSO(psoMd5->ToString(), fileIo, result);
+                RasterShaderDetail::SavePSO(fileName, fileIo, result);
+                // RasterShaderDetail::SavePSO(psoMd5->ToString(), fileIo, result);
             }
         }
         return CompileNewCompute(true);
@@ -453,9 +457,13 @@ RasterShader *RasterShader::LoadRaster(
     auto ptr = ShaderSerializer::RasterDeSerialize(fileName, false, device, *device->fileIo, {}, md5, mesh_format, raster_state, rtv_format, dsv_format, cacheDeleted);
     if (ptr && cacheDeleted) {
         RasterShaderDetail::SavePSO(
-            md5->ToString(),
+            fileName,
             fileIo,
             ptr);
+        /*RasterShaderDetail::SavePSO(
+            md5->ToString(),
+            fileIo,
+            ptr);*/
     }
     return ptr;
 }
