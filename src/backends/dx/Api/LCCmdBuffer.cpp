@@ -728,10 +728,10 @@ public:
         }
     }
 };
-inline bool ReorderFuncTable::is_res_in_bindless(uint64_t bindless_handle, uint64_t resource_handle) const noexcept {
+bool ReorderFuncTable::is_res_in_bindless(uint64_t bindless_handle, uint64_t resource_handle) const noexcept {
     return reinterpret_cast<BindlessArray *>(bindless_handle)->IsPtrInBindless(resource_handle);
 }
-inline Usage ReorderFuncTable::get_usage(uint64_t shader_handle, size_t argument_index) const noexcept {
+Usage ReorderFuncTable::get_usage(uint64_t shader_handle, size_t argument_index) const noexcept {
     auto cs = reinterpret_cast<ComputeShader *>(shader_handle);
     return cs->Args()[argument_index].varUsage;
 }
