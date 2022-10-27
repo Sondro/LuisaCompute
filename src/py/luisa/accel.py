@@ -188,7 +188,7 @@ class Mesh:
         self.vertices = vertices
         self.triangles = triangles
         # TODO: support buffer of structs or arrays
-        self.handle = get_global_device().impl().create_mesh(lcapi.AccelUsageHint.FAST_TRACE,False, False)
+        self.handle = get_global_device().impl().create_mesh(lcapi.AccelUsageHint.FAST_TRACE,True,False)
         #self.vertices.handle, 0, to_lctype(vertices.dtype).size(), self.vertices.size, self.triangles.handle, 0, self.triangles.size//3,
         self.update()
 
@@ -198,8 +198,8 @@ class Mesh:
         stride = to_lctype(self.vertices.dtype).size()
         globalvars.stream.add(lcapi.MeshBuildCommand.create(
             self.handle, lcapi.AccelBuildRequest.FORCE_BUILD,
-            self.vertices.handle, 0, self.vertices.size * stride, stride,
-            self.triangles.handle, 0, self.triangles.size * 4))
+            self.vertices.handle, self.vertices.size, stride,
+            self.triangles.handle, self.triangles.size))
         if sync:
             stream.synchronize()
 

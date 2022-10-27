@@ -277,11 +277,11 @@ PYBIND11_MODULE(lcapi, m) {
     // accel commands
     py::class_<MeshBuildCommand, Command>(m, "MeshBuildCommand")
         .def_static(
-            "create", [](uint64_t handle, AccelBuildRequest request, uint64_t vertex_buffer, size_t vertex_buffer_offset, size_t vertex_buffer_size, size_t vertex_stride, uint64_t triangle_buffer, size_t triangle_buffer_offset, size_t triangle_buffer_size) {
+            "create", [](uint64_t handle, AccelBuildRequest request, uint64_t vertex_buffer, size_t vertex_buffer_count, size_t vertex_stride, uint64_t triangle_buffer, size_t triangle_buffer_count) {
                 return MeshBuildCommand::create(
-                           handle, request, vertex_buffer, vertex_buffer_offset, vertex_buffer_size,
+                           handle, request, vertex_buffer, 0, vertex_buffer_count * vertex_stride,
                            vertex_stride,
-                           triangle_buffer, triangle_buffer_offset, triangle_buffer_size)
+                           triangle_buffer, 0, triangle_buffer_count * sizeof(uint))
                     .release();
             },
             pyref);

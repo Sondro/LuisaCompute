@@ -202,11 +202,11 @@ private:
     static auto _define(Function::Tag tag, Def &&def) {
         auto f = make_shared<FunctionBuilder>(tag);
         push(f.get());
-#ifdef LUISA_AST_EXCEPTION
+#ifdef LC_AST_EXCEPTION
         try {
 #endif
             f->with(&f->_body, std::forward<Def>(def));
-#ifdef LUISA_AST_EXCEPTION
+#ifdef LC_AST_EXCEPTION
         } catch (...) {
             pop(f.get());
             throw;
