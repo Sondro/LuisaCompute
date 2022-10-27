@@ -8,10 +8,10 @@ private:
     DepthFormat _format{};
 
 public:
-    DepthBuffer(DeviceInterface *device, DepthFormat format, uint2 size);
+    DepthBuffer(DeviceInterface *device, DepthFormat format, uint2 size) noexcept;
     [[nodiscard]] auto size() const noexcept { return _size; }
     [[nodiscard]] auto format() const noexcept { return _format; }
     [[nodiscard]] luisa::unique_ptr<Command> clear(float value) const noexcept;
-    [[nodiscard]] ImageView<float> to_img();
+    [[nodiscard]] ImageView<float> to_img()noexcept;
 };
 }// namespace luisa::computep

@@ -9,50 +9,52 @@ class PyStream : public vstd::IOperatorNewBase {
     struct Disposer {
         void *ptr;
         vstd::funcPtr_t<void(void *ptr)> dtor;
-        Disposer() {}
-        Disposer(Disposer &&d) {
+        Disposer() noexcept {}
+        Disposer(Disposer &&d) noexcept {
             ptr = d.ptr;
             d.ptr = nullptr;
             dtor = d.dtor;
         }
-        ~Disposer() {
+        ~Disposer() noexcept {
             if (!ptr) return;
             dtor(ptr);
             vengine_delete(ptr);
         }
     };
 
-public:
     struct Data : public vstd::IOperatorNewBase {
         Stream stream;
         CommandBuffer buffer;
         vstd::vector<Disposer> uploadDisposer;
         vstd::vector<Disposer> readbackDisposer;
-        Data(Device& device);
+        Data(Device &device) noexcept;
     };
-    vstd::unique_ptr<Data> data;
-    PyStream(PyStream &&) = default;
+    vstd::unique_ptr<Data> _data;
+
+public:
+    PyStream(PyStream &&) noexcept = default;
     PyStream(PyStream const &) = delete;
-    PyStream(Device &device);
-    ~PyStream();
-    void Add(Command *cmd);
+    PyStream(Device &device) noexcept;
+    ~PyStream() noexcept;
+    void add(Command *cmd) noexcept;
     template<typename T>
         requires(!std::is_reference_v<T>)
-    void AddUploadRef(T &&t) {
-        auto &disp = data->uploadDisposer.emplace_back();
+    void add_upload(T &&t) noexcept {
+        auto &disp = _data->uploadDisposer.emplace_back();
         disp.ptr = vengine_malloc(sizeof(T));
-        new(disp.ptr)T(std::move(t));
+        new (disp.ptr) T(std::move(t));
         disp.dtor = [](void *ptr) { reinterpret_cast<T *>(ptr)->~T(); };
     }
     template<typename T>
         requires(!std::is_reference_v<T>)
-    void AddReadbackRef(T &&t) {
-        auto &disp = data->readbackDisposer.emplace_back();
+    void add_readback(T &&t) noexcept {
+        auto &disp = _data->readbackDisposer.emplace_back();
         disp.ptr = vengine_malloc(sizeof(T));
-        new(disp.ptr)T(std::move(t));
+        new (disp.ptr) T(std::move(t));
         disp.dtor = [](void *ptr) { reinterpret_cast<T *>(ptr)->~T(); };
     }
-    void Execute();
-    void ExecuteCallback(std::function<void()> &&func);
+    void execute() noexcept;
+    void execute_callback(std::function<void()> &&func) noexcept;
+    void sync() noexcept;
 };
 }// namespace luisa::compute

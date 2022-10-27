@@ -28,7 +28,7 @@ enum class VertexElementFormat : uint8_t{
     XYZW32Float,
 
 };
-constexpr size_t VertexElementFormatStride(VertexElementFormat format){
+constexpr size_t VertexElementFormatStride(VertexElementFormat format)noexcept{
     switch(format){
         case VertexElementFormat::X32Float: return 4;
         case VertexElementFormat::XY32Float: return 8;

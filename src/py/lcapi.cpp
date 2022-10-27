@@ -96,12 +96,12 @@ PYBIND11_MODULE(lcapi, m) {
         .def("remove_tex3d_in_bindless_array", &DeviceInterface::remove_tex3d_in_bindless_array);
 
     py::class_<PyStream>(m, "Stream")
-        .def("synchronize", [](PyStream &self) { self.data->stream.synchronize(); }, pyref)
-        .def("add", [](PyStream &self, Command *cmd) { self.Add(cmd); }, pyref)
-        .def("add_upload_buffer", [](PyStream &self, py::buffer &&buf) { self.AddUploadRef(std::move(buf)); }, pyref)
-        .def("add_readback_buffer", [](PyStream &self, py::buffer &&buf) { self.AddReadbackRef(std::move(buf)); }, pyref)
-        .def("add_callback", [](PyStream &self, std::function<void()> &&callback) { self.ExecuteCallback(std::move(callback)); }, pyref)
-        .def("execute", [](PyStream &self) { self.Execute(); }, pyref);
+        .def("synchronize", [](PyStream &self) { self.sync(); }, pyref)
+        .def("add", [](PyStream &self, Command *cmd) { self.add(cmd); }, pyref)
+        .def("add_upload_buffer", [](PyStream &self, py::buffer &&buf) { self.add_upload(std::move(buf)); }, pyref)
+        .def("add_readback_buffer", [](PyStream &self, py::buffer &&buf) { self.add_readback(std::move(buf)); }, pyref)
+        .def("add_callback", [](PyStream &self, std::function<void()> &&callback) { self.execute_callback(std::move(callback)); }, pyref)
+        .def("execute", [](PyStream &self) { self.execute(); }, pyref);
 
     // AST (FunctionBuilder)
     py::class_<Function>(m, "Function");

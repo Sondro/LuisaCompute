@@ -13,18 +13,18 @@ template<typename T>
 struct PixelDst : public std::false_type {};
 template<typename T>
 struct PixelDst<Image<T>> : public std::true_type {
-    static ShaderDispatchCommandBase::TextureArgument get(Image<T> const &v) {
+    static ShaderDispatchCommandBase::TextureArgument get(Image<T> const &v) noexcept {
         return {v.handle(), 0};
     }
 };
 template<typename T>
 struct PixelDst<ImageView<T>> : public std::true_type {
-    static ShaderDispatchCommandBase::TextureArgument get(ImageView<T> const &v) {
+    static ShaderDispatchCommandBase::TextureArgument get(ImageView<T> const &v) noexcept {
         return {v.handle(), v.level()};
     }
 };
 template<typename T, typename... Args>
-static constexpr bool LegalDst() {
+static constexpr bool LegalDst() noexcept {
     constexpr bool r = PixelDst<T>::value;
     if constexpr (sizeof...(Args) == 0) {
         return r;
@@ -45,7 +45,7 @@ public:
     explicit RasterShaderInvoke(
         uint64_t handle,
         Function vertex_func,
-        Function pixel_func)
+        Function pixel_func) noexcept
         : _command(DrawRasterSceneCommand::create(handle, vertex_func, pixel_func)),
           _vert(vertex_func),
           _pixel(pixel_func) {
@@ -132,9 +132,9 @@ public:
     }
 };
 namespace detail {
-LC_RUNTIME_API void rastershader_check_rtv_format(luisa::span<const PixelFormat> rtv_format);
-LC_RUNTIME_API void rastershader_check_vertex_func(Function func);
-LC_RUNTIME_API void rastershader_check_pixel_func(Function func);
+LC_RUNTIME_API void rastershader_check_rtv_format(luisa::span<const PixelFormat> rtv_format) noexcept;
+LC_RUNTIME_API void rastershader_check_vertex_func(Function func) noexcept;
+LC_RUNTIME_API void rastershader_check_pixel_func(Function func) noexcept;
 }// namespace detail
 template<typename... Args>
 class RasterShader : public Resource {
@@ -158,7 +158,7 @@ class RasterShader : public Resource {
         DepthFormat dsv_format,
         luisa::shared_ptr<const detail::FunctionBuilder> vert,
         luisa::shared_ptr<const detail::FunctionBuilder> pixel,
-        const std::filesystem::path &file_path)
+        const std::filesystem::path &file_path)noexcept
         : Resource(
               device,
               Tag::RASTER_SHADER,
@@ -194,7 +194,7 @@ class RasterShader : public Resource {
                  DepthFormat dsv_format,
                  luisa::shared_ptr<const detail::FunctionBuilder> vert,
                  luisa::shared_ptr<const detail::FunctionBuilder> pixel,
-                 bool use_cache)
+                 bool use_cache)noexcept
         : Resource(
               device,
               Tag::RASTER_SHADER,
@@ -229,7 +229,7 @@ class RasterShader : public Resource {
         const RasterState &raster_state,
         luisa::span<PixelFormat const> rtv_format,
         DepthFormat dsv_format,
-        const std::filesystem::path &file_path)
+        const std::filesystem::path &file_path)noexcept
         : Resource(
               device,
               Tag::RASTER_SHADER,

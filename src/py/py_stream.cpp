@@ -1,31 +1,36 @@
 #include <py/py_stream.h>
 #include <runtime/command_buffer.h>
 namespace luisa::compute {
-PyStream::PyStream(Device &device)
-    : data(new Data(device)) {}
-PyStream::Data::Data(Device &device)
+PyStream::PyStream(Device &device) noexcept
+    : _data(new Data(device)) {}
+PyStream::Data::Data(Device &device) noexcept
     : stream(device.create_stream()),
       buffer(stream.command_buffer()) {
 }
-PyStream::~PyStream() {
-    if(!data) return;
-    if (!data->buffer.empty()) {
-        data->buffer.commit();
+PyStream::~PyStream() noexcept {
+    if (!_data) return;
+    if (!_data->buffer.empty()) {
+        _data->buffer.commit();
     }
-    data->stream.synchronize();
+    _data->stream.synchronize();
 }
 
-void PyStream::Add(Command *cmd) {
-    data->buffer << luisa::unique_ptr<Command>(cmd);
+void PyStream::add(Command *cmd) noexcept {
+    _data->buffer << luisa::unique_ptr<Command>(cmd);
 }
-void PyStream::Execute() {
-    data->buffer << [d = data.get()] { d->readbackDisposer.clear(); };
-    data->uploadDisposer.clear();
+void PyStream::execute() noexcept {
+    _data->buffer << [d = _data.get()] { d->readbackDisposer.clear(); };
+    _data->uploadDisposer.clear();
 }
-void PyStream::ExecuteCallback(std::function<void()> &&func) {
-    data->buffer << [func = std::move(func), d = data.get()] {
+void PyStream::execute_callback(std::function<void()> &&func) noexcept {
+    _data->buffer << [func = std::move(func), d = _data.get()] {
         func();
         d->readbackDisposer.clear();
     };
 }
+void PyStream::sync() noexcept {
+    _data->buffer.commit();
+    _data->buffer.synchronize();
+}
+
 }// namespace luisa::compute

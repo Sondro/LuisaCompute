@@ -4,7 +4,7 @@ namespace luisa::compute {
 DepthBuffer Device::create_depth_buffer(DepthFormat depth_format, uint2 size) noexcept {
     return _create<DepthBuffer>(depth_format, size);
 }
-DepthBuffer::DepthBuffer(DeviceInterface *device, DepthFormat format, uint2 size)
+DepthBuffer::DepthBuffer(DeviceInterface *device, DepthFormat format, uint2 size)noexcept
     : _size(size), _format(format),
       Resource(
           device,
@@ -20,7 +20,7 @@ luisa::unique_ptr<Command> DepthBuffer::clear(float value) const noexcept {
     return luisa::make_unique<ClearDepthCommand>(handle(), value);
 }
 namespace detail {
-PixelStorage depth_to_storage(DepthFormat fmt) {
+PixelStorage depth_to_storage(DepthFormat fmt) noexcept{
     PixelStorage stg;
     switch (fmt) {
         case DepthFormat::D16:
@@ -38,7 +38,7 @@ PixelStorage depth_to_storage(DepthFormat fmt) {
     return stg;
 }
 }// namespace detail
-ImageView<float> DepthBuffer::to_img() {
+ImageView<float> DepthBuffer::to_img() noexcept{
     return {handle(), detail::depth_to_storage(_format), 0u, _size};
 }
 }// namespace luisa::compute
