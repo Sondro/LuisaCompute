@@ -587,7 +587,7 @@ def callable_call(func, *args):
     # get function instance by argtypes
     if func is globalvars.current_context.func and tuple(a.dtype for a in args) == globalvars.current_context.argtypes:
         raise Exception("Recursion is not supported")
-    f = func.get_compiled(call_from_host=False, argtypes=tuple(a.dtype for a in args), name=None)
+    f = func.get_compiled(call_from_host=False, argtypes=tuple(a.dtype for a in args))
     globalvars.current_context.uses_printer |= f.uses_printer
     # create temporary var for each r-value argument
     for node in args:

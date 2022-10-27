@@ -22,7 +22,7 @@ void PyStream::execute() noexcept {
     _data->buffer << [d = _data.get()] { d->readbackDisposer.clear(); };
     _data->uploadDisposer.clear();
 }
-void PyStream::execute_callback(std::function<void()> &&func) noexcept {
+void PyStream::execute_callback(luisa::function<void()> &&func) noexcept {
     _data->buffer << [func = std::move(func), d = _data.get()] {
         func();
         d->readbackDisposer.clear();

@@ -54,7 +54,7 @@ public:
         disp.dtor = [](void *ptr) { reinterpret_cast<T *>(ptr)->~T(); };
     }
     void execute() noexcept;
-    void execute_callback(std::function<void()> &&func) noexcept;
+    void execute_callback(luisa::function<void()> &&func) noexcept;
     void sync() noexcept;
 };
 }// namespace luisa::compute

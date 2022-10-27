@@ -8,6 +8,8 @@
 #include <runtime/command_list.h>
 #include <DXRuntime/ResourceStateTracker.h>
 #include <backends/common/command_reorder_visitor.h>
+#include <Resource/BindlessArray.h>
+#include <Shader/ComputeShader.h>
 using namespace luisa::compute;
 namespace toolhub::directx {
 class RenderTexture;
@@ -19,8 +21,13 @@ struct ButtomCompactCmd {
     size_t size;
 };
 struct ReorderFuncTable {
-    bool is_res_in_bindless(uint64_t bindless_handle, uint64_t resource_handle) const noexcept;
-    Usage get_usage(uint64_t shader_handle, size_t argument_index) const noexcept;
+    bool is_res_in_bindless(uint64_t bindless_handle, uint64_t resource_handle) const noexcept {
+        return reinterpret_cast<BindlessArray *>(bindless_handle)->IsPtrInBindless(resource_handle);
+    }
+    Usage get_usage(uint64_t shader_handle, size_t argument_index) const noexcept {
+        auto cs = reinterpret_cast<ComputeShader *>(shader_handle);
+        return cs->Args()[argument_index].varUsage;
+    }
 };
 class LCCmdBuffer final : public vstd::IOperatorNewBase {
 protected:

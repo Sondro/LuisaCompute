@@ -3,7 +3,6 @@
 // Class:
 //   FunctionBuilder
 //       define_kernel
-
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
@@ -34,16 +33,6 @@ void export_matrix(py::module &m);
 int add(int i, int j) {
     return i + j;
 }
-template<typename T>
-struct make_std_literal_value {
-    static_assert(always_false_v<T>);
-};
-
-template<typename... T>
-struct make_std_literal_value<std::tuple<T...>> {
-    using type = std::variant<T...>;
-};
-
 PYBIND11_DECLARE_HOLDER_TYPE(T, eastl::shared_ptr<T>);
 
 const auto pyref = py::return_value_policy::reference;// object lifetime is managed on C++ side
@@ -66,17 +55,22 @@ PYBIND11_MODULE(lcapi, m) {
         .def(py::init<const std::filesystem::path &>())
         .def("create_device", [](Context &self, luisa::string_view backend_name) { return self.create_device(backend_name); })// TODO: support properties
         .def("installed_backends", [](Context &self) {
-            std::vector<luisa::string> strs;
+            luisa::vector<luisa::string> strs;
             for (auto s : self.installed_backends()) strs.emplace_back(luisa::string_view(s.data(), s.size()));
             return strs;
         });
     py::class_<Device>(m, "Device")
-        .def("create_stream", [](Device &self) { return PyStream(self); }, pyref)
+        .def(
+            "create_stream", [](Device &self) { return PyStream(self); }, pyref)
         .def("impl", &Device::impl, pyref)
         .def("create_accel", &Device::create_accel);
     py::class_<DeviceInterface, eastl::shared_ptr<DeviceInterface>>(m, "DeviceInterface")
-        .def("create_shader", [](DeviceInterface &self, Function kernel) { return self.create_shader(kernel, true); }, pyref)// TODO: support metaoptions
-        .def("create_shader_name", [](DeviceInterface &self, Function kernel, std::string&& str){ return self.create_shader(kernel, str);})
+        .def("create_shader", [](DeviceInterface &self, Function kernel, std::string &&str) {
+            luisa::string realStr;
+            realStr.reserve(str.size() + 7);
+            realStr += ".cache/"sv;
+            realStr += str;
+            return self.create_shader(kernel, realStr); })// TODO: support metaoptions
         .def("destroy_shader", &DeviceInterface::destroy_shader)
         .def("create_buffer", &DeviceInterface::create_buffer)
         .def("destroy_buffer", &DeviceInterface::destroy_buffer)
@@ -97,18 +91,24 @@ PYBIND11_MODULE(lcapi, m) {
         .def("remove_tex3d_in_bindless_array", &DeviceInterface::remove_tex3d_in_bindless_array);
 
     py::class_<PyStream>(m, "Stream")
-        .def("synchronize", [](PyStream &self) { self.sync(); }, pyref)
-        .def("add", [](PyStream &self, Command *cmd) { self.add(cmd); }, pyref)
-        .def("add_upload_buffer", [](PyStream &self, py::buffer &&buf) { self.add_upload(std::move(buf)); }, pyref)
-        .def("add_readback_buffer", [](PyStream &self, py::buffer &&buf) { self.add_readback(std::move(buf)); }, pyref)
-        .def("add_callback", [](PyStream &self, std::function<void()> &&callback) { self.execute_callback(std::move(callback)); }, pyref)
-        .def("execute", [](PyStream &self) { self.execute(); }, pyref);
+        .def(
+            "synchronize", [](PyStream &self) { self.sync(); }, pyref)
+        .def(
+            "add", [](PyStream &self, Command *cmd) { self.add(cmd); }, pyref)
+        .def(
+            "add_upload_buffer", [](PyStream &self, py::buffer &&buf) { self.add_upload(std::move(buf)); }, pyref)
+        .def(
+            "add_readback_buffer", [](PyStream &self, py::buffer &&buf) { self.add_readback(std::move(buf)); }, pyref)
+        .def(
+            "add_callback", [](PyStream &self, luisa::function<void()> &&callback) { self.execute_callback(std::move(callback)); }, pyref)
+        .def(
+            "execute", [](PyStream &self) { self.execute(); }, pyref);
 
     // AST (FunctionBuilder)
     py::class_<Function>(m, "Function");
     py::class_<FunctionBuilder, eastl::shared_ptr<FunctionBuilder>>(m, "FunctionBuilder")
-        .def("define_kernel", &FunctionBuilder::define_kernel<const std::function<void()> &>)
-        .def("define_callable", &FunctionBuilder::define_callable<const std::function<void()> &>)
+        .def("define_kernel", &FunctionBuilder::define_kernel<const luisa::function<void()> &>)
+        .def("define_callable", &FunctionBuilder::define_callable<const luisa::function<void()> &>)
         .def("set_block_size", [](FunctionBuilder &self, uint sx, uint sy, uint sz) { self.set_block_size(uint3{sx, sy, sz}); })
 
         .def("thread_id", &FunctionBuilder::thread_id, pyref)
@@ -134,8 +134,8 @@ PYBIND11_MODULE(lcapi, m) {
         .def("accel", &FunctionBuilder::accel, pyref)
 
         .def(
-            "literal", [](FunctionBuilder &self, const Type *type, typename make_std_literal_value<basic_types>::type value) {
-                return std::visit([&]<typename T>(T const &v) { return self.literal(type, v); }, value);
+            "literal", [](FunctionBuilder &self, const Type *type, LiteralExpr::Value &&value) {
+                return self.literal(type, std::move(value));
             },
             pyref)
         .def("unary", &FunctionBuilder::unary, pyref)
@@ -146,11 +146,11 @@ PYBIND11_MODULE(lcapi, m) {
         .def("cast", &FunctionBuilder::cast, pyref)
 
         .def(
-            "call", [](FunctionBuilder &self, const Type *type, CallOp call_op, std::vector<const Expression *> &&args) { return self.call(type, call_op, std::move(args)); }, pyref)
+            "call", [](FunctionBuilder &self, const Type *type, CallOp call_op, luisa::vector<const Expression *> &&args) { return self.call(type, call_op, std::move(args)); }, pyref)
         .def(
-            "call", [](FunctionBuilder &self, const Type *type, Function custom, std::vector<const Expression *> &&args) { return self.call(type, custom, std::move(args)); }, pyref)
-        .def("call", [](FunctionBuilder &self, CallOp call_op, std::vector<const Expression *> &&args) { self.call(call_op, std::move(args)); })
-        .def("call", [](FunctionBuilder &self, Function custom, std::vector<const Expression *> &&args) { self.call(custom, std::move(args)); })
+            "call", [](FunctionBuilder &self, const Type *type, Function custom, luisa::vector<const Expression *> &&args) { return self.call(type, custom, std::move(args)); }, pyref)
+        .def("call", [](FunctionBuilder &self, CallOp call_op, luisa::vector<const Expression *> &&args) { self.call(call_op, std::move(args)); })
+        .def("call", [](FunctionBuilder &self, Function custom, luisa::vector<const Expression *> &&args) { self.call(custom, std::move(args)); })
 
         .def("break_", &FunctionBuilder::break_)
         .def("continue_", &FunctionBuilder::continue_)
@@ -287,11 +287,8 @@ PYBIND11_MODULE(lcapi, m) {
             pyref);
     py::class_<AccelBuildCommand, Command>(m, "AccelBuildCommand")
         .def_static(
-            "create", [](uint64_t handle, uint32_t instance_count, AccelBuildRequest request, std::vector<AccelModification> &&modifications) {
-                luisa::vector<AccelModification> vec;
-                vec.reserve(modifications.size());
-                for (auto &&i : modifications) { vec.emplace_back(i); }
-                return AccelBuildCommand::create(handle, instance_count, request, std::move(vec)).release();
+            "create", [](uint64_t handle, uint32_t instance_count, AccelBuildRequest request, luisa::vector<AccelModification> &&modifications) {
+                return AccelBuildCommand::create(handle, instance_count, request, std::move(modifications)).release();
             },
             pyref);
     // bindless
@@ -315,8 +312,8 @@ PYBIND11_MODULE(lcapi, m) {
     export_matrix(m);
 
     // util function for uniform encoding
-    m.def("to_bytes", [](typename make_std_literal_value<basic_types>::type value) {
-        return std::visit([](auto x) noexcept { return py::bytes(std::string(reinterpret_cast<char *>(&x), sizeof(x))); }, value);
+    m.def("to_bytes", [](LiteralExpr::Value &&value) {
+        return luisa::visit([](auto x) noexcept { return py::bytes(std::string(reinterpret_cast<char *>(&x), sizeof(x))); }, value);
     });
 
     // accel

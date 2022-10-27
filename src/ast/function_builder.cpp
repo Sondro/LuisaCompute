@@ -169,7 +169,7 @@ const RefExpr *FunctionBuilder::_builtin(Variable::Tag tag) noexcept {
     // for callables, builtin variables are treated like arguments
     if (_tag != Function::Tag::KERNEL &&
         v.tag() >= Variable::Tag::THREAD_ID &&
-         v.tag() <= Variable::Tag::DISPATCH_SIZE) [[unlikely]] {
+        v.tag() <= Variable::Tag::DISPATCH_SIZE) [[unlikely]] {
         _arguments.emplace_back(v);
         _argument_bindings.emplace_back();
     }

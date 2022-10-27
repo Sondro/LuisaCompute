@@ -7,7 +7,6 @@
 #include <Resource/RenderTexture.h>
 #include <Resource/BottomAccel.h>
 #include <Resource/TopAccel.h>
-#include <Resource/BindlessArray.h>
 #include <Api/LCSwapChain.h>
 #include <backends/common/command_reorder_visitor.h>
 #include <Shader/RasterShader.h>
@@ -728,13 +727,6 @@ public:
         }
     }
 };
-bool ReorderFuncTable::is_res_in_bindless(uint64_t bindless_handle, uint64_t resource_handle) const noexcept {
-    return reinterpret_cast<BindlessArray *>(bindless_handle)->IsPtrInBindless(resource_handle);
-}
-Usage ReorderFuncTable::get_usage(uint64_t shader_handle, size_t argument_index) const noexcept {
-    auto cs = reinterpret_cast<ComputeShader *>(shader_handle);
-    return cs->Args()[argument_index].varUsage;
-}
 
 LCCmdBuffer::LCCmdBuffer(
     Device *device,

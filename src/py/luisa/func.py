@@ -15,8 +15,8 @@ from .types import dtype_of, to_lctype, CallableType
 from .struct import StructType
 from .astbuilder import VariableInfo
 import textwrap
-
-
+import os
+import sys
 
 
 def create_arg_expr(dtype, allow_ref):
@@ -75,7 +75,9 @@ class FuncInstanceInfo:
         self.local_variable = {} # dict: name -> VariableInfo(dtype, expr, is_arg)
         self.function = None
         self.shader_handle = None
-
+    def __del__(self):
+        if self.shader_handle != None:
+            get_global_device().impl().destroy_shader(self.shader_handle)
     def build_arguments(self):
         for idx, name in enumerate(self.func.parameters):
             dtype = self.argtypes[idx]
@@ -109,7 +111,7 @@ class func:
 
     # compiles an argument-type-specialized callable/kernel
     # returns FuncInstanceInfo
-    def compile(self, call_from_host: bool, argtypes: tuple, name = None):
+    def compile(self, call_from_host: bool, argtypes: tuple):
         # get python AST & context
         self.sourcelines = sourceinspect.getsourcelines(self.pyfunc)[0]
         self.sourcelines = [textwrap.fill(line, tabsize=4, width=9999) for line in self.sourcelines]
@@ -140,19 +142,16 @@ class func:
         f.function = f.builder.function()
         # compile shader
         if call_from_host:
-            if name == None:
-                f.shader_handle = get_global_device().impl().create_shader(f.function)
-            else:
-                f.shader_handle = get_global_device().impl().create_shader_name(f.function, name)
+            name = os.path.basename(sys.argv[0]).replace(".py", "") + '-' + self.__name__
+            f.shader_handle = get_global_device().impl().create_shader(f.function, name)
         return f
-
 
     # looks up arg_type_tuple; compile if not existing
     # returns FuncInstanceInfo
-    def get_compiled(self, call_from_host: bool, argtypes: tuple, name):
+    def get_compiled(self, call_from_host: bool, argtypes: tuple):
         if (call_from_host,) + argtypes not in self.compiled_results:
             try:
-                self.compiled_results[(call_from_host,) + argtypes] = self.compile(call_from_host, argtypes, name)
+                self.compiled_results[(call_from_host,) + argtypes] = self.compile(call_from_host, argtypes)
             except Exception as e:
                 if hasattr(e, "already_printed"):
                     # hide the verbose traceback in AST builder
@@ -165,7 +164,7 @@ class func:
 
 
     # dispatch shader to stream
-    def __call__(self, *args, dispatch_size, name = None, stream = None):
+    def __call__(self, *args, dispatch_size, stream = None):
         get_global_device() # check device is initialized
         if stream is None:
             stream = globalvars.stream
@@ -178,7 +177,7 @@ class func:
             raise TypeError("dispatch_size must be int or tuple of 1/2/3 ints")
         # get types of arguments and compile
         argtypes = tuple(dtype_of(a) for a in args)
-        f = self.get_compiled(call_from_host=True, argtypes=argtypes, name=name)
+        f = self.get_compiled(call_from_host=True, argtypes=argtypes)
         # create command
         command = lcapi.ShaderDispatchCommand.create(f.shader_handle, f.function)
         # push arguments
