@@ -75,7 +75,8 @@ PYBIND11_MODULE(lcapi, m) {
         .def("impl", &Device::impl, pyref)
         .def("create_accel", &Device::create_accel);
     py::class_<DeviceInterface, eastl::shared_ptr<DeviceInterface>>(m, "DeviceInterface")
-        .def("create_shader", [](DeviceInterface &self, Function kernel) { return self.create_shader(kernel, true); })// TODO: support metaoptions
+        .def("create_shader", [](DeviceInterface &self, Function kernel) { return self.create_shader(kernel, true); }, pyref)// TODO: support metaoptions
+        .def("create_shader_name", [](DeviceInterface &self, Function kernel, std::string&& str){ return self.create_shader(kernel, str);})
         .def("destroy_shader", &DeviceInterface::destroy_shader)
         .def("create_buffer", &DeviceInterface::create_buffer)
         .def("destroy_buffer", &DeviceInterface::destroy_buffer)
