@@ -504,7 +504,7 @@ private:
 
 public:
     explicit CommandReorderVisitor(FuncTable &&funcTable) noexcept
-        : funcTable(std::forward<FuncTable>(funcTable)), rangePool(256, true), bindlessHandlePool(32, true), noRangePool(256, true) {
+        : rangePool(256, true), bindlessHandlePool(32, true), noRangePool(256, true) , funcTable(std::forward<FuncTable>(funcTable)){
         resMap.reserve(256);
         bindlessMap.reserve(256);
     }
@@ -528,7 +528,7 @@ public:
         maxBufferReadLevel = -1;
         maxAccelWriteLevel = -1;
         maxMeshLevel = -1;
-        luisa::span<decltype(commandLists)::value_type> sp(commandLists.data(), layerCount);
+        luisa::span<typename decltype(commandLists)::value_type> sp(commandLists.data(), layerCount);
         for (auto &&i : sp) {
             i.clear();
         }

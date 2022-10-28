@@ -4,12 +4,12 @@ namespace luisa::compute {
 DepthBuffer Device::create_depth_buffer(DepthFormat depth_format, uint2 size) noexcept {
     return _create<DepthBuffer>(depth_format, size);
 }
-DepthBuffer::DepthBuffer(DeviceInterface *device, DepthFormat format, uint2 size)noexcept
-    : _size(size), _format(format),
-      Resource(
+DepthBuffer::DepthBuffer(DeviceInterface *device, DepthFormat format, uint2 size) noexcept
+    : Resource(
           device,
           Tag::DEPTH_BUFFER,
-          device->create_depth_buffer(format, size.x, size.y)) {
+          device->create_depth_buffer(format, size.x, size.y)),
+      _size(size), _format(format) {
 #ifndef NDEBUG
     if (format == DepthFormat::None) {
         LUISA_ERROR("Depth format cannot be none!");
@@ -20,7 +20,7 @@ luisa::unique_ptr<Command> DepthBuffer::clear(float value) const noexcept {
     return luisa::make_unique<ClearDepthCommand>(handle(), value);
 }
 namespace detail {
-PixelStorage depth_to_storage(DepthFormat fmt) noexcept{
+PixelStorage depth_to_storage(DepthFormat fmt) noexcept {
     PixelStorage stg;
     switch (fmt) {
         case DepthFormat::D16:
@@ -33,12 +33,15 @@ PixelStorage depth_to_storage(DepthFormat fmt) noexcept{
         case DepthFormat::D32S8A24:
             stg = PixelStorage::FLOAT2;
             break;
-        default: break;
+        default:
+            stg = PixelStorage::FLOAT1;
+            assert(false);
+            break;
     }
     return stg;
 }
 }// namespace detail
-ImageView<float> DepthBuffer::to_img() noexcept{
+ImageView<float> DepthBuffer::to_img() noexcept {
     return {handle(), detail::depth_to_storage(_format), 0u, _size};
 }
 }// namespace luisa::compute

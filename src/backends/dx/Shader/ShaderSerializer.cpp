@@ -305,7 +305,7 @@ RasterShader *ShaderSerializer::RasterDeSerialize(
 ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
     vstd::span<Property const> properties, bool isRasterShader) {
     vstd::fixed_vector<CD3DX12_ROOT_PARAMETER, 32> allParameter;
-    allParameter.reserve(properties.size() + isRasterShader ? 1 : 0);
+    allParameter.reserve(properties.size() + (isRasterShader ? 1 : 0));
     vstd::fixed_vector<CD3DX12_DESCRIPTOR_RANGE, 32> allRange;
     for (auto &&var : properties) {
         switch (var.type) {
@@ -315,6 +315,8 @@ ComPtr<ID3DBlob> ShaderSerializer::SerializeRootSig(
             case ShaderVariableType::SRVDescriptorHeap: {
                 allRange.emplace_back();
             } break;
+            default:
+                break;
         }
     }
     size_t offset = 0;
@@ -403,7 +405,6 @@ vstd::vector<SavedArgument> ShaderSerializer::SerializeKernel(Function kernel) {
     vstd::vector<SavedArgument> result;
     vstd::push_back_func(result, args.size(), [&](size_t i) {
         auto &&var = args[i];
-        auto type = var.type();
         return SavedArgument(kernel, var);
     });
     return result;

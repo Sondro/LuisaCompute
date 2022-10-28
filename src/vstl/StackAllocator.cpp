@@ -3,9 +3,10 @@ namespace vstd {
 StackAllocator::StackAllocator(
     uint64 initCapacity,
     StackAllocatorVisitor *visitor)
-    : capacity(initCapacity),
-      initCapacity(initCapacity),
-      visitor(visitor) {
+    : visitor(visitor),
+      capacity(initCapacity),
+      initCapacity(initCapacity)
+{
 }
 StackAllocator::Chunk StackAllocator::Allocate(uint64 targetSize) {
     for (auto &&i : allocatedBuffers) {
@@ -17,7 +18,7 @@ StackAllocator::Chunk StackAllocator::Allocate(uint64 targetSize) {
         }
     }
     if (capacity < targetSize) {
-        capacity = std::max<uint64>(targetSize , capacity * 1.5);
+        capacity = std::max<uint64>(targetSize, capacity * 1.5);
     }
     auto newHandle = visitor->Allocate(capacity);
     allocatedBuffers.push_back(Buffer{
@@ -44,7 +45,7 @@ StackAllocator::Chunk StackAllocator::Allocate(
         }
     }
     if (capacity < targetSize) {
-        capacity = std::max<uint64>(targetSize , capacity * 1.5);
+        capacity = std::max<uint64>(targetSize, capacity * 1.5);
     }
     auto newHandle = visitor->Allocate(capacity);
     allocatedBuffers.push_back(Buffer{

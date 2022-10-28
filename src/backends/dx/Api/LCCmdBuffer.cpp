@@ -619,9 +619,7 @@ public:
             if (!rtvs.empty()) {
                 auto tex = reinterpret_cast<TextureBase *>(rtvs[0].handle);
                 size = {tex->Width(), tex->Height()};
-                for (auto i : vstd::range(rtvs[0].level)) {
-                    size /= uint2(2);
-                }
+                size /= (1u << rtvs[0].level);
                 size = max(size, uint2(1));
             } else if (dsv.handle != ~0ull) {
                 auto tex = reinterpret_cast<TextureBase *>(dsv.handle);
@@ -732,12 +730,12 @@ LCCmdBuffer::LCCmdBuffer(
     Device *device,
     IGpuAllocator *resourceAllocator,
     D3D12_COMMAND_LIST_TYPE type)
-    : queue(
+    : device(device),
+      reorder({}),
+      queue(
           device,
           resourceAllocator,
-          type),
-      device(device),
-      reorder({}) {
+          type) {
 }
 void LCCmdBuffer::Execute(
     CommandList &&cmdList,

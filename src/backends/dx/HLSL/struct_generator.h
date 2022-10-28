@@ -19,7 +19,7 @@ private:
     uint8_t mDimension;
     Tag mTag;
     StructureType(Tag t, uint8_t d)
-        : mTag(t), mDimension(d) {}
+        : mDimension(d), mTag(t) {}
 
 public:
     static StructureType GetScalar();
@@ -28,7 +28,7 @@ public:
     uint8_t dimension() const { return mDimension; }
     Tag tag() const { return mTag; }
     //size_t size() const;
-  //  size_t align() const;
+    //  size_t align() const;
 };
 class StructGenerator : public vstd::IOperatorNewBase {
     Type const *structureType{nullptr};

@@ -7,8 +7,8 @@ DescriptorHeap::DescriptorHeap(
     uint64 numDescriptors,
     bool bShaderVisible)
     : Resource(device),
-      allocatePool(numDescriptors),
-      numDescriptors(numDescriptors) {
+      numDescriptors(numDescriptors),
+      allocatePool(numDescriptors) {
     Desc.Type = Type;
     Desc.NumDescriptors = numDescriptors;
     Desc.Flags = (bShaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE);

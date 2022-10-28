@@ -32,7 +32,6 @@ IUtil::Result LCUtil::compress_bc6h(Stream &stream, Image<float> const &src, vst
 
 IUtil::Result LCUtil::compress_bc7(Stream &stream, Image<float> const &src, vstd::vector<std::byte> &result, float alphaImportance) noexcept {
     LCCmdBuffer *cmdBuffer = reinterpret_cast<LCCmdBuffer *>(stream.handle());
-    RenderTexture *srcTex = reinterpret_cast<RenderTexture *>(src.handle());
     cmdBuffer->CompressBC(
         reinterpret_cast<RenderTexture *>(src.handle()),
         result,

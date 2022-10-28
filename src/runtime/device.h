@@ -22,7 +22,7 @@
 
 namespace luisa::compute {
 class MeshFormat;
-class RasterState;
+struct RasterState;
 class Context;
 
 class Event;
@@ -59,13 +59,13 @@ template<typename VertCallable, typename PixelCallable>
 class RasterKernel;
 
 template<typename... Args>
-class Kernel1D;
+struct Kernel1D;
 
 template<typename... Args>
-class Kernel2D;
+struct Kernel2D;
 
 template<typename... Args>
-class Kernel3D;
+struct Kernel3D;
 class DepthBuffer;
 
 namespace detail {

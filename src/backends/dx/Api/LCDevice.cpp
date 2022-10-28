@@ -75,6 +75,7 @@ uint64 LCDevice::create_texture(
         case PixelFormat::BC7UNorm:
             allowUAV = false;
             break;
+        default: break;
     }
     return reinterpret_cast<uint64>(
         static_cast<TextureBase *>(

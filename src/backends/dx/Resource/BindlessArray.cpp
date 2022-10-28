@@ -144,7 +144,6 @@ void BindlessArray::UpdateStates(
 
     if (updateMap.size() > 0) {
         for (auto &&kv : updateMap) {
-            auto &&sb = kv.second;
             builder.Upload(
                 BufferView(
                     &buffer,

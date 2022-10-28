@@ -15,7 +15,7 @@ namespace toolhub::directx {
 class StringStateVisitor;
 class StructVariableTracker;
 class StructGenerator;
-class CodegenStackData;
+struct CodegenStackData;
 struct CodegenResult {
     using Properties = vstd::vector<Property>;
     vstd::string result;

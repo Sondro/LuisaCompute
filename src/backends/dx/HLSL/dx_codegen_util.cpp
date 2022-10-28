@@ -15,10 +15,6 @@ static vstd::string const &HLSLHeader(vstd::string_view internalDataPath) {
     static vstd::string header = ReadInternalHLSLFile("hlsl_header", internalDataPath);
     return header;
 }
-static vstd::string const &HLSLHeaderSpirv(vstd::string_view internalDataPath) {
-    static vstd::string header = ReadInternalHLSLFile("hlsl_header_spirv", internalDataPath);
-    return header;
-}
 static vstd::string const &RayTracingHeader(vstd::string_view internalDataPath) {
     static vstd::string rtHeader = ReadInternalHLSLFile("raytracing_header", internalDataPath);
     return rtHeader;
@@ -54,9 +50,6 @@ void CodegenUtility::RegistStructType(Type const *type) {
     }
 }
 
-static bool IsVarWritable(Function func, Variable i) {
-    return ((uint)func.variable_usage(i.uid()) & (uint)Usage::WRITE) != 0;
-}
 void CodegenUtility::GetVariableName(Variable::Tag type, uint id, vstd::string &str) {
     switch (type) {
         case Variable::Tag::BLOCK_ID:
@@ -719,7 +712,6 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
                         i->accept(vis);
                         if (i->type()->is_vector()) {
                             auto dim = i->type()->dimension();
-                            auto ele = i->type()->element();
                             auto leftEle = tarDim - count;
                             //More lefted
                             if (dim <= leftEle) {
@@ -889,7 +881,6 @@ void CodegenUtility::GetFunctionName(CallExpr const *expr, vstd::string &str, St
             }
         } break;
         default: {
-            auto errorType = expr->op();
             LUISA_ERROR("Function Not Implemented");
         } break;
     }
@@ -977,7 +968,6 @@ size_t CodegenUtility::GetTypeAlign(Type const &t) {// TODO: use t.alignment()
 template<typename T>
 struct TypeNameStruct {
     void operator()(vstd::string &str) {
-        using BasicTypeUtil = vstd::VariantVisitor_t<basic_types>;
         if constexpr (std::is_same_v<bool, T>) {
             str << "bool";
         } else if constexpr (std::is_same_v<int, T>) {
@@ -1224,11 +1214,9 @@ o0=pixel(p);
         result << "){\n"sv;
         GetTypeName(*retType, result, Usage::READ);
         result << " o=pixel(p);\n"sv;
-        idx = 0;
-        for (auto &&i : retType->members()) {
-            auto num = vstd::to_string(idx);
+        for (auto i : vstd::range(retType->members().size())) {
+            auto num = vstd::to_string(i);
             result << 'o' << num << "=o.v"sv << num << ";\n"sv;
-            ++idx;
         }
         result << "}\n"sv;
     } else {
@@ -1253,8 +1241,9 @@ static bool IsCBuffer(Variable::Tag t) {
         case Variable::Tag::KERNEL_ID:
         case Variable::Tag::OBJECT_ID:
             return false;
+        default:
+            return true;
     }
-    return true;
 }
 }// namespace detail
 bool CodegenUtility::IsCBufferNonEmpty(std::initializer_list<vstd::IRange<Variable> *> fs) {
@@ -1279,7 +1268,6 @@ void CodegenUtility::GenerateCBuffer(
     std::initializer_list<vstd::IRange<Variable> *> fs,
     vstd::string &result) {
     result << "struct Args{\n"sv;
-    size_t alignCount = 0;
 
     for (auto &&f : fs) {
         for (auto &&i : *f) {
@@ -1487,6 +1475,7 @@ void CodegenUtility::CodegenProperties(
                     genArg.operator()<true>(RegisterType::SRV, ShaderVariableType::StructuredBuffer, 't');
                 }
                 break;
+            default: break;
         }
     }
 }

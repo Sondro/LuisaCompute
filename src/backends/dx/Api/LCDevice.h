@@ -39,8 +39,8 @@ public:
     void remove_buffer_in_bindless_array(uint64_t array, size_t index) noexcept override;
     void remove_tex2d_in_bindless_array(uint64_t array, size_t index) noexcept override;
     void remove_tex3d_in_bindless_array(uint64_t array, size_t index) noexcept override;
-    uint64_t create_depth_buffer(DepthFormat format, uint width, uint height) noexcept;
-    void destroy_depth_buffer(uint64_t handle) noexcept;
+    uint64_t create_depth_buffer(DepthFormat format, uint width, uint height) noexcept override;
+    void destroy_depth_buffer(uint64_t handle) noexcept override;
     IUtil *get_util() noexcept override;
     // stream
     uint64_t create_stream(StreamTag stream_tag) noexcept override;

@@ -17,7 +17,7 @@ struct CustomResFilter {
 class LC_RUNTIME_API CustomPass {
 private:
     template<typename T>
-    friend class custompass_detail::CustomResFilter;
+    friend struct custompass_detail::CustomResFilter;
     luisa::vector<CustomCommand::ResourceBinding> _bindings;
     luisa::string _name;
     StreamTag _stream_tag;

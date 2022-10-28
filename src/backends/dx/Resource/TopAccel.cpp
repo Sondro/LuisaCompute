@@ -50,9 +50,7 @@ TopAccel::TopAccel(Device *device, luisa::compute::AccelUsageHint hint,
 void TopAccel::UpdateMesh(
     MeshHandle *handle) {
     auto instIndex = handle->accelIndex;
-    auto &&ist = allInstance[instIndex].handle;
-    assert(ist == handle);
-    auto mesh = handle->mesh;
+    assert(allInstance[instIndex].handle == handle);
     setMap.ForceEmplace(instIndex, handle);
     requireBuild = true;
 }

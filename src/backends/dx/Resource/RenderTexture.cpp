@@ -102,6 +102,7 @@ RenderTexture::RenderTexture(
         case TextureDimension::Tex1D:
             texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE1D;
             break;
+        default: assert(false); break;
     }
     texDesc.Alignment = 0;
     texDesc.Width = this->width;
@@ -190,6 +191,7 @@ D3D12_SHADER_RESOURCE_VIEW_DESC RenderTexture::GetColorSrvDesc(uint mipOffset) c
             srvDesc.Texture3D.MostDetailedMip = mipOffset;
             srvDesc.Texture3D.ResourceMinLODClamp = 0.0f;
             break;
+        default: assert(false); break;
     }
     return srvDesc;
 }
@@ -283,15 +285,15 @@ TexView::TexView(
     TextureBase const *tex,
     uint64 mipStart,
     uint64 mipCount)
-    : mipStart(mipStart),
-      mipCount(mipCount),
-      tex(tex) {
+    : tex(tex),
+      mipStart(mipStart),
+      mipCount(mipCount) {
 }
 TexView::TexView(
     TextureBase const *tex,
     uint64 mipStart)
-    : mipStart(mipStart),
-      tex(tex) {
+    : tex(tex),
+      mipStart(mipStart) {
     mipCount = tex->Mip() - mipStart;
 }
 }// namespace toolhub::directx

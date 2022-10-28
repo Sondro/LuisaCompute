@@ -37,7 +37,8 @@ static inline void check_not_in_worker_thread(std::string_view f) noexcept {
 }// namespace detail
 
 #ifdef LUISA_COMPUTE_USE_STD_BARRIER
-struct Barrier : std::barrier<> {
+class Barrier : public std::barrier<> {
+public:
     using std::barrier<>::barrier;
 };
 #else

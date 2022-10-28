@@ -78,6 +78,7 @@ void Shader::SetComputeResource(
                 propertyName,
                 buffer.buffer->GetAddress() + buffer.offset);
         } break;
+        default: assert(false); break;
     }
 }
 void Shader::SetComputeResource(
@@ -95,6 +96,8 @@ void Shader::SetComputeResource(
                 propertyName,
                 view.heap->hGPU(view.index));
         } break;
+        default: assert(false); break;
+
     }
 }
 void Shader::SetComputeResource(
@@ -102,8 +105,7 @@ void Shader::SetComputeResource(
     CommandBufferBuilder *cb,
     std::pair<uint, uint4> const &constValue) const {
     auto cmdList = cb->CmdList();
-    auto &&var = properties[propertyName];
-    assert(var.type == ShaderVariableType::ConstantValue);
+    assert(properties[propertyName].type == ShaderVariableType::ConstantValue);
     cmdList->SetComputeRoot32BitConstants(propertyName, constValue.first, &constValue.second, 0);
 }
 void Shader::SetComputeResource(
@@ -137,6 +139,7 @@ void Shader::SetRasterResource(
                 propertyName,
                 buffer.buffer->GetAddress() + buffer.offset);
         } break;
+        default: assert(false); break;
     }
 }
 void Shader::SetRasterResource(
@@ -154,6 +157,7 @@ void Shader::SetRasterResource(
                 propertyName,
                 view.heap->hGPU(view.index));
         } break;
+        default: assert(false); break;
     }
 }
 void Shader::SetRasterResource(
@@ -170,8 +174,7 @@ void Shader::SetRasterResource(
     CommandBufferBuilder *cb,
     std::pair<uint, uint4> const &constValue) const {
     auto cmdList = cb->CmdList();
-    auto &&var = properties[propertyName];
-    assert(var.type == ShaderVariableType::ConstantValue);
+    assert( properties[propertyName].type == ShaderVariableType::ConstantValue);
     cmdList->SetGraphicsRoot32BitConstants(propertyName, constValue.first, &constValue.second, 0);
 }
 }// namespace toolhub::directx

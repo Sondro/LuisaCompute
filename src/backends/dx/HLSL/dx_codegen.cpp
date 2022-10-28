@@ -194,7 +194,6 @@ void StringStateVisitor::visit(const RefExpr *expr) {
 }
 
 void StringStateVisitor::visit(const LiteralExpr *expr) {
-    LiteralExpr::Value const &value = expr->value();
     eastl::visit(
         [&](auto &&value) -> void {
             using T = std::remove_cvref_t<decltype(value)>;
@@ -269,14 +268,17 @@ void StringStateVisitor::visit(const ReturnStmt *state) {
 }
 void StringStateVisitor::visit(const ScopeStmt *state) {
     str << "{\n";
-    for (auto &&i : state->statements()) {
-        i->accept(*this);
-        switch (state->tag()) {
-            case Statement::Tag::BREAK:
-            case Statement::Tag::CONTINUE:
-                break;
+    [&] {
+        for (auto &&i : state->statements()) {
+            i->accept(*this);
+            switch (state->tag()) {
+                case Statement::Tag::BREAK:
+                case Statement::Tag::CONTINUE:
+                    return;
+                default: break;
+            }
         }
-    }
+    }();
     str << "}\n";
 }
 void StringStateVisitor::visit(const CommentStmt *state) {
@@ -385,7 +387,7 @@ void StringStateVisitor::visit(const ForStmt *state) {
 StringStateVisitor::StringStateVisitor(
     Function f,
     vstd::string &str)
-    : str(str), f(f) {
+    : f(f), str(str) {
 }
 void StringStateVisitor::VisitFunction(Function func) {
     for (auto &&v : func.local_variables()) {
@@ -403,7 +405,7 @@ void StringStateVisitor::VisitFunction(Function func) {
         }
     }
     if (sharedVariables) {
-        for (auto&& v : func.shared_variables()) {
+        for (auto &&v : func.shared_variables()) {
             sharedVariables->emplace(v.hash(), v);
         }
     }

@@ -56,7 +56,6 @@ void ParseHex(std::string_view strv, Guid::GuidData &data) {
     auto toHex = [&]() {
         uint64 v = 0;
         auto endPtr = ptr + sizeof(uint64) * 2;
-        int index = 0;
         while (ptr != endPtr) {
             v <<= 4;
             v |= GetNumber(*ptr);
@@ -125,12 +124,14 @@ void Guid::ToBase64(char *result) const {
 void Guid::ReGenerate() {
 #ifdef _WIN32
     static_assert(sizeof(data) == sizeof(_GUID), "Size mismatch");
-    HRESULT h = ::CoCreateGuid(reinterpret_cast<_GUID *>(&data));
 #ifdef DEBUG
+    HRESULT h = ::CoCreateGuid(reinterpret_cast<_GUID *>(&data));
     if (h != S_OK) {
         VEngine_Log("GUID Generate Failed!\n"_sv);
         VENGINE_EXIT;
     }
+#else
+    ::CoCreateGuid(reinterpret_cast<_GUID *>(&data));
 #endif
 #elif defined(__linux__) || defined(__unix__)
     static_assert(sizeof(data) == sizeof(uuid_t), "Size mismatch");

@@ -95,14 +95,14 @@ ShaderCompiler *Device::Compiler() {
 Device::Device(ShaderPaths const &path, uint index)
     : path(path),
       serVisitor(path),
+      setAccelKernel(BuiltinKernel::LoadAccelSetKernel),
       bc6TryModeG10(BuiltinKernel::LoadBC6TryModeG10CSKernel),
       bc6TryModeLE10(BuiltinKernel::LoadBC6TryModeLE10CSKernel),
       bc6EncodeBlock(BuiltinKernel::LoadBC6EncodeBlockCSKernel),
       bc7TryMode456(BuiltinKernel::LoadBC7TryMode456CSKernel),
       bc7TryMode137(BuiltinKernel::LoadBC7TryMode137CSKernel),
       bc7TryMode02(BuiltinKernel::LoadBC7TryMode02CSKernel),
-      bc7EncodeBlock(BuiltinKernel::LoadBC7EncodeBlockCSKernel),
-      setAccelKernel(BuiltinKernel::LoadAccelSetKernel) {
+      bc7EncodeBlock(BuiltinKernel::LoadBC7EncodeBlockCSKernel) {
     using Microsoft::WRL::ComPtr;
     uint32_t dxgiFactoryFlags = 0;
     fileIo = &serVisitor;

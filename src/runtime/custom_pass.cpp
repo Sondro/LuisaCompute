@@ -15,7 +15,7 @@ luisa::unique_ptr<Command> CustomPass::build() &noexcept {
     auto cmd = std::move(*this).build();
     vstd::reset(_name);
     vstd::reset(_bindings);
-    return std::move(cmd);
+    return cmd;
 }
 luisa::unique_ptr<Command> CustomPass::build() &&noexcept {
     return CustomCommand::create(

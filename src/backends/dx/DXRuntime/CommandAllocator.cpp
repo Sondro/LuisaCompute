@@ -24,7 +24,6 @@ void CommandAllocatorBase::Complete(
     CommandQueue *queue,
     ID3D12Fence *fence,
     uint64 fenceIndex) {
-    uint64 completeValue;
     device->WaitFence(fence, fenceIndex);
     while (auto evt = executeAfterComplete.Pop()) {
         (*evt)();
@@ -38,9 +37,9 @@ CommandAllocatorBase::CommandAllocatorBase(
     Device *device,
     IGpuAllocator *resourceAllocator,
     D3D12_COMMAND_LIST_TYPE type)
-    : type(type),
-      resourceAllocator(resourceAllocator),
-      device(device) {
+    : device(device),
+      type(type),
+      resourceAllocator(resourceAllocator) {
     ThrowIfFailed(
         device->device->CreateCommandAllocator(type, IID_PPV_ARGS(allocator.GetAddressOf())));
     cbuffer.New(
@@ -53,13 +52,13 @@ CommandAllocator::CommandAllocator(
     IGpuAllocator *resourceAllocator,
     D3D12_COMMAND_LIST_TYPE type)
     : CommandAllocatorBase(device, resourceAllocator, type),
-      uploadAllocator(TEMP_SIZE, &ubVisitor),
-      readbackAllocator(TEMP_SIZE, &rbVisitor),
-      defaultAllocator(TEMP_SIZE, &dbVisitor),
-      rtvAllocator(64, &rtvVisitor),
-      dsvAllocator(64, &dsvVisitor),
       rtvVisitor(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV),
-      dsvVisitor(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV) {
+      dsvVisitor(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV),
+      uploadAllocator(TEMP_SIZE, &ubVisitor),
+      defaultAllocator(TEMP_SIZE, &dbVisitor),
+      readbackAllocator(TEMP_SIZE, &rbVisitor),
+      rtvAllocator(64, &rtvVisitor),
+      dsvAllocator(64, &dsvVisitor) {
     rbVisitor.self = this;
     ubVisitor.self = this;
     dbVisitor.self = this;

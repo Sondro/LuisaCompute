@@ -54,8 +54,8 @@ public:
         uint instance_count,
         uint object_id)
         : _vertex_buffers(vertex_buffers),
-          _instance_count(instance_count),
           _index_buffer(vertex_count),
+          _instance_count(instance_count),
           _object_id(object_id) {
     }
 };

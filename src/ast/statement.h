@@ -53,8 +53,8 @@ public:
     [[nodiscard]] uint64_t hash() const noexcept;
 };
 
-struct BreakStmt;
-struct ContinueStmt;
+class BreakStmt;
+class ContinueStmt;
 
 class ReturnStmt;
 

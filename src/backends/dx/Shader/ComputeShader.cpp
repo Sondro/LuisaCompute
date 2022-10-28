@@ -216,8 +216,8 @@ ComputeShader::ComputeShader(
     vstd::span<std::byte const> binData,
     Device *device)
     : Shader(std::move(prop), std::move(args), device->device.Get(), false),
-      blockSize(blockSize),
-      device(device) {
+      device(device),
+      blockSize(blockSize) {
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.pRootSignature = rootSig.Get();
     psoDesc.CS.pShaderBytecode = binData.data();
@@ -232,10 +232,10 @@ ComputeShader::ComputeShader(
     vstd::vector<SavedArgument> &&args,
     ComPtr<ID3D12RootSignature> &&rootSig,
     ComPtr<ID3D12PipelineState> &&pso)
-    : device(device),
-      blockSize(blockSize),
-      Shader(std::move(prop), std::move(args), std::move(rootSig)),
-      pso(std::move(pso)) {
+    : Shader(std::move(prop), std::move(args), std::move(rootSig)),
+      pso(std::move(pso)),
+      device(device),
+      blockSize(blockSize) {
 }
 
 ComputeShader::~ComputeShader() {
