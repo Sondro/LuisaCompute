@@ -103,8 +103,8 @@ public:
     RasterState const *_raster_state;
     luisa::span<PixelFormat const> _rtv_format;
     DepthFormat _dsv_format;
-    void check_dst(luisa::span<PixelFormat const> rt_formats, DepthBuffer const *depth);
-    void check_scene(luisa::span<RasterMesh const> scene);
+    void check_dst(luisa::span<PixelFormat const> rt_formats, DepthBuffer const *depth) noexcept;
+    void check_scene(luisa::span<RasterMesh const> scene) noexcept;
 #endif
     template<typename... Rtv>
         requires(sizeof...(Rtv) == 0 || detail::LegalDst<Rtv...>())

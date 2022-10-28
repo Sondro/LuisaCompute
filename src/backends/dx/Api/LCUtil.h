@@ -4,7 +4,7 @@
 using namespace luisa::compute;
 namespace toolhub::directx {
 class Device;
-class LCUtil : public IUtil, public vstd::IOperatorNewBase {
+class LCUtil final : public IUtil, public vstd::IOperatorNewBase {
 public:
     static constexpr size_t BLOCK_SIZE = 16;
     Device *device;

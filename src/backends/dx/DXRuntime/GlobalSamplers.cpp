@@ -43,6 +43,7 @@ struct GlobalSampleData {
                     case Sampler::Filter::ANISOTROPIC:
                         v.Filter = D3D12_FILTER_ANISOTROPIC;
                         break;
+                    default: assert(false); break;
                 }
                 D3D12_TEXTURE_ADDRESS_MODE address = [&] {
                     switch ((Sampler::Address)x) {

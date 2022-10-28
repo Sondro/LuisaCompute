@@ -29,10 +29,8 @@ void export_vector2(py::module &m);
 void export_vector3(py::module &m);
 void export_vector4(py::module &m);
 void export_matrix(py::module &m);
+void export_img(py::module &m);
 
-int add(int i, int j) {
-    return i + j;
-}
 PYBIND11_DECLARE_HOLDER_TYPE(T, eastl::shared_ptr<T>);
 
 const auto pyref = py::return_value_policy::reference;// object lifetime is managed on C++ side
@@ -67,8 +65,10 @@ PYBIND11_MODULE(lcapi, m) {
     py::class_<DeviceInterface, eastl::shared_ptr<DeviceInterface>>(m, "DeviceInterface")
         .def("create_shader", [](DeviceInterface &self, Function kernel, std::string &&str) {
             luisa::string realStr;
-            realStr.reserve(str.size() + 7);
-            realStr += ".cache/"sv;
+            auto cachePath = self.context().cache_directory().string<char, std::char_traits<char>, luisa::allocator<char>>();
+            realStr.reserve(str.size() + cachePath.size() + 1);
+            realStr += cachePath;
+            realStr += '/';
             realStr += str;
             return self.create_shader(kernel, realStr); })// TODO: support metaoptions
         .def("destroy_shader", &DeviceInterface::destroy_shader)
@@ -412,4 +412,5 @@ PYBIND11_MODULE(lcapi, m) {
         .value("REPEAT", Sampler::Address::REPEAT)
         .value("MIRROR", Sampler::Address::MIRROR)
         .value("ZERO", Sampler::Address::ZERO);
+    export_img(m);
 }

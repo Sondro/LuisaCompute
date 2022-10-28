@@ -28,10 +28,11 @@ private:
     friend class Device;
     friend class Mesh;
     explicit Accel(DeviceInterface *device, UsageHint hint = UsageHint::FAST_TRACE, bool allow_compact = false, bool allow_update = true) noexcept;
-    
 
 public:
     Accel() noexcept = default;
+    Accel(Accel &&) noexcept = default;
+    Accel(Accel const&) = delete;
     using Resource::operator bool;
     [[nodiscard]] auto size() const noexcept { return _mesh_handles.size(); }
 

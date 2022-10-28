@@ -12,6 +12,9 @@ from .builtin import _builtin_call
 class BindlessArray:
     def __init__(self, n_slots = 65536):
         self.handle = device().impl().create_bindless_array(n_slots)
+    def __del__(self):
+        if(self.handle != None):
+            device.impl().destroy_bindless_array(self.handle)
 
     @staticmethod
     def bindless_array(dic):

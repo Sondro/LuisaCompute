@@ -23,7 +23,9 @@ class Buffer:
         self.bytesize = size * to_lctype(self.dtype).size()
         # instantiate buffer on device
         self.handle = get_global_device().impl().create_buffer(self.bytesize)
-
+    def __del__(self):
+        if self.handle != None:
+            get_global_device().impl().destroy_buffer(self.handle)    
     @staticmethod
     def buffer(arr):
         if type(arr).__name__ == "ndarray":

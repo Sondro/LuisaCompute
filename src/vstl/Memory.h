@@ -25,8 +25,7 @@ inline T *vengine_new_array(size_t arrayCount, Args &&...args) noexcept {
 }
 template<typename T>
 inline void vengine_delete(T *ptr) noexcept {
-    if constexpr (!std::is_void_v<T> && !std::is_trivially_destructible_v<T>)
-        ((T *)ptr)->~T();
+    vstd::destruct(ptr);
     vengine_free(ptr);
 }
 

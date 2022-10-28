@@ -504,7 +504,10 @@ private:
 
 public:
     explicit CommandReorderVisitor(FuncTable &&funcTable) noexcept
-        : rangePool(256, true), bindlessHandlePool(32, true), noRangePool(256, true) , funcTable(std::forward<FuncTable>(funcTable)){
+        : rangePool(256, true),
+          noRangePool(256, true),
+          bindlessHandlePool(32, true),
+          funcTable(std::forward<FuncTable>(funcTable)) {
         resMap.reserve(256);
         bindlessMap.reserve(256);
     }

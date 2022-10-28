@@ -22,9 +22,9 @@ StackAllocator::Chunk StackAllocator::Allocate(uint64 targetSize) {
     }
     auto newHandle = visitor->Allocate(capacity);
     allocatedBuffers.push_back(Buffer{
-        newHandle,
-        capacity,
-        capacity - targetSize});
+        .handle = newHandle,
+        .fullSize = capacity,
+        .position = targetSize});
     return {newHandle, 0};
 }
 StackAllocator::Chunk StackAllocator::Allocate(
@@ -39,8 +39,7 @@ StackAllocator::Chunk StackAllocator::Allocate(
         int64 leftSize = (i.fullSize - position);
         if (leftSize >= targetSize) {
             auto ofst = position;
-            position += targetSize;
-            i.position = position;
+            i.position = position + targetSize;
             return {i.handle, ofst};
         }
     }
@@ -49,9 +48,9 @@ StackAllocator::Chunk StackAllocator::Allocate(
     }
     auto newHandle = visitor->Allocate(capacity);
     allocatedBuffers.push_back(Buffer{
-        newHandle,
-        capacity,
-        capacity - targetSize});
+        .handle = newHandle,
+        .fullSize = capacity,
+        .position = targetSize});
     return {
         newHandle,
         0};

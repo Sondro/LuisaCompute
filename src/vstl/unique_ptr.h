@@ -13,7 +13,7 @@ struct unique_ptr_deleter {
             ptr->~T();
             vengine_free(selfPtr);
         } else {
-            ptr->~T();
+            destruct(ptr);
             vengine_free(ptr);
         }
     }

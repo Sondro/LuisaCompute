@@ -122,6 +122,7 @@ public:
         }
     };
     void visit(const BufferUploadCommand *cmd) noexcept override {
+
         BufferView bf(
             reinterpret_cast<Buffer const *>(cmd->handle()),
             cmd->offset(),

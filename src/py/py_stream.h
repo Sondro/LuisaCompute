@@ -37,6 +37,7 @@ public:
     PyStream(Device &device) noexcept;
     ~PyStream() noexcept;
     void add(Command *cmd) noexcept;
+    void add(luisa::unique_ptr<Command>&& cmd) noexcept;
     template<typename T>
         requires(!std::is_reference_v<T>)
     void add_upload(T &&t) noexcept {

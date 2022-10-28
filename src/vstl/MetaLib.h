@@ -1332,6 +1332,11 @@ void reset(T &v, Args &&...args) {
     v.~T();
     new (&v) T(std::forward<Args>(args)...);
 }
+template<typename T>
+void destruct(T *ptr) {
+    if constexpr (!std::is_void_v<T> && !std::is_trivially_destructible_v<T>)
+        ptr->~T();
+}
 #define DECLARE_VENGINE_OVERRIDE_OPERATOR_NEW           \
     static void *operator new(                          \
         size_t size) noexcept {                         \

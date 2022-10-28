@@ -36,7 +36,9 @@ class Texture2D:
         self.write = self.texture2DType.write
         # instantiate texture on device
         self.handle = get_global_device().impl().create_texture(self.format, 2, width, height, 1, 1)
-
+    def __del__(self):
+        if self.handle != None:
+            get_global_device().impl().destroy_texture(self.handle)    
     @staticmethod
     def texture2d(arr):
         if type(arr).__name__ == "ndarray":
