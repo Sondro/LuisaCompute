@@ -87,18 +87,19 @@ class Texture2D:
         tex.copy_from_array(arr)
         return tex
 
+    # use manually load temporarily
+
     @staticmethod
-    def from_image(path):
+    def from_image(path:str):
         # load 8-bit 4-channel image from file
-        from PIL import Image
         import numpy as np
-        arr = np.asarray(Image.open(path))
+        arr = lcapi.load_image(path)
         assert len(arr.shape) == 3 and arr.shape[2] in {3,4}
-        assert arr.dtype == np.uint8
+        assert arr.dtype == np.float32
         if arr.shape[2] == 3:
-            arr = np.concatenate((arr, np.full((arr.shape[0], arr.shape[1], 1), 255, dtype=np.uint8)), axis=2)
+            arr = np.concatenate((arr, np.full((arr.shape[0], arr.shape[1], 1), 1.0, dtype=np.float32)), axis=2)
         # save as SRGB 8-bit texture
-        tex = Texture2D.empty(arr.shape[1], arr.shape[0], 4, float, 'byte')
+        tex = Texture2D.empty(arr.shape[0], arr.shape[1], 4, float)
         tex.copy_from_array(arr)
         return tex
 

@@ -10,7 +10,6 @@ from .mathtypes import *
 from .builtin import check_exact_signature
 from types import SimpleNamespace
 from .atomic import int_atomic_functions, float_atomic_functions
-
 class Buffer:
     def __init__(self, size, dtype):
         if dtype not in basic_dtypes and type(dtype).__name__ not in {'StructType','ArrayType'}:
@@ -113,7 +112,6 @@ class Buffer:
         stream.add_upload_buffer(arr)
         if sync:
             stream.synchronize()
-
     def copy_from(self, arr, sync = False, stream = None): # arr: numpy array or list
         if type(arr).__name__ == "ndarray":
             self.copy_from_array(arr, sync, stream)
@@ -121,7 +119,6 @@ class Buffer:
             self.copy_from_list(arr, sync, stream)
         else:
             raise TypeError(f"copy from unrecognized type: {type(arr)}")
-
     def copy_to(self, arr, sync = True, stream = None): # arr: numpy array; user is resposible for data layout
         if stream is None:
             stream = globalvars.stream
