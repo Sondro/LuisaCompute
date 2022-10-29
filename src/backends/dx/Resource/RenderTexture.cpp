@@ -128,14 +128,12 @@ RenderTexture::RenderTexture(
     } else {
         ID3D12Heap *heap;
         uint64 offset;
+        auto allocateInfo = device->device->GetResourceAllocationInfo(
+            0, 1, &texDesc);
+        auto byteSize = allocateInfo.SizeInBytes;
         allocHandle.allocateHandle = allocator->AllocateTextureHeap(
             device,
-            format,
-            width,
-            height,
-            depth,
-            dimension,
-            mip,
+            byteSize,
             &heap,
             &offset,
             true);

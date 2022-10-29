@@ -17,12 +17,7 @@ public:
 		ID3D12Heap** heap, uint64_t* offset) = 0;
 	virtual uint64 AllocateTextureHeap(
 		Device* device,
-		GFXFormat format,
-		uint32_t width,
-		uint32_t height,
-		uint32_t depthSlice,
-		TextureDimension dimension,
-		uint32_t mipCount,
+		size_t sizeBytes,
 		ID3D12Heap** heap, uint64_t* offset,
 		bool isRenderTexture) = 0;
 	virtual void Release(uint64 handle) = 0;
