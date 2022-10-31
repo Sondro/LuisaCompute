@@ -1,3 +1,4 @@
+from turtle import width
 import lcapi
 from . import globalvars
 from .globalvars import get_global_device
@@ -30,7 +31,7 @@ class Texture2D:
         self.storage = getattr(lcapi.PixelStorage, self.storage_name + str(channel))
         self.format = getattr(lcapi, "pixel_storage_to_format_" + dtype.__name__)(self.storage)
 
-        self.bytesize = lcapi.pixel_storage_size(self.storage) * width * height;
+        self.bytesize = lcapi.pixel_storage_size(self.storage) * width * height
         self.texture2DType = Texture2DType(dtype, channel)
         self.read = self.texture2DType.read
         self.write = self.texture2DType.write
@@ -90,18 +91,43 @@ class Texture2D:
     # use manually load temporarily
 
     @staticmethod
-    def from_image(path:str):
-        # load 8-bit 4-channel image from file
+    def from_hdr_image(path:str):
+        # load 32-bit 4-channel image from file
         import numpy as np
-        arr = lcapi.load_image(path)
-        assert len(arr.shape) == 3 and arr.shape[2] in {3,4}
+        arr = lcapi.load_hdr_image(path)
+        assert len(arr.shape) == 3 and arr.shape[2] == 4
         assert arr.dtype == np.float32
-        if arr.shape[2] == 3:
-            arr = np.concatenate((arr, np.full((arr.shape[0], arr.shape[1], 1), 1.0, dtype=np.float32)), axis=2)
         # save as SRGB 8-bit texture
         tex = Texture2D.empty(arr.shape[0], arr.shape[1], 4, float)
         tex.copy_from_array(arr)
         return tex
+
+    @staticmethod
+    def from_ldr_image(path:str):
+        # load 8-bit 4-channel image from file
+        import numpy as np
+        arr = lcapi.load_ldr_image(path)
+        assert len(arr.shape) == 3 and arr.shape[2] == 4
+        assert arr.dtype == np.ubyte
+        # save as SRGB 8-bit texture
+        tex = Texture2D.empty(arr.shape[0], arr.shape[1], 4, float, storage="byte")
+        tex.copy_from_array(arr)
+        return tex
+
+    def to_image(self, path:str):
+        import numpy as np
+        if self.format == lcapi.PixelFormat.RGBA32F:
+            arr = np.empty([self.width, self.height, 4], dtype=np.float32)
+            self.copy_to(arr)
+            lcapi.save_hdr_image(path, arr, self.width, self.height)
+            del arr
+        elif self.format == lcapi.PixelFormat.RGBA8UNorm:
+            arr = np.empty([self.width, self.height, 4], dtype=np.ubyte)
+            self.copy_to(arr)
+            lcapi.save_ldr_image(path, arr, self.width, self.height)
+            del(arr)
+        else:
+            raise "Illegal export image format!"
 
     def copy_from(self, arr, sync = False, stream = None):
         return self.copy_from_array(self, arr, sync, stream)
