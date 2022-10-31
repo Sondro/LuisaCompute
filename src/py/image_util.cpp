@@ -10,15 +10,19 @@
 namespace py = pybind11;
 using namespace luisa::compute;
 const auto pyref = py::return_value_policy::reference;// object lifetime is managed on C++ side
+
 void export_img(py::module &m) {
     m.def("load_image", [](std::string &&path) {
-        int32_t x, y, channel;
-        auto ptr = stbi_loadf(path.c_str(), &x, &y, &channel, 0);
-        py::capsule free_when_done(ptr, vengine_free);
-        return py::array_t<float>(
-            {x, y, channel},
-            {y * channel * sizeof(float), channel * sizeof(float), sizeof(float)},
-            ptr,
-            std::move(free_when_done));
+         int32_t x, y, channel;
+         auto ptr = stbi_loadf(path.c_str(), &x, &y, &channel, 4);
+         channel = 4;
+         py::capsule free_when_done(ptr, vengine_free);
+         return py::array_t<float>(
+             {x, y, channel},
+             {y * channel * sizeof(float), channel * sizeof(float), sizeof(float)},
+             ptr,
+             std::move(free_when_done));
+     }).def("save_hdr_image", [](std::string &&path, py::buffer &&buf, int x, int y) {
+        stbi_write_hdr(path.c_str(), x, y, 4, reinterpret_cast<float *>(buf.request().ptr));
     });
 }

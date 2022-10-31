@@ -16,7 +16,12 @@
 #include <vstl/Common.h>
 using namespace luisa;
 using namespace luisa::compute;
+struct Value{
+static constexpr int v = 55;
+};
+
 int main(int argc, char *argv[]) {
+
     log_level_info();
 
     Context context{argv[0]};

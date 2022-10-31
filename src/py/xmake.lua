@@ -1,15 +1,30 @@
-BuildProject({
-	projectName = "lcapi",
-	projectType = "shared",
-	exception = true
-})
-add_links("python3", "python310")
-add_linkdirs("../ext/python/libs")
-add_includedirs("../ext/pybind11/include", "../ext/python/include", "../ext/stb/")
-add_files("*.cpp")
-add_deps("lc-runtime", "lc-dsl")
-add_defines("LC_AST_EXCEPTION")
-after_build(function(target)
-	local bdPath = target:targetdir()
-	os.cp(bdPath .. "/lcapi.dll", bdPath .. "/lcapi.pyd")
-end)
+function CompilePython(version)
+	local versionName = "3" .. tostring(version)
+	local pyName = "python" .. versionName
+	local projectName = "lcapi" .. versionName
+	BuildProject({
+		projectName = projectName,
+		projectType = "shared",
+		exception = true
+	})
+	add_links("python3", pyName)
+	add_linkdirs("../ext/" .. pyName .. "/libs")
+	add_includedirs("../ext/pybind11/include", "../ext/" .. pyName .. "/include", "../ext/stb/")
+	add_files("*.cpp")
+	add_deps("lc-runtime", "lc-dsl")
+	add_defines("LC_AST_EXCEPTION")
+	set_values("projectName", projectName)
+	after_build(function(target)
+		local projectName = target:values("projectName")
+		local bdPath = target:targetdir()
+		if is_plat("windows") then
+			os.cp(bdPath .. "/" .. projectName .. ".dll", bdPath .. "/lcapi.pyd")
+		end
+	end)
+end
+CompilePython(10)
+--[[
+for version = 1, 11, 1 do
+	CompilePython(version)
+end
+]]

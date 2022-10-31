@@ -11,7 +11,7 @@ add_subdirs("dsl")
 add_subdirs("py")
 -- add_subdirs("remote")
 add_subdirs("backends/dx")
--- add_subdirs("tests")
+add_subdirs("tests")
 -- add_subdirs("serde_lib")
 -- if is_plat("windows") then
 -- add_subdirs("shader_graph")
